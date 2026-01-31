@@ -1,0 +1,266 @@
+-- ============================================================================
+-- Calculator Service - Database Schema
+-- ============================================================================
+-- 데이터베이스: calculator_db
+-- DBMS: PostgreSQL 15
+-- 작성일: 2025-12-29
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 1. 데이터베이스 생성
+-- ----------------------------------------------------------------------------
+
+-- calculator_db 데이터베이스 생성 (이미 존재하면 무시)
+CREATE DATABASE calculator_db
+    WITH
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'en_US.UTF-8'
+    LC_CTYPE = 'en_US.UTF-8'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+
+\c calculator_db
+
+-- ----------------------------------------------------------------------------
+-- 2. 사용자 생성 및 권한 부여
+-- ----------------------------------------------------------------------------
+
+-- Calculator 서비스 전용 사용자 생성
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'calculator_user') THEN
+        CREATE USER calculator_user WITH PASSWORD 'calc_secure_pass_2025';
+    END IF;
+END
+$$;
+
+-- 데이터베이스 연결 권한
+GRANT CONNECT ON DATABASE calculator_db TO calculator_user;
+
+-- 스키마 사용 권한
+GRANT USAGE ON SCHEMA public TO calculator_user;
+
+-- ----------------------------------------------------------------------------
+-- 3. 테이블 생성
+-- ----------------------------------------------------------------------------
+
+-- calculation_results 테이블 생성
+CREATE TABLE IF NOT EXISTS calculation_results (
+    -- Primary Key
+    id VARCHAR(36) PRIMARY KEY,
+
+    -- 기본 정보
+    user_id VARCHAR(36) NOT NULL,
+    housing_id VARCHAR(36) NOT NULL,
+    housing_name VARCHAR(200) NOT NULL,
+    loan_product_id VARCHAR(36) NOT NULL,
+    loan_product_name VARCHAR(200) NOT NULL,
+    loan_amount BIGINT NOT NULL,
+    loan_term INTEGER NOT NULL,
+
+    -- 재무 현황
+    current_assets BIGINT NOT NULL,
+    estimated_assets BIGINT NOT NULL,
+    loan_required BIGINT NOT NULL,
+
+    -- 대출 분석
+    ltv DECIMAL(5,2) NOT NULL,
+    dti DECIMAL(5,2) NOT NULL,
+    dsr DECIMAL(5,2) NOT NULL,
+    ltv_limit DECIMAL(5,2) NOT NULL,
+    dti_limit DECIMAL(5,2) NOT NULL,
+    dsr_limit DECIMAL(5,2) NOT NULL,
+    is_eligible BOOLEAN NOT NULL,
+    ineligibility_reasons TEXT,
+    monthly_payment BIGINT NOT NULL,
+
+    -- 입주 후 재무상태
+    after_move_in_assets BIGINT NOT NULL,
+    after_move_in_monthly_expenses BIGINT NOT NULL,
+    after_move_in_monthly_income BIGINT NOT NULL,
+    after_move_in_available_funds BIGINT NOT NULL,
+
+    -- 상태 및 시간
+    status VARCHAR(20) NOT NULL,
+    calculated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- 제약 조건: 금액 필드는 0 이상
+    CONSTRAINT chk_loan_amount CHECK (loan_amount >= 0),
+    CONSTRAINT chk_loan_required CHECK (loan_required >= 0),
+    CONSTRAINT chk_current_assets CHECK (current_assets >= 0),
+    CONSTRAINT chk_estimated_assets CHECK (estimated_assets >= 0),
+    CONSTRAINT chk_after_move_in_assets CHECK (after_move_in_assets >= 0),
+    CONSTRAINT chk_monthly_payment CHECK (monthly_payment >= 0),
+    CONSTRAINT chk_after_move_in_expenses CHECK (after_move_in_monthly_expenses >= 0),
+    CONSTRAINT chk_after_move_in_income CHECK (after_move_in_monthly_income >= 0),
+
+    -- 제약 조건: 비율 필드는 0~200% 범위
+    CONSTRAINT chk_ltv_range CHECK (ltv >= 0 AND ltv <= 200),
+    CONSTRAINT chk_dti_range CHECK (dti >= 0 AND dti <= 200),
+    CONSTRAINT chk_dsr_range CHECK (dsr >= 0 AND dsr <= 200),
+    CONSTRAINT chk_ltv_limit_range CHECK (ltv_limit >= 0 AND ltv_limit <= 200),
+    CONSTRAINT chk_dti_limit_range CHECK (dti_limit >= 0 AND dti_limit <= 200),
+    CONSTRAINT chk_dsr_limit_range CHECK (dsr_limit >= 0 AND dsr_limit <= 200),
+
+    -- 제약 조건: 대출 기간은 1~600개월 (최대 50년)
+    CONSTRAINT chk_loan_term_range CHECK (loan_term >= 1 AND loan_term <= 600),
+
+    -- 제약 조건: 상태 값 검증
+    CONSTRAINT chk_status_valid CHECK (status IN ('ELIGIBLE', 'INELIGIBLE'))
+);
+
+-- 테이블 코멘트
+COMMENT ON TABLE calculation_results IS '입주 후 지출 계산 결과를 저장하는 테이블';
+
+-- 컬럼 코멘트
+COMMENT ON COLUMN calculation_results.id IS '계산 결과 ID (UUID)';
+COMMENT ON COLUMN calculation_results.user_id IS '사용자 ID (User Service 참조)';
+COMMENT ON COLUMN calculation_results.housing_id IS '주택 ID (Housing Service 참조)';
+COMMENT ON COLUMN calculation_results.housing_name IS '주택 이름 (비정규화)';
+COMMENT ON COLUMN calculation_results.loan_product_id IS '대출상품 ID (Loan Service 참조)';
+COMMENT ON COLUMN calculation_results.loan_product_name IS '대출상품 이름 (비정규화)';
+COMMENT ON COLUMN calculation_results.loan_amount IS '대출 금액 (원)';
+COMMENT ON COLUMN calculation_results.loan_term IS '대출 기간 (개월)';
+COMMENT ON COLUMN calculation_results.current_assets IS '현재 순자산 (원)';
+COMMENT ON COLUMN calculation_results.estimated_assets IS '예상자산 (원)';
+COMMENT ON COLUMN calculation_results.loan_required IS '대출필요금액 (원)';
+COMMENT ON COLUMN calculation_results.ltv IS '계산된 LTV (%)';
+COMMENT ON COLUMN calculation_results.dti IS '계산된 DTI (%)';
+COMMENT ON COLUMN calculation_results.dsr IS '계산된 DSR (%)';
+COMMENT ON COLUMN calculation_results.ltv_limit IS 'LTV 한도 (%)';
+COMMENT ON COLUMN calculation_results.dti_limit IS 'DTI 한도 (%)';
+COMMENT ON COLUMN calculation_results.dsr_limit IS 'DSR 한도 (%)';
+COMMENT ON COLUMN calculation_results.is_eligible IS '대출 적격 여부';
+COMMENT ON COLUMN calculation_results.ineligibility_reasons IS '미충족 사유 (JSON 배열)';
+COMMENT ON COLUMN calculation_results.monthly_payment IS '월 상환액 (원)';
+COMMENT ON COLUMN calculation_results.after_move_in_assets IS '입주 후 자산 (원)';
+COMMENT ON COLUMN calculation_results.after_move_in_monthly_expenses IS '입주 후 월지출 (원)';
+COMMENT ON COLUMN calculation_results.after_move_in_monthly_income IS '월소득 (원)';
+COMMENT ON COLUMN calculation_results.after_move_in_available_funds IS '여유자금 (원)';
+COMMENT ON COLUMN calculation_results.status IS '상태 (ELIGIBLE: 적격, INELIGIBLE: 부적격)';
+COMMENT ON COLUMN calculation_results.calculated_at IS '계산 일시';
+COMMENT ON COLUMN calculation_results.created_at IS '생성 일시';
+COMMENT ON COLUMN calculation_results.updated_at IS '수정 일시';
+
+-- ----------------------------------------------------------------------------
+-- 4. 인덱스 생성
+-- ----------------------------------------------------------------------------
+
+-- 필수 인덱스: 사용자별 조회 최적화
+CREATE INDEX IF NOT EXISTS idx_user_id
+ON calculation_results(user_id);
+
+-- 필수 인덱스: 계산일시 기준 정렬 최적화 (최신 결과 우선)
+CREATE INDEX IF NOT EXISTS idx_calculated_at
+ON calculation_results(calculated_at DESC);
+
+-- 권장 인덱스: 주택별 조회 및 캐시 무효화 최적화
+CREATE INDEX IF NOT EXISTS idx_housing_id
+ON calculation_results(housing_id);
+
+-- 권장 인덱스: 사용자 + 상태 복합 조회 최적화
+CREATE INDEX IF NOT EXISTS idx_user_status
+ON calculation_results(user_id, status);
+
+-- 권장 인덱스: 사용자 + 주택 복합 조회 최적화
+CREATE INDEX IF NOT EXISTS idx_user_housing
+ON calculation_results(user_id, housing_id);
+
+-- 선택 인덱스: 사용자 + 주택 + 상태 복합 조회 (데이터량이 많을 때 적용)
+-- CREATE INDEX IF NOT EXISTS idx_user_housing_status
+-- ON calculation_results(user_id, housing_id, status);
+
+-- ----------------------------------------------------------------------------
+-- 5. 트리거 생성 (updated_at 자동 갱신)
+-- ----------------------------------------------------------------------------
+
+-- updated_at 자동 갱신 함수
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- calculation_results 테이블에 트리거 적용
+DROP TRIGGER IF EXISTS trg_update_calculation_results_updated_at ON calculation_results;
+
+CREATE TRIGGER trg_update_calculation_results_updated_at
+BEFORE UPDATE ON calculation_results
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- ----------------------------------------------------------------------------
+-- 6. 테이블 권한 부여
+-- ----------------------------------------------------------------------------
+
+-- calculator_user에게 테이블 권한 부여
+GRANT SELECT, INSERT, UPDATE, DELETE ON calculation_results TO calculator_user;
+
+-- 시퀀스 권한 부여 (필요 시)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO calculator_user;
+
+-- ----------------------------------------------------------------------------
+-- 7. 초기 데이터 (선택 사항)
+-- ----------------------------------------------------------------------------
+
+-- 개발/테스트용 샘플 데이터 (프로덕션에서는 주석 처리)
+/*
+INSERT INTO calculation_results (
+    id, user_id, housing_id, housing_name, loan_product_id, loan_product_name,
+    loan_amount, loan_term, current_assets, estimated_assets, loan_required,
+    ltv, dti, dsr, ltv_limit, dti_limit, dsr_limit,
+    is_eligible, ineligibility_reasons, monthly_payment,
+    after_move_in_assets, after_move_in_monthly_expenses,
+    after_move_in_monthly_income, after_move_in_available_funds,
+    status, calculated_at
+) VALUES (
+    'calc-001', 'user-001', 'housing-001', '래미안 강남 프리미어 팰리스',
+    'loan-001', '주택담보대출 특판',
+    300000000, 360, 100000000, 200000000, 300000000,
+    60.00, 35.00, 40.00, 70.00, 40.00, 50.00,
+    true, NULL, 1500000,
+    200000000, 3500000, 5000000, 1500000,
+    'ELIGIBLE', CURRENT_TIMESTAMP
+);
+*/
+
+-- ----------------------------------------------------------------------------
+-- 8. 통계 정보 수집
+-- ----------------------------------------------------------------------------
+
+-- 쿼리 옵티마이저가 효율적인 실행 계획을 세울 수 있도록 통계 수집
+ANALYZE calculation_results;
+
+-- ----------------------------------------------------------------------------
+-- 9. 스키마 버전 정보
+-- ----------------------------------------------------------------------------
+
+-- 스키마 버전 관리 테이블 생성 (Flyway 미사용 시)
+CREATE TABLE IF NOT EXISTS schema_version (
+    version VARCHAR(20) PRIMARY KEY,
+    description TEXT,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 현재 스키마 버전 기록
+INSERT INTO schema_version (version, description)
+VALUES ('1.0.0', 'Initial schema for Calculator service')
+ON CONFLICT (version) DO NOTHING;
+
+-- ----------------------------------------------------------------------------
+-- 스키마 생성 완료
+-- ----------------------------------------------------------------------------
+
+-- 생성된 테이블 확인
+\dt
+
+-- 생성된 인덱스 확인
+\di
+
+-- 테이블 구조 확인
+\d calculation_results

@@ -1,0 +1,207 @@
+@startuml asset-simple
+!theme mono
+
+title Asset 서비스 간소화 클래스 설계 (API 매핑 포함)
+
+package "com.dwj.homestarter.asset" {
+
+    ' Controller Layer
+    package "controller" <<Rectangle>> {
+        class SelfAssetController {
+            + createSelfAssets(request: CreateAssetRequest): ResponseEntity<AssetResponse>
+        }
+
+        class SpouseAssetController {
+            + createSpouseAssets(request: CreateAssetRequest): ResponseEntity<AssetResponse>
+        }
+
+        class AssetController {
+            + getAssets(ownerType: String): ResponseEntity<AssetListResponse>
+            + updateAsset(id: String, request: UpdateAssetRequest): ResponseEntity<AssetResponse>
+            + deleteAsset(id: String): ResponseEntity<Void>
+        }
+    }
+
+    ' Service Layer
+    package "service" <<Rectangle>> {
+        interface AssetService {
+            + createSelfAssets(userId: String, request: CreateAssetRequest): AssetResponse
+            + createSpouseAssets(userId: String, request: CreateAssetRequest): AssetResponse
+            + getAssets(userId: String, ownerType: OwnerType): AssetListResponse
+            + updateAsset(id: String, userId: String, request: UpdateAssetRequest): AssetResponse
+            + deleteAsset(id: String, userId: String): void
+        }
+
+        class AssetServiceImpl
+        class ValidationService
+        class AssetEventPublisher
+    }
+
+    ' Domain Layer
+    package "domain" <<Rectangle>> {
+        class Asset {
+            - id: String
+            - userId: String
+            - ownerType: OwnerType
+            - totalAssets: Long
+            - totalLoans: Long
+            - netAssets: Long
+            + calculateNetAssets(): Long
+        }
+
+        class AssetItem
+        class LoanItem
+        class IncomeItem
+        class ExpenseItem
+
+        enum OwnerType {
+            SELF
+            SPOUSE
+        }
+
+        class AssetUpdatedEvent
+    }
+
+    ' DTO Layer
+    package "dto" <<Rectangle>> {
+        class CreateAssetRequest
+        class UpdateAssetRequest
+        class AssetResponse
+        class AssetListResponse
+        class AssetItemDto
+        class LoanItemDto
+        class IncomeItemDto
+        class ExpenseItemDto
+    }
+
+    ' Repository Layer
+    package "repository.jpa" <<Rectangle>> {
+        interface AssetRepository
+        interface AssetItemRepository
+        interface LoanItemRepository
+        interface IncomeItemRepository
+        interface ExpenseItemRepository
+    }
+
+    ' Entity Layer
+    package "repository.entity" <<Rectangle>> {
+        class AssetEntity
+        class AssetItemEntity
+        class LoanItemEntity
+        class IncomeItemEntity
+        class ExpenseItemEntity
+    }
+}
+
+' Relationships
+SelfAssetController --> AssetService
+SpouseAssetController --> AssetService
+AssetController --> AssetService
+AssetServiceImpl ..|> AssetService
+AssetServiceImpl --> AssetRepository
+AssetServiceImpl --> ValidationService
+AssetServiceImpl --> AssetEventPublisher
+AssetRepository --> AssetEntity
+Asset --> OwnerType
+
+note right of SelfAssetController
+  **API 매핑표**
+
+  **SelfAssetController**
+  ┌─────────────────────────────────────────┐
+  │ Method: createSelfAssets                │
+  │ API: POST /assets/self                  │
+  │ Operation: createSelfAssets             │
+  │ 설명: 본인 자산정보 입력                │
+  └─────────────────────────────────────────┘
+end note
+
+note right of SpouseAssetController
+  **SpouseAssetController**
+  ┌─────────────────────────────────────────┐
+  │ Method: createSpouseAssets              │
+  │ API: POST /assets/spouse                │
+  │ Operation: createSpouseAssets           │
+  │ 설명: 배우자 자산정보 입력              │
+  └─────────────────────────────────────────┘
+end note
+
+note right of AssetController
+  **AssetController**
+  ┌─────────────────────────────────────────┐
+  │ Method: getAssets                       │
+  │ API: GET /assets                        │
+  │ Operation: getAssets                    │
+  │ 설명: 자산정보 조회                     │
+  ├─────────────────────────────────────────┤
+  │ Method: updateAsset                     │
+  │ API: PUT /assets/{id}                   │
+  │ Operation: updateAsset                  │
+  │ 설명: 자산정보 수정                     │
+  ├─────────────────────────────────────────┤
+  │ Method: deleteAsset                     │
+  │ API: DELETE /assets/{id}                │
+  │ Operation: deleteAsset                  │
+  │ 설명: 자산정보 삭제                     │
+  └─────────────────────────────────────────┘
+end note
+
+note bottom of "com.dwj.homestarter.asset"
+  **패키지 구조**
+
+  com.dwj.homestarter.asset
+  ├── controller
+  │   ├── SelfAssetController.java
+  │   ├── SpouseAssetController.java
+  │   └── AssetController.java
+  ├── service
+  │   ├── AssetService.java (interface)
+  │   ├── AssetServiceImpl.java
+  │   ├── ValidationService.java
+  │   └── AssetEventPublisher.java
+  ├── domain
+  │   ├── Asset.java
+  │   ├── AssetItem.java
+  │   ├── LoanItem.java
+  │   ├── IncomeItem.java
+  │   ├── ExpenseItem.java
+  │   ├── OwnerType.java (enum)
+  │   └── AssetUpdatedEvent.java
+  ├── dto
+  │   ├── CreateAssetRequest.java
+  │   ├── UpdateAssetRequest.java
+  │   ├── AssetResponse.java
+  │   ├── AssetListResponse.java
+  │   ├── AssetItemDto.java
+  │   ├── LoanItemDto.java
+  │   ├── IncomeItemDto.java
+  │   ├── ExpenseItemDto.java
+  │   └── CombinedAssetSummaryDto.java
+  ├── repository
+  │   ├── jpa
+  │   │   ├── AssetRepository.java
+  │   │   ├── AssetItemRepository.java
+  │   │   ├── LoanItemRepository.java
+  │   │   ├── IncomeItemRepository.java
+  │   │   └── ExpenseItemRepository.java
+  │   └── entity
+  │       ├── AssetEntity.java
+  │       ├── AssetItemEntity.java
+  │       ├── LoanItemEntity.java
+  │       ├── IncomeItemEntity.java
+  │       └── ExpenseItemEntity.java
+  └── config
+      ├── KafkaConfig.java
+      └── JpaConfig.java
+end note
+
+note bottom of AssetService
+  **설계 패턴**
+  - Architecture: Layered Architecture
+  - 레이어 구조: Controller → Service → Domain → Repository
+  - 데이터베이스: JPA/Hibernate 기반
+  - 이벤트: Kafka 기반 비동기 이벤트 발행
+  - 검증: ValidationService를 통한 입력 검증
+end note
+
+@enduml

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주택 상세정보</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        .section {
+            margin-bottom: var(--spacing-xl);
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .badge {
+            padding: var(--spacing-2xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+            color: white;
+        }
+
+        .badge-매매 {
+            background: var(--primary);
+        }
+
+        .badge-전세 {
+            background: var(--secondary);
+        }
+
+        .badge-월세 {
+            background: var(--warning);
+        }
+
+        .final-goal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-2xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--warning-light);
+            color: var(--warning);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .info-grid {
+            display: grid;
+            gap: var(--spacing-md);
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+        }
+
+        .info-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .info-value {
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            font-weight: var(--font-weight-medium);
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .price-value {
+            font-size: var(--font-size-xl);
+            color: var(--primary);
+            font-weight: var(--font-weight-bold);
+        }
+
+        /* Transport Cards */
+        .transport-cards {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .transport-card {
+            padding: var(--spacing-md);
+            background: var(--background);
+            border-radius: var(--radius-md);
+        }
+
+        .transport-name {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .transport-date {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .commute-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--font-size-sm);
+        }
+
+        .commute-table th,
+        .commute-table td {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .commute-table th {
+            background: white;
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+        }
+
+        .commute-table td {
+            color: var(--text-primary);
+        }
+
+        /* Environment Text */
+        .environment-text {
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .empty-text {
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+
+        /* Action Buttons */
+        .header-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon:hover {
+            background: var(--background);
+            color: var(--primary);
+        }
+
+        .star-button {
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .star-button.active {
+            color: var(--warning);
+        }
+
+        /* Sticky CTA */
+        .sticky-cta {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .sticky-cta-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: var(--spacing-sm);
+            width: 100%;
+        }
+
+        .sticky-cta .btn {
+            flex: 1;
+        }
+
+        @media (min-width: 768px) {
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">주택 상세정보</h1>
+        <div class="header-actions">
+            <button class="btn-icon star-button" id="starButton" aria-label="최종목표 설정">
+                ☆
+            </button>
+            <button class="btn-icon" id="deleteButton" aria-label="삭제">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container" id="detailContainer">
+            <!-- Content will be rendered here -->
+        </div>
+    </main>
+
+    <!-- Sticky CTA -->
+    <div class="sticky-cta">
+        <div class="sticky-cta-container">
+            <button type="button" class="btn btn-secondary" id="editButton">
+                수정
+            </button>
+            <button type="button" class="btn btn-primary" id="calculateButton">
+                계산하기
+            </button>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // Get housing data
+        const housingId = Storage.getItem('selected_housing_id');
+        const housingList = Storage.getItem('housing_list') || [];
+        const housing = housingList.find(item => item.id === housingId);
+        const finalGoalId = Storage.getItem('final_goal_housing_id');
+
+        if (!housing) {
+            UI.showToast('주택 정보를 찾을 수 없습니다', 'error');
+            setTimeout(() => {
+                window.location.href = '13-입주희망주택목록.html';
+            }, 1000);
+        }
+
+        // Elements
+        const detailContainer = document.getElementById('detailContainer');
+        const starButton = document.getElementById('starButton');
+        const deleteButton = document.getElementById('deleteButton');
+        const editButton = document.getElementById('editButton');
+        const calculateButton = document.getElementById('calculateButton');
+
+        // Render detail
+        function renderDetail() {
+            const isFinalGoal = housing.id === finalGoalId;
+            const [moveInYear, moveInMonth] = housing.moveInDate.split('-');
+            const [completionYear, completionMonth] = housing.completionDate.split('-');
+
+            // Update star button
+            starButton.textContent = isFinalGoal ? '★' : '☆';
+            starButton.classList.toggle('active', isFinalGoal);
+            starButton.setAttribute('aria-label', isFinalGoal ? '최종목표 해제' : '최종목표 설정');
+
+            let html = `
+                <!-- 기본정보 Section -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">기본정보</h2>
+                        <div style="display: flex; gap: var(--spacing-xs); align-items: center;">
+                            <span class="badge badge-${housing.housingType}">${housing.housingType}</span>
+                            ${isFinalGoal ? '<span class="final-goal-badge">★ 최종목표</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">주택이름</span>
+                            <span class="info-value">${housing.housingName}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">주택유형</span>
+                            <span class="info-value">${housing.housingType}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">위치</span>
+                            <span class="info-value">${housing.address}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">입주희망년월</span>
+                            <span class="info-value">${moveInYear}년 ${parseInt(moveInMonth)}월</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">준공년월</span>
+                            <span class="info-value">${completionYear}년 ${parseInt(completionMonth)}월</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">타입</span>
+                            <span class="info-value">${housing.housingType2}</span>
+                        </div>
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-label">가격</span>
+                            <span class="info-value price-value">${Utils.formatCurrency(parseInt(housing.price))}원</span>
+                        </div>
+                    </div>
+                </section>
+            `;
+
+            // 교통정보 Section
+            if (housing.transportItems && housing.transportItems.length > 0) {
+                html += `
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">교통정보</h2>
+                        </div>
+                        <div class="transport-cards">
+                            ${housing.transportItems.map(item => {
+                                const [year, month] = item.openingDate.split('-');
+                                return `
+                                    <div class="transport-card">
+                                        <div class="transport-name">${item.name}</div>
+                                        <div class="transport-date">개통예정일: ${year}년 ${parseInt(month)}월</div>
+                                        <table class="commute-table">
+                                            <thead>
+                                                <tr>
+                                                    <th></th>
+                                                    <th>개통 전</th>
+                                                    <th>개통 후</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>본인</td>
+                                                    <td>${item.selfBefore}분</td>
+                                                    <td>${item.selfAfter}분</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>배우자</td>
+                                                    <td>${item.spouseBefore}분</td>
+                                                    <td>${item.spouseAfter}분</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </section>
+                `;
+            }
+
+            // 단지정보 Section
+            if (housing.complexCount || housing.tradingVolume) {
+                html += `
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">단지정보</h2>
+                        </div>
+                        <div class="info-grid">
+                            ${housing.complexCount ? `
+                                <div class="info-item">
+                                    <span class="info-label">단지 수</span>
+                                    <span class="info-value">${housing.complexCount}개</span>
+                                </div>
+                            ` : ''}
+                            ${housing.tradingVolume ? `
+                                <div class="info-item">
+                                    <span class="info-label">거래량</span>
+                                    <span class="info-value">${housing.tradingVolume}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </section>
+                `;
+            }
+
+            // 주거환경 Section
+            if (housing.surroundings || housing.lighting || housing.view || housing.noise) {
+                html += `
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">주거환경</h2>
+                        </div>
+                        <div class="info-grid" style="grid-template-columns: 1fr;">
+                            ${housing.surroundings ? `
+                                <div class="info-item" style="flex-direction: column; align-items: flex-start;">
+                                    <span class="info-label" style="margin-bottom: var(--spacing-xs);">주변환경</span>
+                                    <div class="environment-text">${housing.surroundings}</div>
+                                </div>
+                            ` : ''}
+                            ${housing.lighting ? `
+                                <div class="info-item" style="flex-direction: column; align-items: flex-start;">
+                                    <span class="info-label" style="margin-bottom: var(--spacing-xs);">채광</span>
+                                    <div class="environment-text">${housing.lighting}</div>
+                                </div>
+                            ` : ''}
+                            ${housing.view ? `
+                                <div class="info-item" style="flex-direction: column; align-items: flex-start;">
+                                    <span class="info-label" style="margin-bottom: var(--spacing-xs);">뷰</span>
+                                    <div class="environment-text">${housing.view}</div>
+                                </div>
+                            ` : ''}
+                            ${housing.noise ? `
+                                <div class="info-item" style="flex-direction: column; align-items: flex-start;">
+                                    <span class="info-label" style="margin-bottom: var(--spacing-xs);">소음</span>
+                                    <div class="environment-text">${housing.noise}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </section>
+                `;
+            }
+
+            detailContainer.innerHTML = html;
+        }
+
+        // Star button
+        starButton.addEventListener('click', () => {
+            const isCurrent = housing.id === finalGoalId;
+
+            if (isCurrent) {
+                UI.showConfirm('최종목표 설정을 해제하시겠습니까?', () => {
+                    Storage.removeItem('final_goal_housing_id');
+                    window.location.reload();
+                    UI.showToast('최종목표가 해제되었습니다', 'success');
+                });
+            } else {
+                const message = finalGoalId
+                    ? '이 주택을 최종목표로 설정하시겠습니까?\n기존 최종목표가 해제됩니다.'
+                    : '이 주택을 최종목표로 설정하시겠습니까?';
+
+                UI.showConfirm(message, () => {
+                    Storage.setItem('final_goal_housing_id', housing.id);
+                    window.location.reload();
+                    UI.showToast('최종목표가 설정되었습니다', 'success');
+                });
+            }
+        });
+
+        // Delete button
+        deleteButton.addEventListener('click', () => {
+            UI.showConfirm('이 주택을 삭제하시겠습니까?', () => {
+                const updatedList = housingList.filter(item => item.id !== housing.id);
+                Storage.setItem('housing_list', updatedList);
+
+                if (finalGoalId === housing.id) {
+                    Storage.removeItem('final_goal_housing_id');
+                }
+
+                UI.showToast('주택이 삭제되었습니다', 'success');
+                setTimeout(() => {
+                    window.location.href = '13-입주희망주택목록.html';
+                }, 1000);
+            });
+        });
+
+        // Edit button
+        editButton.addEventListener('click', () => {
+            // Save data for editing
+            Storage.setItem('housing_basic_info', {
+                housingType: housing.housingType,
+                moveInDate: housing.moveInDate,
+                housingName: housing.housingName,
+                address: housing.address,
+                completionDate: housing.completionDate,
+                price: housing.price,
+                housingType2: housing.housingType2
+            });
+
+            Storage.setItem('housing_detail_info', {
+                transportItems: housing.transportItems || [],
+                complexCount: housing.complexCount || 0,
+                tradingVolume: housing.tradingVolume || '',
+                surroundings: housing.surroundings || '',
+                lighting: housing.lighting || '',
+                view: housing.view || '',
+                noise: housing.noise || ''
+            });
+
+            Storage.setItem('editing_housing_id', housing.id);
+
+            window.location.href = '11-입주희망주택입력-기본정보.html';
+        });
+
+        // Calculate button
+        calculateButton.addEventListener('click', () => {
+            Storage.setItem('calculate_housing_id', housing.id);
+            window.location.href = '15-입주후지출계산.html';
+        });
+
+        // Initial render
+        renderDetail();
+    </script>
+</body>
+</html>

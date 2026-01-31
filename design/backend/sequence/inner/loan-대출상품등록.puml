@@ -1,0 +1,171 @@
+@startuml loan-대출상품등록
+!theme mono
+
+title Loan 서비스 - 대출상품 등록 (AFR-LOAN-030 - 관리자)
+
+participant "LoanController" as Controller
+participant "AuthorizationService" as AuthService
+participant "LoanProductService" as Service
+participant "LoanProductRepository" as Repository
+database "Redis Cache<<E>>" as Cache
+database "Loan DB<<E>>" as DB
+
+note over Controller, DB
+시나리오: 관리자가 새로운 대출상품을 등록
+- JWT 토큰 검증 (role=ADMIN)
+- 데이터 유효성 검증
+- 트랜잭션 처리 (기본정보 + 자격요건 + 필요서류)
+- 캐시 무효화
+end note
+
+activate Controller
+
+Controller -> AuthService: JWT 토큰 검증 및 권한 확인
+activate AuthService
+note right
+Authorization 헤더에서
+JWT 토큰 추출 및 검증
+end note
+
+AuthService -> AuthService: 토큰 파싱 및 검증
+note right
+- 토큰 유효성 확인
+- 만료 시간 확인
+- 서명 검증
+end note
+
+alt 토큰 유효하지 않음
+    AuthService --> Controller: 401 Unauthorized
+    Controller --> : HTTP 401 응답
+    note right
+    인증 실패
+    end note
+else 관리자 권한 없음
+    AuthService -> AuthService: role 확인
+    AuthService --> Controller: 403 Forbidden
+    Controller --> : HTTP 403 응답
+    note right
+    권한 부족
+    "관리자 권한 필요"
+    end note
+else 인증 및 권한 확인 성공
+    AuthService --> Controller: 관리자 정보
+    deactivate AuthService
+
+    Controller -> Service: 대출상품 등록 요청\n(대출상품 데이터)
+    activate Service
+
+    Service -> Service: 데이터 유효성 검증
+    note right
+    필수 필드 검증:
+    - 대출이름 (2-100자)
+    - 대출한도 (양수)
+    - LTV/DTI/DSR 한도 (0-100%)
+    - 금리 (0-100%)
+    - 대출유형 (enum 값)
+
+    범위 검증:
+    - 금리 범위 (0.1% - 20%)
+    - 대출 금액 한도 (100만원 이상)
+
+    형식 검증:
+    - 자격 조건 JSON 형식
+    - 필요서류 배열 형식
+    end note
+
+    alt 유효성 검증 실패
+        Service --> Controller: 400 Bad Request
+        Controller --> : HTTP 400 응답
+        note right
+        "유효성 검증 실패"
+        + 구체적 오류 메시지
+        end note
+    else 유효성 검증 성공
+        Service -> Repository: 트랜잭션 시작
+        activate Repository
+
+        Repository -> DB: 대출상품 기본정보 저장\nINSERT INTO loan_products
+        activate DB
+        note right
+        기본 정보 저장:
+        - name, loanType, maxAmount
+        - interestRate, repaymentPeriod
+        - ltvLimit, dtiLimit, dsrLimit
+        - status (기본값: ACTIVE)
+        - createdAt, updatedAt
+        end note
+        DB --> Repository: 저장 완료\n(productId 반환)
+        deactivate DB
+
+        Repository -> DB: 자격요건 저장\nINSERT INTO eligibility_criteria
+        activate DB
+        note right
+        자격 요건 저장:
+        - product_id (FK)
+        - criteria_type (소득, 나이, 자산 등)
+        - criteria_value
+        - description
+        end note
+        DB --> Repository: 저장 완료
+        deactivate DB
+
+        Repository -> DB: 필요서류 저장\nINSERT INTO required_documents
+        activate DB
+        note right
+        필요 서류 저장:
+        - product_id (FK)
+        - document_name
+        - is_required (필수 여부)
+        - description
+        end note
+        DB --> Repository: 저장 완료
+        deactivate DB
+
+        Repository -> Repository: 트랜잭션 커밋
+        note right
+        모든 데이터가 성공적으로
+        저장된 경우에만 커밋
+        end note
+
+        Repository --> Service: 등록된 대출상품 정보
+        deactivate Repository
+
+        Service -> Cache: 관련 캐시 무효화\nkeys: "loans:list:*"
+        activate Cache
+        note right
+        목록 캐시 전체 삭제:
+        - 패턴 매칭으로 모든 목록 캐시 삭제
+        - 새 상품이 목록에 포함되어야 함
+        end note
+        Cache --> Service: 무효화 완료
+        deactivate Cache
+
+        Service -> Service: 응답 DTO 생성
+        note right
+        Entity → LoanProductResponse
+        - productId 포함
+        - 생성 시간 포함
+        end note
+
+        Service --> Controller: 등록된 대출상품 정보
+    end
+end
+
+deactivate Service
+
+Controller -> Controller: HTTP 응답 생성
+note right
+201 Created
+Location: /api/v1/loans/products/{productId}
+{
+  "id": "LOAN099",
+  "name": "청년 디딤돌대출",
+  "status": "ACTIVE",
+  "createdAt": "2025-12-16T10:30:00Z"
+}
+end note
+
+Controller --> : HTTP 응답 반환
+deactivate Controller
+
+@enduml

@@ -1,0 +1,169 @@
+@startuml 배우자자산정보-입력
+!theme mono
+
+title 배우자 자산정보 입력 플로우 (UFR-ASST-020)
+
+actor "사용자" as User
+participant "프론트엔드" as Frontend
+participant "API Gateway" as Gateway
+participant "Asset Service" as AssetService
+database "Asset DB" as AssetDB
+
+== 배우자 자산정보 입력 화면 진입 ==
+User -> Frontend: 본인 자산정보 입력 완료 후\n배우자 자산정보 입력 화면 접근
+Frontend -> Gateway: GET /api/assets/user/{userId}?ownerType=SPOUSE
+note right: JWT 토큰 포함
+Gateway -> AssetService: GET /assets/user/{userId}?ownerType=SPOUSE
+AssetService -> AssetDB: SELECT * FROM user_assets\nWHERE user_id = {userId}\nAND owner_type = 'SPOUSE'
+AssetDB --> AssetService: 기존 배우자 자산정보 반환\n(없으면 빈 데이터)
+AssetService --> Gateway: 200 OK\n{ hasSpouse: false,\n  assets: [], loans: [],\n  incomes: [], expenses: [] }
+Gateway --> Frontend: 배우자 자산정보 데이터
+Frontend --> User: 배우자 자산정보 입력 폼 표시\n(배우자 없음 체크박스 표시)
+
+== 배우자 없음 선택 ==
+User -> Frontend: "배우자 없음" 체크박스 선택
+Frontend -> Frontend: 모든 입력 폼 비활성화
+Frontend -> Gateway: PUT /api/assets/user/{userId}/spouse-status
+note right
+  JWT 토큰 포함
+  {
+    hasSpouse: false
+  }
+end note
+Gateway -> AssetService: PUT /assets/user/{userId}/spouse-status
+AssetService -> AssetDB: UPDATE user_assets\nSET has_spouse = false,\n    updated_at = NOW()\nWHERE user_id = {userId}
+AssetDB --> AssetService: 업데이트 완료
+AssetService -> AssetDB: DELETE FROM asset_items\nWHERE user_id = {userId}\nAND owner_type = 'SPOUSE'
+note right: 기존 배우자 데이터 삭제
+AssetDB --> AssetService: 삭제 완료
+AssetService --> Gateway: 200 OK\n{ hasSpouse: false }
+Gateway --> Frontend: 저장 성공 응답
+Frontend --> User: "배우자 정보가\n저장되었습니다" 메시지
+Frontend -> Frontend: 대출상품 조회 화면으로 이동
+
+== 배우자 있음 선택 ==
+User -> Frontend: "배우자 없음" 체크박스 해제
+Frontend -> Frontend: 모든 입력 폼 활성화
+Frontend -> Gateway: PUT /api/assets/user/{userId}/spouse-status
+note right
+  {
+    hasSpouse: true
+  }
+end note
+Gateway -> AssetService: PUT /assets/user/{userId}/spouse-status
+AssetService -> AssetDB: UPDATE user_assets\nSET has_spouse = true,\n    updated_at = NOW()\nWHERE user_id = {userId}
+AssetDB --> AssetService: 업데이트 완료
+AssetService --> Gateway: 200 OK\n{ hasSpouse: true }
+Gateway --> Frontend: 저장 성공 응답
+Frontend --> User: 입력 폼 활성화
+
+== 배우자 자산 항목 추가 ==
+User -> Frontend: 자산 추가 버튼 클릭
+Frontend --> User: 자산 입력 폼 표시
+User -> Frontend: 자산이름, 자산금액 입력
+note right: 예: 적금, 2000만원
+Frontend -> Frontend: 3초 debounce 타이머 시작
+
+== 자동 저장 (3초 후) ==
+Frontend -> Frontend: debounce 타이머 완료
+Frontend -> Gateway: POST /api/assets/items
+note right
+  JWT 토큰 포함
+  {
+    userId: "user-id",
+    ownerType: "SPOUSE",
+    itemType: "ASSET",
+    name: "적금",
+    amount: 20000000
+  }
+end note
+
+Gateway -> AssetService: POST /assets/items
+AssetService -> AssetService: 입력 검증\n- 필수 항목 확인\n- 금액 형식 검증\n- 항목명 중복 체크
+AssetService -> AssetService: hasSpouse = true 확인
+AssetService -> AssetDB: INSERT INTO asset_items\n(user_id, owner_type, item_type,\n name, amount, created_at)
+AssetDB --> AssetService: 저장 완료
+AssetService -> AssetDB: SELECT SUM(amount)\nFROM asset_items\nWHERE user_id = {userId}\nAND owner_type = 'SPOUSE'\nAND item_type = 'ASSET'
+AssetDB --> AssetService: 총 자산액
+AssetService --> Gateway: 201 Created\n{ id: "item-id",\n  totalAssets: 20000000 }
+Gateway --> Frontend: 저장 성공 응답
+Frontend --> User: 자산 카드 표시\n총 자산액 업데이트
+
+== 배우자 월소득 항목 추가 ==
+User -> Frontend: 월소득 추가 버튼 클릭
+Frontend --> User: 월소득 입력 폼 표시
+User -> Frontend: 소득이름, 소득금액 입력
+note right: 예: 급여, 250만원
+Frontend -> Frontend: 3초 debounce 타이머 시작
+Frontend -> Frontend: debounce 타이머 완료
+Frontend -> Gateway: POST /api/assets/items
+note right
+  {
+    userId: "user-id",
+    ownerType: "SPOUSE",
+    itemType: "INCOME",
+    name: "급여",
+    amount: 2500000
+  }
+end note
+Gateway -> AssetService: POST /assets/items
+AssetService -> AssetService: 입력 검증
+AssetService -> AssetDB: INSERT INTO asset_items
+AssetDB --> AssetService: 저장 완료
+AssetService -> AssetDB: SELECT SUM(amount)\nWHERE item_type = 'INCOME'
+AssetDB --> AssetService: 총 월소득
+AssetService --> Gateway: 201 Created\n{ id: "item-id",\n  totalIncome: 2500000 }
+Gateway --> Frontend: 저장 성공 응답
+Frontend --> User: 월소득 카드 표시\n총 월소득 업데이트
+
+== 배우자 월지출 항목 추가 ==
+User -> Frontend: 월지출 추가 버튼 클릭
+Frontend --> User: 월지출 입력 폼 표시
+User -> Frontend: 지출이름, 지출금액 입력
+note right: 예: 생활비, 100만원
+Frontend -> Frontend: 3초 debounce 타이머 시작
+Frontend -> Frontend: debounce 타이머 완료
+Frontend -> Gateway: POST /api/assets/items
+note right
+  {
+    userId: "user-id",
+    ownerType: "SPOUSE",
+    itemType: "EXPENSE",
+    name: "생활비",
+    amount: 1000000
+  }
+end note
+Gateway -> AssetService: POST /assets/items
+AssetService -> AssetService: 입력 검증
+AssetService -> AssetDB: INSERT INTO asset_items
+AssetDB --> AssetService: 저장 완료
+AssetService -> AssetDB: SELECT SUM(amount)\nWHERE item_type = 'EXPENSE'
+AssetDB --> AssetService: 총 월지출
+AssetService --> Gateway: 201 Created\n{ id: "item-id",\n  totalExpense: 1000000 }
+Gateway --> Frontend: 저장 성공 응답
+Frontend --> User: 월지출 카드 표시\n총 월지출 업데이트
+
+== 항목 수정/삭제 ==
+note over User, AssetDB
+  항목 수정/삭제 프로세스는
+  본인 자산정보 입력 플로우와 동일
+  (ownerType = 'SPOUSE'로 구분)
+end note
+
+== 최종 검증 및 다음 단계 ==
+User -> Frontend: 저장 버튼 클릭
+Frontend -> Frontend: 배우자 있음 여부 확인
+alt 배우자 없음 선택
+    Frontend --> User: "배우자 정보가\n저장되었습니다" 메시지
+    Frontend -> Frontend: 대출상품 조회 화면으로 이동
+else 배우자 있음 선택
+    Frontend -> Frontend: 최소 1개 이상의\n자산 또는 소득 확인
+    alt 검증 성공
+        Frontend --> User: "배우자 자산정보가\n저장되었습니다" 메시지
+        Frontend -> Frontend: 대출상품 조회 화면으로 이동
+    else 검증 실패
+        Frontend --> User: "최소 1개 이상의\n자산 또는 소득을\n입력해주세요" 오류
+    end
+end
+
+@enduml

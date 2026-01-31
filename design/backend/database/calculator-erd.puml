@@ -1,0 +1,108 @@
+@startuml calculator-erd
+!theme mono
+
+title Calculator Service - Entity Relationship Diagram
+
+' 엔티티 정의
+entity "calculation_results" as calc {
+  **Primary Key**
+  --
+  * id : VARCHAR(36) <<PK>>
+  --
+  **기본 정보**
+  --
+  * user_id : VARCHAR(36) <<FK>>
+  * housing_id : VARCHAR(36) <<FK>>
+  * housing_name : VARCHAR(200)
+  * loan_product_id : VARCHAR(36) <<FK>>
+  * loan_product_name : VARCHAR(200)
+  * loan_amount : BIGINT
+  * loan_term : INTEGER
+  --
+  **재무 현황**
+  --
+  * current_assets : BIGINT
+  * estimated_assets : BIGINT
+  * loan_required : BIGINT
+  --
+  **대출 분석**
+  --
+  * ltv : DECIMAL(5,2)
+  * dti : DECIMAL(5,2)
+  * dsr : DECIMAL(5,2)
+  * ltv_limit : DECIMAL(5,2)
+  * dti_limit : DECIMAL(5,2)
+  * dsr_limit : DECIMAL(5,2)
+  * is_eligible : BOOLEAN
+  * ineligibility_reasons : TEXT
+  * monthly_payment : BIGINT
+  --
+  **입주 후 재무상태**
+  --
+  * after_move_in_assets : BIGINT
+  * after_move_in_monthly_expenses : BIGINT
+  * after_move_in_monthly_income : BIGINT
+  * after_move_in_available_funds : BIGINT
+  --
+  **상태 및 시간**
+  --
+  * status : VARCHAR(20)
+  * calculated_at : TIMESTAMP
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' 인덱스 정의
+note right of calc
+  **인덱스**
+  ----
+  idx_user_id (user_id)
+  idx_housing_id (housing_id)
+  idx_user_status (user_id, status)
+  idx_calculated_at (calculated_at DESC)
+  idx_user_housing (user_id, housing_id)
+  idx_user_housing_status (user_id, housing_id, status)
+
+  **제약 조건**
+  ----
+  CHECK (loan_amount >= 0)
+  CHECK (loan_required >= 0)
+  CHECK (current_assets >= 0)
+  CHECK (estimated_assets >= 0)
+  CHECK (ltv >= 0 AND ltv <= 200)
+  CHECK (dti >= 0 AND dti <= 200)
+  CHECK (dsr >= 0 AND dsr <= 200)
+  CHECK (loan_term >= 1 AND loan_term <= 600)
+  CHECK (status IN ('ELIGIBLE', 'INELIGIBLE'))
+end note
+
+' 외부 서비스 참조 (Foreign Key 개념)
+note top of calc
+  **외부 서비스 참조**
+  ----
+  • user_id → User Service
+  • housing_id → Housing Service
+  • loan_product_id → Loan Service
+
+  **참고**: 마이크로서비스 아키텍처로
+  물리적 Foreign Key는 없으며,
+  논리적 참조만 존재함
+end note
+
+' 캐시 전략
+note bottom of calc
+  **캐시 전략 (Redis)**
+  ----
+  • 계산 결과: calc:{userId}:{housingId}:{loanId} (TTL: 1시간)
+  • 목록: calc:list:{userId}:{page}:{size} (TTL: 5분)
+  • 상세: calc:detail:{resultId} (TTL: 1시간)
+
+  **무효화 패턴**
+  ----
+  • Asset 변경: calc:{userId}:* 삭제
+  • Housing 변경: calc:*:{housingId}:* 삭제
+  • 신규 계산: calc:list:{userId}:* 삭제
+  • 결과 삭제: calc:detail:{resultId}, calc:list:{userId}:* 삭제
+end note
+
+@enduml

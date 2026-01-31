@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="내집마련 도우미 플랫폼 - 대시보드">
+    <title>대시보드 - 내집마련 도우미</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+    <div class="page">
+        <!-- 헤더 -->
+        <header class="header-dashboard">
+            <div class="user-info" style="cursor: pointer;" onclick="window.location.href='04-프로필편집.html'">
+                <div class="user-avatar" id="userAvatar">김</div>
+                <span class="user-name" id="userName">김민준님</span>
+            </div>
+            <button class="btn-notification" aria-label="알림">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="notification-badge" style="display: none;">3</span>
+            </button>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container-dashboard">
+            <!-- 재무 현황 섹션 -->
+            <section class="section">
+                <h2 class="section-title" style="cursor: pointer;" onclick="window.location.href='07-자산정보관리.html'">내 재무 현황</h2>
+                <div class="finance-cards" style="cursor: pointer;" onclick="window.location.href='07-자산정보관리.html'">
+                    <!-- 총 자산 카드 -->
+                    <div class="finance-card">
+                        <div class="finance-label">총 자산</div>
+                        <div class="finance-amount" id="totalAssets">0원</div>
+                        <div class="finance-change positive" id="assetChange" style="display: none;">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M6 2v8M2 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span>5.2%</span>
+                        </div>
+                    </div>
+
+                    <!-- 총 대출 카드 -->
+                    <div class="finance-card">
+                        <div class="finance-label">총 대출</div>
+                        <div class="finance-amount" id="totalLoans">0원</div>
+                        <div class="finance-change negative" id="loanChange" style="display: none;">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M6 10V2M2 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span>2.1%</span>
+                        </div>
+                    </div>
+
+                    <!-- 순자산 카드 -->
+                    <div class="finance-card">
+                        <div class="finance-label">순자산</div>
+                        <div class="finance-amount" id="netAssets">0원</div>
+                        <div class="finance-help">자산 - 대출</div>
+                    </div>
+
+                    <!-- 월 가용자금 카드 -->
+                    <div class="finance-card">
+                        <div class="finance-label">월 가용자금</div>
+                        <div class="finance-amount" id="monthlyAvailable">0원</div>
+                        <div class="finance-help">월소득 - 월지출</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 빠른 작업 섹션 -->
+            <section class="section">
+                <h2 class="section-title">빠른 작업</h2>
+                <div class="quick-actions">
+                    <a href="03-기본정보입력.html" class="action-card">
+                        <div class="action-icon">📝</div>
+                        <h3 class="action-title">기본정보 및 자산 등록</h3>
+                        <p class="action-desc">기본정보와 자산정보를 입력하세요</p>
+                    </a>
+                    <a href="11-입주희망주택입력-기본정보.html" class="action-card">
+                        <div class="action-icon">🏠</div>
+                        <h3 class="action-title">주택 등록하기</h3>
+                        <p class="action-desc">관심 주택을 등록하세요</p>
+                    </a>
+                    <a href="15-입주후지출계산.html" class="action-card">
+                        <div class="action-icon">💰</div>
+                        <h3 class="action-title">지출 계산하기</h3>
+                        <p class="action-desc">입주 후 재무 상태를 확인하세요</p>
+                    </a>
+                    <a href="18-장기주거로드맵조회.html" class="action-card">
+                        <div class="action-icon">🗺️</div>
+                        <h3 class="action-title">로드맵 보기</h3>
+                        <p class="action-desc">장기주거 계획을 확인하세요</p>
+                    </a>
+                    <a href="10-대출상품관리.html" class="action-card">
+                        <div class="action-icon">🏦</div>
+                        <h3 class="action-title">대출상품 관리</h3>
+                        <p class="action-desc">대출상품을 관리하세요</p>
+                    </a>
+                </div>
+            </section>
+
+            <!-- 최근 활동 섹션 -->
+            <section class="section">
+                <h2 class="section-title">최근 활동</h2>
+
+                <!-- 탭 -->
+                <div class="activity-tabs">
+                    <button class="activity-tab active" data-tab="housings">등록한 주택</button>
+                    <button class="activity-tab" data-tab="calculations">계산 결과</button>
+                </div>
+
+                <!-- 등록한 주택 탭 -->
+                <div class="activity-content active" id="housings-content">
+                    <div class="activity-list" id="housingsList">
+                        <div class="empty-state-small">
+                            <p>아직 등록한 주택이 없습니다</p>
+                            <a href="11-입주희망주택입력-기본정보.html" class="btn btn-secondary btn-sm">주택 등록하기</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 계산 결과 탭 -->
+                <div class="activity-content" id="calculations-content">
+                    <div class="activity-list" id="calculationsList">
+                        <div class="empty-state-small">
+                            <p>아직 계산 결과가 없습니다</p>
+                            <a href="15-입주후지출계산.html" class="btn btn-secondary btn-sm">지출 계산하기</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 하단 탭 네비게이션 (Mobile) -->
+        <nav class="bottom-nav">
+            <a href="00-대시보드.html" class="nav-item active">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>홈</span>
+            </a>
+            <a href="13-입주희망주택목록.html" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>주택</span>
+            </a>
+            <a href="15-입주후지출계산.html" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>계산</span>
+            </a>
+            <a href="18-장기주거로드맵조회.html" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>로드맵</span>
+            </a>
+            <button class="nav-item" id="moreButton">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="5" r="1" fill="currentColor"/>
+                    <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                    <circle cx="12" cy="19" r="1" fill="currentColor"/>
+                </svg>
+                <span>더보기</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- 더보기 메뉴 모달 -->
+    <div class="modal" id="moreModal" style="display: none;">
+        <div class="modal-content menu-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">메뉴</h2>
+                <button class="btn-close-modal" id="closeMoreModal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="menu-section">
+                    <h3 class="menu-section-title">내 정보 관리</h3>
+                    <a href="04-프로필편집.html" class="menu-item">
+                        <span>프로필 편집</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                    <a href="07-자산정보관리.html" class="menu-item">
+                        <span>자산정보 관리</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="menu-section">
+                    <h3 class="menu-section-title">주택 관리</h3>
+                    <a href="13-입주희망주택목록.html" class="menu-item">
+                        <span>입주희망주택 목록</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                    <a href="11-입주희망주택입력-기본정보.html" class="menu-item">
+                        <span>주택 등록</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="menu-section">
+                    <h3 class="menu-section-title">대출상품</h3>
+                    <a href="08-대출상품목록.html" class="menu-item">
+                        <span>대출상품 조회</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="menu-section">
+                    <h3 class="menu-section-title">계산 및 분석</h3>
+                    <a href="15-입주후지출계산.html" class="menu-item">
+                        <span>입주 후 지출 계산</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                    <a href="16-계산결과목록.html" class="menu-item">
+                        <span>계산 결과 목록</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="menu-section">
+                    <h3 class="menu-section-title">장기주거 로드맵</h3>
+                    <a href="17-생애주기이벤트관리.html" class="menu-item">
+                        <span>생애주기 이벤트</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                    <a href="18-장기주거로드맵조회.html" class="menu-item">
+                        <span>로드맵 조회</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="menu-section">
+                    <button class="menu-item menu-item-danger" id="logoutButton">
+                        <span>로그아웃</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M14 13l3-3-3-3M17 10H7M10 17H4a1 1 0 01-1-1V4a1 1 0 011-1h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="common.js"></script>
+    <script>
+        // 사용자 정보 표시
+        function displayUserInfo() {
+            const user = Storage.getUser();
+            if (user) {
+                const userName = document.getElementById('userName');
+                const userAvatar = document.getElementById('userAvatar');
+
+                userName.textContent = user.name + '님';
+                userAvatar.textContent = user.name.charAt(0);
+            }
+        }
+
+        // 재무 현황 계산 및 표시
+        function displayFinanceSummary() {
+            // 본인 자산
+            const selfAssets = Storage.getAssets('assets') || [];
+            const selfLoans = Storage.getAssets('loans') || [];
+            const selfIncome = Storage.getAssets('income') || [];
+            const selfExpense = Storage.getAssets('expense') || [];
+
+            // 배우자 자산
+            const spouseAssets = Storage.getAssets('spouse_assets') || [];
+            const spouseLoans = Storage.getAssets('spouse_loans') || [];
+            const spouseIncome = Storage.getAssets('spouse_income') || [];
+            const spouseExpense = Storage.getAssets('spouse_expense') || [];
+
+            // 총액 계산
+            const totalAssets =
+                selfAssets.reduce((sum, item) => sum + item.amount, 0) +
+                spouseAssets.reduce((sum, item) => sum + item.amount, 0);
+
+            const totalLoans =
+                selfLoans.reduce((sum, item) => sum + item.amount, 0) +
+                spouseLoans.reduce((sum, item) => sum + item.amount, 0);
+
+            const totalIncome =
+                selfIncome.reduce((sum, item) => sum + item.amount, 0) +
+                spouseIncome.reduce((sum, item) => sum + item.amount, 0);
+
+            const totalExpense =
+                selfExpense.reduce((sum, item) => sum + item.amount, 0) +
+                spouseExpense.reduce((sum, item) => sum + item.amount, 0);
+
+            const netAssets = totalAssets - totalLoans;
+            const monthlyAvailable = totalIncome - totalExpense;
+
+            // UI 업데이트
+            document.getElementById('totalAssets').textContent = Utils.formatCurrency(totalAssets) + '원';
+            document.getElementById('totalLoans').textContent = Utils.formatCurrency(totalLoans) + '원';
+            document.getElementById('netAssets').textContent = Utils.formatCurrency(netAssets) + '원';
+            document.getElementById('monthlyAvailable').textContent = Utils.formatCurrency(monthlyAvailable) + '원';
+        }
+
+        // 최근 활동 표시
+        function displayRecentActivities() {
+            // 최근 등록한 주택
+            const housings = Storage.getHousings() || [];
+            const housingsList = document.getElementById('housingsList');
+
+            if (housings.length > 0) {
+                const recentHousings = housings.slice(0, 3);
+                housingsList.innerHTML = recentHousings.map(housing => `
+                    <a href="14-입주희망주택상세.html?id=${housing.id}" class="activity-item">
+                        <div class="activity-item-content">
+                            <h4 class="activity-item-title">${housing.name}</h4>
+                            <p class="activity-item-desc">${housing.location || '위치 정보 없음'}</p>
+                            <div class="activity-item-meta">
+                                <span class="badge badge-${housing.type === '매매' ? 'primary' : 'secondary'}">${housing.type}</span>
+                                <span>${Utils.formatCurrency(housing.price)}원</span>
+                            </div>
+                        </div>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M8 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </a>
+                `).join('');
+            }
+        }
+
+        // 탭 전환
+        const activityTabs = document.querySelectorAll('.activity-tab');
+        const activityContents = document.querySelectorAll('.activity-content');
+
+        activityTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+
+                // 모든 탭 비활성화
+                activityTabs.forEach(t => t.classList.remove('active'));
+                activityContents.forEach(c => c.classList.remove('active'));
+
+                // 선택된 탭 활성화
+                tab.classList.add('active');
+                document.getElementById(`${tabName}-content`).classList.add('active');
+            });
+        });
+
+        // 더보기 모달
+        const moreButton = document.getElementById('moreButton');
+        const moreModal = document.getElementById('moreModal');
+        const closeMoreModal = document.getElementById('closeMoreModal');
+
+        moreButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            moreModal.style.display = 'flex';
+        });
+
+        closeMoreModal.addEventListener('click', () => {
+            moreModal.style.display = 'none';
+        });
+
+        moreModal.addEventListener('click', (e) => {
+            if (e.target === moreModal) {
+                moreModal.style.display = 'none';
+            }
+        });
+
+        // 로그아웃
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            UI.confirm('로그아웃 하시겠습니까?', () => {
+                // 토큰 삭제
+                Storage.clearAuth();
+
+                UI.showToast('로그아웃되었습니다', 'success');
+
+                setTimeout(() => {
+                    window.location.href = '01-로그인.html';
+                }, 1000);
+            });
+        });
+
+        // 샘플 데이터 초기화
+        function loadDashboardSampleData() {
+            // 재무 현황 샘플 데이터
+            const selfAssets = [
+                { id: 'asset1', name: '예금', amount: 25000000, category: '예금' },
+                { id: 'asset2', name: '적금', amount: 20000000, category: '적금' }
+            ];
+            const selfLoans = [
+                { id: 'loan1', name: '신용대출', amount: 10000000, category: '신용대출' }
+            ];
+            const selfIncome = [
+                { id: 'income1', name: '급여', amount: 5500000, category: '급여' }
+            ];
+            const selfExpense = [
+                { id: 'expense1', name: '생활비', amount: 3200000, category: '생활비' }
+            ];
+
+            // localStorage에 샘플 데이터 저장
+            localStorage.setItem('assets', JSON.stringify(selfAssets));
+            localStorage.setItem('loans', JSON.stringify(selfLoans));
+            localStorage.setItem('income', JSON.stringify(selfIncome));
+            localStorage.setItem('expense', JSON.stringify(selfExpense));
+
+            // 등록한 주택 샘플 데이터
+            const sampleHousings = [
+                {
+                    id: 'housing1',
+                    name: '아크로리버뷰',
+                    location: '서울시 송파구',
+                    type: '매매',
+                    price: 850000000,
+                    area: 84,
+                    created: new Date().toISOString()
+                },
+                {
+                    id: 'housing2',
+                    name: '래미안센트럴',
+                    location: '서울시 강남구',
+                    type: '매매',
+                    price: 720000000,
+                    area: 74,
+                    created: new Date(Date.now() - 86400000).toISOString()
+                }
+            ];
+            localStorage.setItem('housings', JSON.stringify(sampleHousings));
+
+            // 계산 결과 샘플 데이터
+            const sampleCalculations = [
+                {
+                    id: 'calc1',
+                    housingName: '아크로리버뷰',
+                    status: '충족',
+                    monthlyBalance: 1200000,
+                    created: new Date().toISOString()
+                }
+            ];
+            localStorage.setItem('calculations', JSON.stringify(sampleCalculations));
+        }
+
+        // 계산 결과 표시 함수 추가
+        function displayCalculationResults() {
+            const calculations = JSON.parse(localStorage.getItem('calculations') || '[]');
+            const calculationsList = document.getElementById('calculationsList');
+
+            if (calculations.length > 0) {
+                const recentCalculations = calculations.slice(0, 3);
+                calculationsList.innerHTML = recentCalculations.map(calc => `
+                    <div class="activity-item">
+                        <div class="activity-item-content">
+                            <h4 class="activity-item-title">${calc.housingName}</h4>
+                            <div class="activity-item-meta">
+                                <span class="badge badge-${calc.status === '충족' ? 'primary' : 'secondary'}">${calc.status}</span>
+                                <span>여유자금: ${calc.monthlyBalance >= 0 ? '+' : ''}${Utils.formatCurrency(calc.monthlyBalance)}원/월</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 페이지 로드 시
+        window.addEventListener('DOMContentLoaded', () => {
+            // 인증 확인
+            const token = Storage.getAuthToken();
+            if (!token) {
+                UI.showToast('로그인이 필요합니다', 'error');
+                setTimeout(() => {
+                    window.location.href = '01-로그인.html';
+                }, 1000);
+                return;
+            }
+
+            // 샘플 데이터 로드 (개발/테스트용)
+            // localStorage가 비어있으면 샘플 데이터 로드
+            if (!localStorage.getItem('assets')) {
+                loadDashboardSampleData();
+            }
+
+            // 사용자 정보 표시
+            displayUserInfo();
+
+            // 재무 현황 표시
+            displayFinanceSummary();
+
+            // 최근 활동 표시
+            displayRecentActivities();
+
+            // 계산 결과 표시
+            displayCalculationResults();
+        });
+    </script>
+
+    <style>
+        .page {
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+            padding-bottom: 72px; /* bottom nav */
+        }
+
+        /* 헤더 */
+        .header-dashboard {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md);
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--primary-500);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .btn-notification {
+            position: relative;
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            background-color: var(--error-500);
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 컨테이너 */
+        .container-dashboard {
+            padding: var(--spacing-lg) var(--spacing-md);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 섹션 */
+        .section {
+            margin-bottom: var(--spacing-xxl);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 var(--spacing-lg) 0;
+        }
+
+        /* 재무 카드 */
+        .finance-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .finance-card {
+            padding: var(--spacing-lg);
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .finance-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .finance-amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-500);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .finance-change {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .finance-change.positive {
+            color: var(--success-500);
+        }
+
+        .finance-change.negative {
+            color: var(--error-500);
+        }
+
+        .finance-help {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* 빠른 작업 */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .action-card {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .action-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .action-icon {
+            font-size: 40px;
+            flex-shrink: 0;
+        }
+
+        .action-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 var(--spacing-xs) 0;
+        }
+
+        .action-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* 최근 활동 */
+        .activity-tabs {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .activity-tab {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .activity-tab.active {
+            color: var(--primary-500);
+            border-bottom-color: var(--primary-500);
+        }
+
+        .activity-content {
+            display: none;
+        }
+
+        .activity-content.active {
+            display: block;
+        }
+
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md);
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .activity-item:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .activity-item-content {
+            flex: 1;
+        }
+
+        .activity-item-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 var(--spacing-xs) 0;
+        }
+
+        .activity-item-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0 0 var(--spacing-xs) 0;
+        }
+
+        .activity-item-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background-color: var(--primary-100);
+            color: var(--primary-500);
+        }
+
+        .badge-secondary {
+            background-color: var(--secondary-100);
+            color: var(--secondary-500);
+        }
+
+        .empty-state-small {
+            text-align: center;
+            padding: var(--spacing-xxl) var(--spacing-md);
+        }
+
+        .empty-state-small p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .btn-sm {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: 14px;
+        }
+
+        /* 하단 네비게이션 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background: white;
+            border-top: 1px solid var(--border-color);
+            padding: var(--spacing-sm) 0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: var(--spacing-xs);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 12px;
+            transition: color 0.2s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--primary-500);
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* 메뉴 모달 */
+        .menu-modal {
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .menu-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .menu-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin: 0 0 var(--spacing-sm) 0;
+            padding: 0 var(--spacing-md);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 16px;
+            border-radius: var(--radius-md);
+            transition: background-color 0.2s ease;
+            width: 100%;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .menu-item:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .menu-item-danger {
+            color: var(--error-500);
+        }
+
+        /* 반응형 */
+        @media (min-width: 768px) {
+            .finance-cards {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .quick-actions {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .bottom-nav {
+                display: none;
+            }
+
+            .page {
+                padding-bottom: 0;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .container-dashboard {
+                display: grid;
+                grid-template-columns: 2fr 1fr;
+                gap: var(--spacing-xxl);
+            }
+
+            .section:nth-child(1),
+            .section:nth-child(2) {
+                grid-column: 1;
+            }
+
+            .section:nth-child(3) {
+                grid-column: 2;
+                grid-row: 1 / 3;
+            }
+        }
+    </style>
+</body>
+</html>

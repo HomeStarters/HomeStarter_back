@@ -1,0 +1,350 @@
+@startuml asset-본인자산정보입력
+!theme mono
+
+title Asset 서비스 내부 시퀀스 - 본인 자산정보 입력 (UFR-ASST-010)
+
+participant "Controller" as Controller
+participant "AssetService" as Service
+participant "ValidationService" as Validation
+participant "AssetRepository" as Repository
+participant "EventPublisher" as EventPublisher
+database "Asset DB" as DB
+queue "Message Queue" as MQ
+
+== 자산정보 조회 API ==
+Controller -> Service: getUserAssets(userId, ownerType)
+note right
+  ownerType = "SELF"
+end note
+
+Service -> Repository: findByUserIdAndOwnerType(userId, "SELF")
+Repository -> DB: 사용자의 본인 자산 항목 조회
+DB --> Repository: 자산 항목 목록
+Repository --> Service: List<AssetItem>
+
+Service -> Service: 카테고리별 그룹화 및 총액 계산
+note right
+  - 자산, 대출, 월소득, 월지출별로 그룹화
+  - 각 카테고리 총액 계산
+end note
+
+Service --> Controller: AssetSummaryResponse
+note right
+  {
+    assets: [...],
+    loans: [...],
+    incomes: [...],
+    expenses: [...],
+    totalAssets: 금액,
+    totalLoans: 금액,
+    totalIncome: 금액,
+    totalExpense: 금액
+  }
+end note
+
+Controller --> Controller: 200 OK 응답
+
+== 자산 항목 추가 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    ownerType: "SELF",
+    itemType: "ASSET",
+    name: "예금",
+    amount: 50000000
+  }
+end note
+
+Controller -> Validation: validateAssetItem(request)
+Validation -> Validation: 필수 항목 검증
+note right
+  - userId 존재 확인
+  - ownerType 값 검증 (SELF/SPOUSE)
+  - itemType 값 검증
+  - name 길이 검증 (2~50자)
+  - amount 양수 검증
+end note
+
+Validation -> Repository: checkDuplicateName(userId, ownerType, itemType, name)
+Repository -> DB: 동일 항목명 존재 확인
+DB --> Repository: 중복 여부
+Repository --> Validation: isDuplicate
+
+alt 중복된 항목명 존재
+    Validation --> Controller: ValidationException("중복된 항목명입니다")
+    Controller --> Controller: 400 Bad Request 응답
+else 검증 통과
+    Validation --> Controller: 검증 성공
+
+    Controller -> Service: createAssetItem(request)
+    Service -> Repository: save(assetItem)
+    Repository -> DB: 자산 항목 저장
+    DB --> Repository: 저장된 항목
+    Repository --> Service: AssetItem
+
+    Service -> Repository: calculateTotal(userId, ownerType, itemType)
+    Repository -> DB: 카테고리별 총액 계산
+    note right
+      ownerType과 itemType으로
+      필터링하여 SUM 계산
+    end note
+    DB --> Repository: 총액
+    Repository --> Service: totalAmount
+
+    Service -> Service: 재무 요약 정보 계산
+    note right
+      totalNetAssets = totalAssets - totalLoans
+      monthlyAvailableFunds = totalIncome - totalExpense
+    end note
+
+    Service -> EventPublisher: publishAssetUpdated(event)
+    note right
+      Event: AssetUpdated
+      {
+        eventId: UUID.randomUUID(),
+        eventType: "ASSET_UPDATED",
+        timestamp: LocalDateTime.now(),
+        userId: userId,
+        changeType: "ITEM_ADDED",
+        ownerType: "SELF",
+        itemType: "ASSET",
+        summary: {
+          totalNetAssets: 계산값,
+          totalMonthlyIncome: 계산값,
+          totalMonthlyExpense: 계산값,
+          monthlyAvailableFunds: 계산값
+        }
+      }
+    end note
+    EventPublisher -> MQ: Publish AssetUpdated Event
+    MQ --> EventPublisher: 이벤트 발행 성공
+    EventPublisher --> Service: 발행 완료
+
+    Service --> Controller: AssetItemResponse
+    note right
+      {
+        id: "item-id",
+        name: "예금",
+        amount: 50000000,
+        totalAssets: 50000000
+      }
+    end note
+
+    Controller --> Controller: 201 Created 응답
+end
+
+== 대출 항목 추가 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    ownerType: "SELF",
+    itemType: "LOAN",
+    name: "학자금대출",
+    amount: 10000000
+  }
+end note
+
+Controller -> Validation: validateAssetItem(request)
+Validation -> Validation: 필수 항목 검증
+Validation -> Repository: checkDuplicateName(userId, ownerType, itemType, name)
+Repository -> DB: 동일 항목명 존재 확인
+DB --> Repository: 중복 여부
+Repository --> Validation: isDuplicate
+
+alt 검증 통과
+    Validation --> Controller: 검증 성공
+
+    Controller -> Service: createAssetItem(request)
+    Service -> Repository: save(assetItem)
+    Repository -> DB: 대출 항목 저장
+    DB --> Repository: 저장된 항목
+    Repository --> Service: AssetItem
+
+    Service -> Repository: calculateTotal(userId, "SELF", "LOAN")
+    Repository -> DB: 대출 총액 계산
+    DB --> Repository: 총 대출액
+    Repository --> Service: totalLoanAmount
+
+    Service -> Service: 재무 요약 정보 계산
+
+    Service -> EventPublisher: publishAssetUpdated(event)
+    note right
+      Event: AssetUpdated
+      {
+        eventId: UUID.randomUUID(),
+        eventType: "ASSET_UPDATED",
+        timestamp: LocalDateTime.now(),
+        userId: userId,
+        changeType: "ITEM_ADDED",
+        ownerType: "SELF",
+        itemType: "LOAN",
+        summary: {
+          totalNetAssets: 계산값,
+          totalMonthlyIncome: 계산값,
+          totalMonthlyExpense: 계산값,
+          monthlyAvailableFunds: 계산값
+        }
+      }
+    end note
+    EventPublisher -> MQ: Publish AssetUpdated Event
+    MQ --> EventPublisher: 이벤트 발행 성공
+    EventPublisher --> Service: 발행 완료
+
+    Service --> Controller: AssetItemResponse
+    note right
+      {
+        id: "item-id",
+        name: "학자금대출",
+        amount: 10000000,
+        totalLoans: 10000000
+      }
+    end note
+
+    Controller --> Controller: 201 Created 응답
+end
+
+== 월소득 항목 추가 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    ownerType: "SELF",
+    itemType: "INCOME",
+    name: "급여",
+    amount: 3000000
+  }
+end note
+
+Controller -> Validation: validateAssetItem(request)
+Validation -> Validation: 필수 항목 검증
+Validation -> Repository: checkDuplicateName(userId, ownerType, itemType, name)
+Repository -> DB: 동일 항목명 존재 확인
+DB --> Repository: 중복 여부
+Repository --> Validation: isDuplicate
+
+alt 검증 통과
+    Validation --> Controller: 검증 성공
+
+    Controller -> Service: createAssetItem(request)
+    Service -> Repository: save(assetItem)
+    Repository -> DB: 월소득 항목 저장
+    DB --> Repository: 저장된 항목
+    Repository --> Service: AssetItem
+
+    Service -> Repository: calculateTotal(userId, "SELF", "INCOME")
+    Repository -> DB: 월소득 총액 계산
+    DB --> Repository: 총 월소득
+    Repository --> Service: totalIncomeAmount
+
+    Service -> Service: 재무 요약 정보 계산
+
+    Service -> EventPublisher: publishAssetUpdated(event)
+    note right
+      Event: AssetUpdated
+      {
+        eventId: UUID.randomUUID(),
+        eventType: "ASSET_UPDATED",
+        timestamp: LocalDateTime.now(),
+        userId: userId,
+        changeType: "ITEM_ADDED",
+        ownerType: "SELF",
+        itemType: "INCOME",
+        summary: {
+          totalNetAssets: 계산값,
+          totalMonthlyIncome: 계산값,
+          totalMonthlyExpense: 계산값,
+          monthlyAvailableFunds: 계산값
+        }
+      }
+    end note
+    EventPublisher -> MQ: Publish AssetUpdated Event
+    MQ --> EventPublisher: 이벤트 발행 성공
+    EventPublisher --> Service: 발행 완료
+
+    Service --> Controller: AssetItemResponse
+    note right
+      {
+        id: "item-id",
+        name: "급여",
+        amount: 3000000,
+        totalIncome: 3000000
+      }
+    end note
+
+    Controller --> Controller: 201 Created 응답
+end
+
+== 월지출 항목 추가 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    ownerType: "SELF",
+    itemType: "EXPENSE",
+    name: "생활비",
+    amount: 1500000
+  }
+end note
+
+Controller -> Validation: validateAssetItem(request)
+Validation -> Validation: 필수 항목 검증
+Validation -> Repository: checkDuplicateName(userId, ownerType, itemType, name)
+Repository -> DB: 동일 항목명 존재 확인
+DB --> Repository: 중복 여부
+Repository --> Validation: isDuplicate
+
+alt 검증 통과
+    Validation --> Controller: 검증 성공
+
+    Controller -> Service: createAssetItem(request)
+    Service -> Repository: save(assetItem)
+    Repository -> DB: 월지출 항목 저장
+    DB --> Repository: 저장된 항목
+    Repository --> Service: AssetItem
+
+    Service -> Repository: calculateTotal(userId, "SELF", "EXPENSE")
+    Repository -> DB: 월지출 총액 계산
+    DB --> Repository: 총 월지출
+    Repository --> Service: totalExpenseAmount
+
+    Service -> Service: 재무 요약 정보 계산
+
+    Service -> EventPublisher: publishAssetUpdated(event)
+    note right
+      Event: AssetUpdated
+      {
+        eventId: UUID.randomUUID(),
+        eventType: "ASSET_UPDATED",
+        timestamp: LocalDateTime.now(),
+        userId: userId,
+        changeType: "ITEM_ADDED",
+        ownerType: "SELF",
+        itemType: "EXPENSE",
+        summary: {
+          totalNetAssets: 계산값,
+          totalMonthlyIncome: 계산값,
+          totalMonthlyExpense: 계산값,
+          monthlyAvailableFunds: 계산값
+        }
+      }
+    end note
+    EventPublisher -> MQ: Publish AssetUpdated Event
+    MQ --> EventPublisher: 이벤트 발행 성공
+    EventPublisher --> Service: 발행 완료
+
+    Service --> Controller: AssetItemResponse
+    note right
+      {
+        id: "item-id",
+        name: "생활비",
+        amount: 1500000,
+        totalExpense: 1500000
+      }
+    end note
+
+    Controller --> Controller: 201 Created 응답
+end
+
+@enduml

@@ -1,0 +1,255 @@
+@startuml housing-simple
+!theme mono
+
+title Housing Service - 클래스 설계 간소화 버전 (Layered Architecture)
+
+package "Controller Layer" {
+    class HousingController {
+        + createHousing(request): HousingResponse
+        + getHousings(type, sort, order): HousingListResponse
+        + getHousing(id): HousingResponse
+        + updateHousing(id, request): HousingResponse
+        + deleteHousing(id): void
+        + setGoalHousing(id): GoalHousingResponse
+    }
+}
+
+package "Service Layer" {
+    class HousingService {
+        + createHousing(userId, request): Housing
+        + getHousings(userId, type, sort, order): List<Housing>
+        + getHousing(id, userId): Housing
+        + updateHousing(id, userId, request): Housing
+        + deleteHousing(id, userId): void
+        + setGoalHousing(id, userId): Housing
+    }
+
+    class HousingValidator {
+        + validateCreateRequest(request): void
+        + validateUpdateRequest(request): void
+        + validateMoveInDate(date): void
+        + validatePrice(price): void
+    }
+}
+
+package "Domain Layer" {
+    class Housing <<Entity>> {
+        - id: String
+        - userId: String
+        - housingType: HousingType
+        - moveInDate: String
+        - name: String
+        - address: Address
+        - price: Long
+        - isGoal: boolean
+        --
+        + setGoal(isGoal): void
+        + updateBasicInfo(request): void
+    }
+
+    class Address <<ValueObject>> {
+        - fullAddress: String
+        - latitude: Double
+        - longitude: Double
+    }
+
+    class Transportation <<Entity>> {
+        - id: String
+        - housingId: String
+        - name: String
+        - openingDate: String
+        - commuteTime: CommuteTime
+    }
+
+    class CommuteTime <<ValueObject>> {
+        - selfBefore: Integer
+        - selfAfter: Integer
+        - spouseBefore: Integer
+        - spouseAfter: Integer
+    }
+
+    enum HousingType {
+        SALE
+        JEONSE
+        MONTHLY_RENT
+    }
+}
+
+package "Repository Layer" {
+    interface HousingRepository {
+        + save(housing): Housing
+        + findById(id): Optional<Housing>
+        + findByUserId(userId): List<Housing>
+        + deleteById(id): void
+        + clearGoalHousing(userId): void
+    }
+
+    interface TransportationRepository {
+        + saveAll(transportations): List<Transportation>
+        + findByHousingId(housingId): List<Transportation>
+        + deleteByHousingId(housingId): void
+    }
+}
+
+package "DTO Layer" {
+    class HousingCreateRequest {
+        + housingType: String
+        + moveInDate: String
+        + name: String
+        + address: AddressRequest
+        + price: Long
+        + transportations: List<TransportationRequest>
+    }
+
+    class HousingUpdateRequest {
+        + housingType: String
+        + moveInDate: String
+        + name: String
+        + address: AddressRequest
+        + price: Long
+    }
+
+    class HousingResponse {
+        + id: String
+        + userId: String
+        + housingType: String
+        + name: String
+        + address: AddressResponse
+        + price: Long
+        + isGoal: boolean
+        + createdAt: String
+    }
+
+    class HousingListResponse {
+        + housings: List<HousingListItem>
+        + total: Integer
+    }
+
+    class GoalHousingResponse {
+        + id: String
+        + isGoal: boolean
+        + message: String
+    }
+}
+
+package "Infrastructure Layer" {
+    class KakaoMapClient {
+        + searchAddress(address): Coordinates
+    }
+
+    class CircuitBreaker {
+        + execute(operation): T
+    }
+
+    class EventPublisher {
+        + publish(event): void
+    }
+
+    class CacheManager {
+        + get(key): Optional<Object>
+        + put(key, value, ttl): void
+        + evict(key): void
+    }
+}
+
+' Relationships
+HousingController --> HousingService
+HousingService --> HousingRepository
+HousingService --> TransportationRepository
+HousingService --> HousingValidator
+HousingService --> KakaoMapClient
+HousingService --> CircuitBreaker
+HousingService --> EventPublisher
+HousingService --> CacheManager
+
+Housing --> Address
+Housing --> Transportation
+Housing --> HousingType
+Transportation --> CommuteTime
+
+HousingRepository --> Housing
+TransportationRepository --> Transportation
+
+note as ControllerMapping
+<b>== Controller 메서드 → API 매핑 ==</b>
+
+<b>1. createHousing</b>
+   - API: POST /housings
+   - Operation: createHousing
+   - Request: HousingCreateRequest
+   - Response: 201 Created, HousingResponse
+   - User Story: UFR-HOUS-010
+
+<b>2. getHousings</b>
+   - API: GET /housings
+   - Operation: getHousings
+   - Parameters: housingType, sortBy, sortOrder
+   - Response: 200 OK, HousingListResponse
+   - User Story: UFR-HOUS-020
+
+<b>3. getHousing</b>
+   - API: GET /housings/{id}
+   - Operation: getHousing
+   - Parameters: id (path)
+   - Response: 200 OK, HousingResponse
+   - User Story: UFR-HOUS-030
+
+<b>4. updateHousing</b>
+   - API: PUT /housings/{id}
+   - Operation: updateHousing
+   - Parameters: id (path)
+   - Request: HousingUpdateRequest
+   - Response: 200 OK, HousingResponse
+   - User Story: UFR-HOUS-040
+
+<b>5. deleteHousing</b>
+   - API: DELETE /housings/{id}
+   - Operation: deleteHousing
+   - Parameters: id (path)
+   - Response: 204 No Content
+   - User Story: UFR-HOUS-040
+
+<b>6. setGoalHousing</b>
+   - API: PUT /housings/{id}/goal
+   - Operation: setGoalHousing
+   - Parameters: id (path)
+   - Response: 200 OK, GoalHousingResponse
+   - User Story: UFR-HOUS-050
+
+end note
+
+note as LayerDescription
+<b>== Layered Architecture 구조 ==</b>
+
+<b>Controller Layer (Presentation)</b>
+- REST API 엔드포인트 제공
+- 요청/응답 검증 및 변환
+- JWT 인증 처리
+
+<b>Service Layer (Business)</b>
+- 비즈니스 로직 처리
+- 트랜잭션 관리
+- 이벤트 발행 및 캐시 관리
+
+<b>Domain Layer</b>
+- 엔티티 및 Value Objects
+- 도메인 규칙 및 제약사항
+- JPA Entity 매핑
+
+<b>Repository Layer (Persistence)</b>
+- 데이터 영속성 관리
+- Spring Data JPA
+- 쿼리 메서드 정의
+
+<b>Infrastructure Layer</b>
+- 외부 서비스 연동
+- 캐시, 이벤트, Circuit Breaker
+- 기술적 관심사 처리
+
+<b>DTO Layer</b>
+- 요청/응답 데이터 전송 객체
+- 레이어 간 데이터 전달
+- API 스펙 매핑
+end note
+
+@enduml

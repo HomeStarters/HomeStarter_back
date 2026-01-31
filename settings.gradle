@@ -1,0 +1,9 @@
+rootProject.name = 'homestarter'
+
+include 'common'
+include 'user-service'
+include 'asset-service'
+include 'loan-service'
+include 'housing-service'
+include 'calculator-service'
+include 'roadmap-service'

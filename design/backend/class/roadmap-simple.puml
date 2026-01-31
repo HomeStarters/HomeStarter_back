@@ -1,0 +1,439 @@
+@startuml
+!theme mono
+
+title Roadmap Service - Simplified Class Design (Layered Architecture)
+
+package "com.dwj.homestarter.roadmap" {
+
+  ' ============================================
+  ' Controller Layer
+  ' ============================================
+  package "controller" {
+
+    class LifecycleEventController {
+      + createLifecycleEvent()
+      + getLifecycleEvents()
+      + getLifecycleEvent()
+      + updateLifecycleEvent()
+      + deleteLifecycleEvent()
+    }
+
+    class RoadmapController {
+      + createRoadmap()
+      + getRoadmap()
+      + updateRoadmap()
+      + getRoadmapStatus()
+      + getRoadmapVersions()
+      + streamRoadmapProgress()
+    }
+
+    note right of LifecycleEventController
+      <b>API Mapping - LifecycleEventController</b>
+
+      <b>createLifecycleEvent()</b>
+      POST /lifecycle-events
+      operationId: createLifecycleEvent
+      Request: LifecycleEventRequest
+      Response: 201 Created (LifecycleEventResponse)
+
+      <b>getLifecycleEvents()</b>
+      GET /lifecycle-events?eventType={type}
+      operationId: getLifecycleEvents
+      Response: 200 OK (LifecycleEventListResponse)
+
+      <b>getLifecycleEvent()</b>
+      GET /lifecycle-events/{id}
+      operationId: getLifecycleEvent
+      Response: 200 OK (LifecycleEventResponse)
+
+      <b>updateLifecycleEvent()</b>
+      PUT /lifecycle-events/{id}
+      operationId: updateLifecycleEvent
+      Request: LifecycleEventRequest
+      Response: 200 OK (LifecycleEventResponse)
+
+      <b>deleteLifecycleEvent()</b>
+      DELETE /lifecycle-events/{id}
+      operationId: deleteLifecycleEvent
+      Response: 204 No Content
+    end note
+
+    note right of RoadmapController
+      <b>API Mapping - RoadmapController</b>
+
+      <b>createRoadmap()</b>
+      POST /roadmaps
+      operationId: createRoadmap
+      Response: 202 Accepted (RoadmapTaskResponse)
+
+      <b>getRoadmap()</b>
+      GET /roadmaps?version={version}
+      operationId: getRoadmap
+      Response: 200 OK (RoadmapResponse)
+
+      <b>updateRoadmap()</b>
+      PUT /roadmaps
+      operationId: updateRoadmap
+      Response: 202 Accepted (RoadmapTaskResponse)
+
+      <b>getRoadmapStatus()</b>
+      GET /roadmaps/status/{requestId}
+      operationId: getRoadmapStatus
+      Response: 200 OK (RoadmapStatusResponse)
+
+      <b>getRoadmapVersions()</b>
+      GET /roadmaps/versions
+      operationId: getRoadmapVersions
+      Response: 200 OK (RoadmapVersionListResponse)
+
+      <b>streamRoadmapProgress()</b>
+      GET /roadmaps/tasks/{taskId}/stream (SSE)
+      Response: SseEmitter (실시간 진행 상황)
+    end note
+  }
+
+  ' ============================================
+  ' Service Layer
+  ' ============================================
+  package "service" {
+
+    class LifecycleEventService {
+      + createEvent()
+      + getEvents()
+      + getEvent()
+      + updateEvent()
+      + deleteEvent()
+    }
+
+    class RoadmapService {
+      + generateRoadmap()
+      + getRoadmap()
+      + updateRoadmap()
+      + getRoadmapStatus()
+      + getRoadmapVersions()
+    }
+
+    class SseService {
+      + createEmitter()
+      + sendProgress()
+      + sendComplete()
+      + sendError()
+    }
+
+    class RoadmapWorker {
+      + processRoadmapGeneration()
+    }
+
+    class MessagePublisher {
+      + publishRoadmapGeneration()
+    }
+  }
+
+  ' ============================================
+  ' Domain Layer
+  ' ============================================
+  package "domain" {
+
+    class LifecycleEvent {
+      - id: String
+      - userId: String
+      - name: String
+      - eventType: EventType
+      - eventDate: YearMonth
+      - housingCriteria: String
+    }
+
+    enum EventType {
+      MARRIAGE
+      BIRTH
+      CHILD_EDUCATION
+      RETIREMENT
+      OTHER
+    }
+
+    class Roadmap {
+      - id: String
+      - userId: String
+      - version: Integer
+      - status: RoadmapStatus
+      - taskId: String
+    }
+
+    enum RoadmapStatus {
+      PROCESSING
+      COMPLETED
+      FAILED
+    }
+
+    class RoadmapStage {
+      - id: String
+      - stageNumber: Integer
+      - stageName: String
+      - moveInDate: YearMonth
+    }
+
+    class HousingCharacteristics <<VO>> {
+      - estimatedPrice: Long
+      - location: String
+      - type: String
+      - features: List<String>
+    }
+
+    class FinancialGoals <<VO>> {
+      - targetSavings: Long
+      - monthlySavings: Long
+      - loanAmount: Long
+      - loanProduct: String
+    }
+
+    class ExecutionGuide {
+      - id: String
+      - roadmapId: String
+      - monthlySavingsPlan: List<MonthlySavingsPlan>
+      - warnings: List<String>
+      - tips: List<String>
+    }
+
+    class RoadmapTask {
+      - id: String
+      - userId: String
+      - status: TaskStatus
+      - progress: Integer
+      - message: String
+    }
+
+    enum TaskStatus {
+      PENDING
+      PROCESSING
+      COMPLETED
+      FAILED
+    }
+  }
+
+  ' ============================================
+  ' Repository Layer
+  ' ============================================
+  package "repository" {
+
+    interface LifecycleEventRepository {
+      + save()
+      + findById()
+      + findByUserId()
+      + countByUserId()
+      + deleteById()
+    }
+
+    interface RoadmapRepository {
+      + save()
+      + findById()
+      + findLatestByUserId()
+      + findVersionsByUserId()
+    }
+
+    interface RoadmapStageRepository {
+      + save()
+      + findByRoadmapId()
+    }
+
+    interface ExecutionGuideRepository {
+      + save()
+      + findByRoadmapId()
+    }
+
+    interface RoadmapTaskRepository {
+      + save()
+      + findById()
+      + findByUserIdAndStatusIn()
+    }
+  }
+
+  ' ============================================
+  ' DTO Layer
+  ' ============================================
+  package "dto" {
+
+    class LifecycleEventRequest {
+      - name: String
+      - eventType: String
+      - eventDate: String
+      - housingCriteria: String
+    }
+
+    class LifecycleEventResponse {
+      - id: String
+      - userId: String
+      - name: String
+      - eventType: String
+      - eventDate: String
+      - housingCriteria: String
+      - createdAt: String
+      - updatedAt: String
+    }
+
+    class RoadmapResponse {
+      - id: String
+      - version: Integer
+      - status: String
+      - goalHousing: GoalHousingDto
+      - stages: List<RoadmapStageDto>
+      - executionGuide: ExecutionGuideDto
+    }
+
+    class RoadmapTaskResponse {
+      - requestId: String
+      - status: String
+      - progress: Integer
+      - message: String
+    }
+
+    class RoadmapStatusResponse {
+      - requestId: String
+      - status: String
+      - progress: Integer
+      - roadmapId: String
+      - error: String
+    }
+  }
+
+  ' ============================================
+  ' External Client Layer
+  ' ============================================
+  package "client" {
+
+    interface HousingClient <<External>> {
+      + getFinalHousing()
+    }
+
+    interface UserClient <<External>> {
+      + getUserProfile()
+    }
+
+    interface AssetClient <<External>> {
+      + getAssetSummary()
+    }
+
+    interface CalculatorClient <<External>> {
+      + getCalculationResult()
+    }
+
+    interface LlmClient <<External>> {
+      + generateRoadmap()
+    }
+
+    class CircuitBreaker {
+      + execute()
+    }
+  }
+
+  ' ============================================
+  ' Message Layer
+  ' ============================================
+  package "message" {
+
+    class RoadmapGenerationMessage {
+      - taskId: String
+      - userId: String
+      - finalHousingId: String
+    }
+  }
+}
+
+' ============================================
+' Layer Relationships (Simplified)
+' ============================================
+
+' Controller -> Service
+LifecycleEventController --> LifecycleEventService
+RoadmapController --> RoadmapService
+RoadmapController --> SseService
+
+' Service -> Repository
+LifecycleEventService --> LifecycleEventRepository
+RoadmapService --> RoadmapRepository
+RoadmapService --> RoadmapTaskRepository
+RoadmapWorker --> RoadmapRepository
+RoadmapWorker --> RoadmapTaskRepository
+
+' Service -> External Client
+RoadmapService --> HousingClient
+RoadmapService --> MessagePublisher
+RoadmapWorker --> UserClient
+RoadmapWorker --> AssetClient
+RoadmapWorker --> HousingClient
+RoadmapWorker --> CalculatorClient
+RoadmapWorker --> LlmClient
+RoadmapWorker --> CircuitBreaker
+
+' Service <-> SSE
+RoadmapWorker --> SseService
+
+' Domain Relationships
+Roadmap "1" *-- "many" RoadmapStage
+RoadmapStage *-- "1" HousingCharacteristics
+RoadmapStage *-- "1" FinancialGoals
+LifecycleEvent --> EventType
+Roadmap --> RoadmapStatus
+RoadmapTask --> TaskStatus
+
+note as N1
+  <b>Layered Architecture Pattern</b>
+
+  <b>Controller Layer</b>
+  - HTTP 요청/응답 처리
+  - JWT 인증 정보 추출
+  - 입력 검증 (Bean Validation)
+  - DTO 변환
+
+  <b>Service Layer</b>
+  - 비즈니스 로직 수행
+  - 트랜잭션 관리
+  - 외부 서비스 호출
+  - 이벤트 발행/구독
+
+  <b>Domain Layer</b>
+  - 핵심 비즈니스 도메인 모델
+  - 엔티티 생명주기 관리
+  - 도메인 로직 캡슐화
+
+  <b>Repository Layer</b>
+  - 데이터 영속성 처리
+  - JPA 인터페이스
+  - 쿼리 메소드 정의
+
+  <b>DTO Layer</b>
+  - API 요청/응답 객체
+  - 도메인-DTO 변환
+
+  <b>External Client Layer</b>
+  - 외부 서비스 통신
+  - Circuit Breaker 적용
+  - FeignClient 구현
+
+  <b>Message Layer</b>
+  - 비동기 메시지 처리
+  - RabbitMQ 메시지 정의
+end note
+
+note as N2
+  <b>비동기 처리 흐름</b>
+
+  1. RoadmapController.createRoadmap()
+     → RoadmapService.generateRoadmap()
+     → 작업 생성 및 메시지 발행
+     → 202 Accepted 즉시 응답
+
+  2. RabbitMQ Queue
+     → RoadmapWorker.processRoadmapGeneration()
+     → 외부 서비스 데이터 수집 (병렬)
+     → LLM API 호출 (Circuit Breaker)
+     → 결과 검증 및 저장
+     → SSE로 진행 상황 전송
+
+  3. Client
+     → SSE 스트림 연결
+     → 실시간 진행 상황 수신
+     → 완료 시 roadmapId 수신
+     → GET /roadmaps로 결과 조회
+end note
+
+@enduml

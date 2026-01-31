@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 주택 목록</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        /* Filter/Sort Bar */
+        .filter-bar {
+            padding: var(--spacing-md);
+            background: white;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 60px;
+            z-index: 10;
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: var(--spacing-xs) var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            background: white;
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .sort-dropdown {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .sort-dropdown label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .sort-dropdown select {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Housing Card Grid */
+        .housing-grid {
+            display: grid;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+
+        @media (max-width: 767px) {
+            .housing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .housing-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-lg);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .housing-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: var(--spacing-lg);
+            }
+        }
+
+        .housing-card {
+            position: relative;
+            padding: var(--spacing-lg);
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.2s;
+            transform: translateX(0);
+        }
+
+        .housing-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary);
+        }
+
+        .housing-card.swiped {
+            transform: translateX(-80px);
+        }
+
+        .card-badges {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+        }
+
+        .badge {
+            padding: var(--spacing-2xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+            color: white;
+        }
+
+        .badge-매매 {
+            background: var(--primary);
+        }
+
+        .badge-전세 {
+            background: var(--secondary);
+        }
+
+        .badge-월세 {
+            background: var(--warning);
+        }
+
+        .star-icon {
+            position: absolute;
+            top: var(--spacing-md);
+            left: var(--spacing-md);
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 24px;
+            padding: 0;
+            line-height: 1;
+            z-index: 2;
+        }
+
+        .star-icon.active {
+            color: var(--warning);
+        }
+
+        .star-icon:not(.active) {
+            color: var(--border);
+        }
+
+        .card-content {
+            margin-top: var(--spacing-lg);
+        }
+
+        .housing-name {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .housing-location {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2xs);
+        }
+
+        .housing-price {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .housing-meta {
+            display: flex;
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .checkbox-wrapper {
+            position: absolute;
+            bottom: var(--spacing-md);
+            left: var(--spacing-md);
+            z-index: 2;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        /* Delete Button for Swipe */
+        .delete-btn {
+            position: absolute;
+            right: -80px;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            background: var(--error);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            transition: all 0.2s;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-3xl) var(--spacing-md);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .empty-state h3 {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state p {
+            font-size: var(--font-size-md);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* FAB */
+        .fab {
+            position: fixed;
+            bottom: var(--spacing-md);
+            right: var(--spacing-md);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.2s;
+            z-index: 90;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Bottom Action Bar */
+        .bottom-action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            transform: translateY(100%);
+            transition: transform 0.3s;
+            z-index: 100;
+        }
+
+        .bottom-action-bar.active {
+            transform: translateY(0);
+        }
+
+        .action-bar-content {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .selection-count {
+            text-align: center;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        @media (min-width: 768px) {
+            .fab {
+                bottom: 90px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">내 주택 목록</h1>
+        <div class="header-actions"></div>
+    </header>
+
+    <!-- Filter/Sort Bar -->
+    <div class="filter-bar">
+        <div class="filter-chips">
+            <button class="chip active" data-type="all">전체</button>
+            <button class="chip" data-type="매매">매매</button>
+            <button class="chip" data-type="전세">전세</button>
+            <button class="chip" data-type="월세">월세</button>
+        </div>
+        <div class="sort-dropdown">
+            <label for="sortSelect">정렬:</label>
+            <select id="sortSelect">
+                <option value="recent">최근 등록순</option>
+                <option value="moveInDate">입주희망년월순</option>
+                <option value="priceHigh">가격 높은 순</option>
+                <option value="priceLow">가격 낮은 순</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <div class="housing-grid" id="housingGrid">
+                <!-- Cards will be rendered here -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-state-icon">🏠</div>
+                <h3>아직 등록한 주택이 없습니다</h3>
+                <p>첫 주택을 등록하고 계획을 시작하세요</p>
+                <button type="button" class="btn btn-primary" onclick="window.location.href='11-입주희망주택입력-기본정보.html'">
+                    주택 등록하기
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- FAB -->
+    <button class="fab" onclick="window.location.href='11-입주희망주택입력-기본정보.html'" aria-label="주택 등록">
+        +
+    </button>
+
+    <!-- Bottom Action Bar -->
+    <div class="bottom-action-bar" id="actionBar">
+        <div class="action-bar-content">
+            <div class="selection-count" id="selectionCount">0개 선택됨</div>
+            <button type="button" class="btn btn-primary" id="compareBtn">
+                비교하기
+            </button>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // State
+        let housingList = [];
+        let filteredList = [];
+        let currentFilter = 'all';
+        let currentSort = 'recent';
+        let selectedItems = [];
+        let finalGoalId = null;
+
+        // Elements
+        const housingGrid = document.getElementById('housingGrid');
+        const emptyState = document.getElementById('emptyState');
+        const filterChips = document.querySelectorAll('.chip');
+        const sortSelect = document.getElementById('sortSelect');
+        const actionBar = document.getElementById('actionBar');
+        const selectionCount = document.getElementById('selectionCount');
+        const compareBtn = document.getElementById('compareBtn');
+
+        // Load data
+        function loadData() {
+            housingList = Storage.getItem('housing_list') || [];
+            finalGoalId = Storage.getItem('final_goal_housing_id');
+            applyFilterAndSort();
+        }
+
+        // Apply filter and sort
+        function applyFilterAndSort() {
+            // Filter
+            if (currentFilter === 'all') {
+                filteredList = [...housingList];
+            } else {
+                filteredList = housingList.filter(item => item.housingType === currentFilter);
+            }
+
+            // Sort
+            switch (currentSort) {
+                case 'recent':
+                    filteredList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+                case 'moveInDate':
+                    filteredList.sort((a, b) => a.moveInDate.localeCompare(b.moveInDate));
+                    break;
+                case 'priceHigh':
+                    filteredList.sort((a, b) => parseInt(b.price) - parseInt(a.price));
+                    break;
+                case 'priceLow':
+                    filteredList.sort((a, b) => parseInt(a.price) - parseInt(b.price));
+                    break;
+            }
+
+            renderGrid();
+        }
+
+        // Render grid
+        function renderGrid() {
+            if (filteredList.length === 0) {
+                housingGrid.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            housingGrid.style.display = 'grid';
+            emptyState.style.display = 'none';
+
+            housingGrid.innerHTML = filteredList.map((item, index) => {
+                const isFinalGoal = item.id === finalGoalId;
+                const isChecked = selectedItems.includes(item.id);
+                const shortAddress = item.address.split(' ').slice(0, 3).join(' ');
+                const [year, month] = item.moveInDate.split('-');
+
+                return `
+                    <div class="housing-card" data-id="${item.id}">
+                        <button class="star-icon ${isFinalGoal ? 'active' : ''}"
+                                onclick="toggleFinalGoal(event, ${item.id})"
+                                aria-label="${isFinalGoal ? '최종목표 해제' : '최종목표 설정'}">
+                            ${isFinalGoal ? '★' : '☆'}
+                        </button>
+
+                        <div class="card-badges">
+                            <span class="badge badge-${item.housingType}">${item.housingType}</span>
+                        </div>
+
+                        <div class="card-content" onclick="viewDetail(${item.id})">
+                            <h3 class="housing-name">${item.housingName}</h3>
+                            <div class="housing-location">
+                                📍 ${shortAddress}
+                            </div>
+                            <div class="housing-price">${Utils.formatCurrency(parseInt(item.price))}원</div>
+                            <div class="housing-meta">
+                                <span>${year}년 ${parseInt(month)}월</span>
+                                <span>•</span>
+                                <span>${item.housingType2}</span>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox"
+                                   ${isChecked ? 'checked' : ''}
+                                   onchange="toggleSelection(event, ${item.id})"
+                                   aria-label="비교 선택"
+                                   onclick="event.stopPropagation()">
+                        </div>
+
+                        <button class="delete-btn" onclick="deleteHousing(event, ${item.id})">
+                            삭제
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            // Add swipe handlers for mobile
+            if (window.innerWidth < 768) {
+                addSwipeHandlers();
+            }
+        }
+
+        // Add swipe handlers
+        function addSwipeHandlers() {
+            const cards = document.querySelectorAll('.housing-card');
+            cards.forEach(card => {
+                let startX = 0;
+                let currentX = 0;
+
+                card.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                });
+
+                card.addEventListener('touchmove', (e) => {
+                    currentX = e.touches[0].clientX;
+                    const diff = startX - currentX;
+
+                    if (diff > 0 && diff < 80) {
+                        card.style.transform = `translateX(-${diff}px)`;
+                    }
+                });
+
+                card.addEventListener('touchend', () => {
+                    const diff = startX - currentX;
+
+                    if (diff > 40) {
+                        card.classList.add('swiped');
+                    } else {
+                        card.style.transform = 'translateX(0)';
+                    }
+                });
+            });
+        }
+
+        // Filter chips
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentFilter = chip.dataset.type;
+                applyFilterAndSort();
+            });
+        });
+
+        // Sort dropdown
+        sortSelect.addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            applyFilterAndSort();
+        });
+
+        // Toggle final goal
+        window.toggleFinalGoal = function(event, id) {
+            event.stopPropagation();
+
+            const isCurrent = finalGoalId === id;
+
+            if (isCurrent) {
+                UI.showConfirm('최종목표 설정을 해제하시겠습니까?', () => {
+                    finalGoalId = null;
+                    Storage.removeItem('final_goal_housing_id');
+                    renderGrid();
+                    UI.showToast('최종목표가 해제되었습니다', 'success');
+                });
+            } else {
+                const message = finalGoalId
+                    ? '이 주택을 최종목표로 설정하시겠습니까?\n기존 최종목표가 해제됩니다.'
+                    : '이 주택을 최종목표로 설정하시겠습니까?';
+
+                UI.showConfirm(message, () => {
+                    finalGoalId = id;
+                    Storage.setItem('final_goal_housing_id', id);
+                    renderGrid();
+                    UI.showToast('최종목표가 설정되었습니다', 'success');
+                });
+            }
+        };
+
+        // Toggle selection
+        window.toggleSelection = function(event, id) {
+            event.stopPropagation();
+
+            if (selectedItems.includes(id)) {
+                selectedItems = selectedItems.filter(item => item !== id);
+            } else {
+                if (selectedItems.length >= 3) {
+                    UI.showToast('최대 3개까지 선택 가능합니다', 'error');
+                    event.target.checked = false;
+                    return;
+                }
+                selectedItems.push(id);
+            }
+
+            updateActionBar();
+        };
+
+        // Update action bar
+        function updateActionBar() {
+            if (selectedItems.length >= 2) {
+                actionBar.classList.add('active');
+                selectionCount.textContent = `${selectedItems.length}개 선택됨`;
+            } else {
+                actionBar.classList.remove('active');
+                selectedItems = [];
+                renderGrid();
+            }
+        }
+
+        // Compare button
+        compareBtn.addEventListener('click', () => {
+            UI.showToast('비교 기능은 프로토타입에서 제공하지 않습니다', 'info');
+        });
+
+        // View detail
+        window.viewDetail = function(id) {
+            Storage.setItem('selected_housing_id', id);
+            window.location.href = '14-입주희망주택상세.html';
+        };
+
+        // Delete housing
+        window.deleteHousing = function(event, id) {
+            event.stopPropagation();
+
+            UI.showConfirm('이 주택을 삭제하시겠습니까?', () => {
+                housingList = housingList.filter(item => item.id !== id);
+                Storage.setItem('housing_list', housingList);
+
+                if (finalGoalId === id) {
+                    finalGoalId = null;
+                    Storage.removeItem('final_goal_housing_id');
+                }
+
+                selectedItems = selectedItems.filter(item => item !== id);
+                updateActionBar();
+                loadData();
+                UI.showToast('주택이 삭제되었습니다', 'success');
+            });
+        };
+
+        // Initial load
+        loadData();
+    </script>
+
+    <!-- 하단 탭 네비게이션 (Mobile) -->
+    <nav class="bottom-nav">
+        <a href="00-대시보드.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+                <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>홈</span>
+        </a>
+        <a href="13-입주희망주택목록.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>주택</span>
+        </a>
+        <a href="15-입주후지출계산.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>계산</span>
+        </a>
+        <a href="18-장기주거로드맵조회.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>로드맵</span>
+        </a>
+    </nav>
+</body>
+</html>

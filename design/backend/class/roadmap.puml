@@ -1,0 +1,586 @@
+@startuml
+!theme mono
+
+title Roadmap Service - Class Design (Layered Architecture)
+
+package "com.dwj.homestarter.roadmap" {
+
+  ' ============================================
+  ' Controller Layer
+  ' ============================================
+  package "controller" {
+
+    class LifecycleEventController {
+      - lifecycleEventService: LifecycleEventService
+      --
+      + createLifecycleEvent(request: LifecycleEventRequest): ResponseEntity<LifecycleEventResponse>
+      + getLifecycleEvents(eventType: String): ResponseEntity<LifecycleEventListResponse>
+      + getLifecycleEvent(id: String): ResponseEntity<LifecycleEventResponse>
+      + updateLifecycleEvent(id: String, request: LifecycleEventRequest): ResponseEntity<LifecycleEventResponse>
+      + deleteLifecycleEvent(id: String): ResponseEntity<Void>
+      --
+      - getUserIdFromJwt(): String
+    }
+
+    class RoadmapController {
+      - roadmapService: RoadmapService
+      - sseService: SseService
+      --
+      + createRoadmap(): ResponseEntity<RoadmapTaskResponse>
+      + getRoadmap(version: Integer): ResponseEntity<RoadmapResponse>
+      + updateRoadmap(): ResponseEntity<RoadmapTaskResponse>
+      + getRoadmapStatus(requestId: String): ResponseEntity<RoadmapStatusResponse>
+      + getRoadmapVersions(): ResponseEntity<RoadmapVersionListResponse>
+      + streamRoadmapProgress(taskId: String): SseEmitter
+      --
+      - getUserIdFromJwt(): String
+    }
+  }
+
+  ' ============================================
+  ' Service Layer
+  ' ============================================
+  package "service" {
+
+    class LifecycleEventService {
+      - eventRepository: LifecycleEventRepository
+      --
+      + createEvent(userId: String, request: LifecycleEventRequest): LifecycleEventResponse
+      + getEvents(userId: String, eventType: String): List<LifecycleEventResponse>
+      + getEvent(userId: String, eventId: String): LifecycleEventResponse
+      + updateEvent(userId: String, eventId: String, request: LifecycleEventRequest): LifecycleEventResponse
+      + deleteEvent(userId: String, eventId: String): void
+      --
+      - validateEventRequest(request: LifecycleEventRequest): void
+      - checkEventOwnership(event: LifecycleEvent, userId: String): void
+      - validateEventLogic(userId: String, request: LifecycleEventRequest): void
+    }
+
+    class RoadmapService {
+      - roadmapRepository: RoadmapRepository
+      - taskRepository: RoadmapTaskRepository
+      - eventRepository: LifecycleEventRepository
+      - housingClient: HousingClient
+      - messagePublisher: MessagePublisher
+      - redisTemplate: RedisTemplate
+      --
+      + generateRoadmap(userId: String): RoadmapTaskResponse
+      + getRoadmap(userId: String, version: Integer): RoadmapResponse
+      + updateRoadmap(userId: String): RoadmapTaskResponse
+      + getRoadmapStatus(requestId: String, userId: String): RoadmapStatusResponse
+      + getRoadmapVersions(userId: String): List<RoadmapVersionInfo>
+      --
+      - validateRoadmapRequirements(userId: String): void
+      - checkExistingTask(userId: String): RoadmapTask
+      - createRoadmapTask(userId: String): RoadmapTask
+      - publishGenerationTask(task: RoadmapTask, finalHousing: FinalHousing): void
+      - getRoadmapFromCache(userId: String): RoadmapResponse
+      - cacheRoadmap(userId: String, roadmap: RoadmapResponse): void
+      - buildRoadmapResponse(roadmap: Roadmap): RoadmapResponse
+    }
+
+    class SseService {
+      - emitters: ConcurrentHashMap<String, SseEmitter>
+      --
+      + createEmitter(taskId: String): SseEmitter
+      + getEmitter(taskId: String): SseEmitter
+      + sendProgress(taskId: String, progress: Integer, message: String): void
+      + sendComplete(taskId: String, roadmapId: String): void
+      + sendError(taskId: String, error: String): void
+      + removeEmitter(taskId: String): void
+      --
+      - buildProgressEvent(progress: Integer, message: String): Map<String, Object>
+    }
+
+    class RoadmapWorker {
+      - taskRepository: RoadmapTaskRepository
+      - roadmapRepository: RoadmapRepository
+      - eventRepository: LifecycleEventRepository
+      - userClient: UserClient
+      - assetClient: AssetClient
+      - housingClient: HousingClient
+      - calculatorClient: CalculatorClient
+      - llmClient: LlmClient
+      - circuitBreaker: CircuitBreaker
+      - sseService: SseService
+      --
+      + processRoadmapGeneration(message: RoadmapGenerationMessage): void
+      --
+      - updateTaskStatus(taskId: String, status: TaskStatus, progress: Integer): void
+      - collectUserData(userId: String): UserProfile
+      - collectAssetData(userId: String): AssetSummary
+      - collectHousingData(housingId: String): FinalHousing
+      - collectCalculatorData(housingId: String): CalculationResult
+      - collectLifecycleEvents(userId: String): List<LifecycleEvent>
+      - generateRoadmapWithAI(inputData: RoadmapInputData): RoadmapAIResponse
+      - validateRoadmapResult(result: RoadmapAIResponse): boolean
+      - saveRoadmap(userId: String, taskId: String, aiResult: RoadmapAIResponse): String
+      - retryOnFailure(operation: Callable, maxRetries: Integer): Object
+    }
+
+    class MessagePublisher {
+      - rabbitTemplate: RabbitTemplate
+      --
+      + publishRoadmapGeneration(message: RoadmapGenerationMessage): void
+      --
+      - EXCHANGE_NAME: String = "roadmap-exchange"
+      - ROUTING_KEY: String = "roadmap.generate"
+    }
+  }
+
+  ' ============================================
+  ' Domain Layer
+  ' ============================================
+  package "domain" {
+
+    class LifecycleEvent {
+      - id: String
+      - userId: String
+      - name: String
+      - eventType: EventType
+      - eventDate: YearMonth
+      - housingCriteria: String
+      - createdAt: LocalDateTime
+      - updatedAt: LocalDateTime
+      --
+      + isOwner(userId: String): boolean
+      + update(name: String, eventType: EventType, eventDate: YearMonth, housingCriteria: String): void
+    }
+
+    enum EventType {
+      MARRIAGE
+      BIRTH
+      CHILD_EDUCATION
+      RETIREMENT
+      OTHER
+    }
+
+    class Roadmap {
+      - id: String
+      - userId: String
+      - version: Integer
+      - status: RoadmapStatus
+      - taskId: String
+      - finalHousingId: String
+      - createdAt: LocalDateTime
+      - updatedAt: LocalDateTime
+      --
+      + addStage(stage: RoadmapStage): void
+      + getStageCount(): Integer
+      + isCompleted(): boolean
+    }
+
+    enum RoadmapStatus {
+      PROCESSING
+      COMPLETED
+      FAILED
+    }
+
+    class RoadmapStage {
+      - id: String
+      - roadmapId: String
+      - stageNumber: Integer
+      - stageName: String
+      - moveInDate: YearMonth
+      - duration: Integer
+      - housingCharacteristics: HousingCharacteristics
+      - financialGoals: FinancialGoals
+      - strategy: String
+      - tips: List<String>
+      --
+      + calculateEndDate(): YearMonth
+    }
+
+    class HousingCharacteristics <<Value Object>> {
+      - estimatedPrice: Long
+      - location: String
+      - type: String
+      - features: List<String>
+      --
+      + hasFeature(feature: String): boolean
+    }
+
+    class FinancialGoals <<Value Object>> {
+      - targetSavings: Long
+      - monthlySavings: Long
+      - loanAmount: Long
+      - loanProduct: String
+      --
+      + calculateTotalRequired(): Long
+      + isRealistic(monthlyIncome: Long): boolean
+    }
+
+    class ExecutionGuide {
+      - id: String
+      - roadmapId: String
+      - monthlySavingsPlan: List<MonthlySavingsPlan>
+      - warnings: List<String>
+      - tips: List<String>
+      --
+      + addWarning(warning: String): void
+      + addTip(tip: String): void
+    }
+
+    class MonthlySavingsPlan <<Value Object>> {
+      - period: String
+      - amount: Long
+      - purpose: String
+      --
+      + isValidPeriod(): boolean
+    }
+
+    class RoadmapTask {
+      - id: String
+      - userId: String
+      - status: TaskStatus
+      - progress: Integer
+      - message: String
+      - roadmapId: String
+      - errorMessage: String
+      - createdAt: LocalDateTime
+      - updatedAt: LocalDateTime
+      - completedAt: LocalDateTime
+      --
+      + updateProgress(progress: Integer, message: String): void
+      + complete(roadmapId: String): void
+      + fail(errorMessage: String): void
+      + isProcessing(): boolean
+    }
+
+    enum TaskStatus {
+      PENDING
+      PROCESSING
+      COMPLETED
+      FAILED
+    }
+
+    class RoadmapVersionInfo <<Value Object>> {
+      - version: Integer
+      - createdAt: LocalDateTime
+      - changeDescription: String
+    }
+  }
+
+  ' ============================================
+  ' Repository Layer
+  ' ============================================
+  package "repository" {
+
+    interface LifecycleEventRepository {
+      + save(event: LifecycleEvent): LifecycleEvent
+      + findById(id: String): Optional<LifecycleEvent>
+      + findByUserId(userId: String): List<LifecycleEvent>
+      + findByUserIdAndEventType(userId: String, eventType: EventType): List<LifecycleEvent>
+      + countByUserId(userId: String): Long
+      + deleteById(id: String): void
+      + existsById(id: String): boolean
+    }
+
+    interface RoadmapRepository {
+      + save(roadmap: Roadmap): Roadmap
+      + findById(id: String): Optional<Roadmap>
+      + findByUserId(userId: String): Optional<Roadmap>
+      + findByUserIdAndVersion(userId: String, version: Integer): Optional<Roadmap>
+      + findLatestByUserId(userId: String): Optional<Roadmap>
+      + findVersionsByUserId(userId: String): List<RoadmapVersionInfo>
+    }
+
+    interface RoadmapStageRepository {
+      + save(stage: RoadmapStage): RoadmapStage
+      + findByRoadmapId(roadmapId: String): List<RoadmapStage>
+      + findByRoadmapIdOrderByStageNumber(roadmapId: String): List<RoadmapStage>
+    }
+
+    interface ExecutionGuideRepository {
+      + save(guide: ExecutionGuide): ExecutionGuide
+      + findByRoadmapId(roadmapId: String): Optional<ExecutionGuide>
+    }
+
+    interface RoadmapTaskRepository {
+      + save(task: RoadmapTask): RoadmapTask
+      + findById(id: String): Optional<RoadmapTask>
+      + findByUserIdAndStatusIn(userId: String, statuses: List<TaskStatus>): Optional<RoadmapTask>
+      + findByIdAndUserId(id: String, userId: String): Optional<RoadmapTask>
+    }
+  }
+
+  ' ============================================
+  ' DTO Layer
+  ' ============================================
+  package "dto.request" {
+
+    class LifecycleEventRequest {
+      - name: String
+      - eventType: String
+      - eventDate: String
+      - housingCriteria: String
+      --
+      + toEntity(userId: String): LifecycleEvent
+      + validate(): void
+    }
+  }
+
+  package "dto.response" {
+
+    class LifecycleEventResponse {
+      - id: String
+      - userId: String
+      - name: String
+      - eventType: String
+      - eventDate: String
+      - housingCriteria: String
+      - createdAt: String
+      - updatedAt: String
+      --
+      + fromEntity(event: LifecycleEvent): LifecycleEventResponse
+    }
+
+    class LifecycleEventListResponse {
+      - events: List<LifecycleEventResponse>
+      - total: Integer
+    }
+
+    class RoadmapResponse {
+      - id: String
+      - userId: String
+      - version: Integer
+      - status: String
+      - goalHousing: GoalHousingDto
+      - stages: List<RoadmapStageDto>
+      - executionGuide: ExecutionGuideDto
+      - createdAt: String
+      - updatedAt: String
+    }
+
+    class RoadmapTaskResponse {
+      - requestId: String
+      - status: String
+      - progress: Integer
+      - message: String
+      - estimatedCompletionTime: Integer
+    }
+
+    class RoadmapStatusResponse {
+      - requestId: String
+      - status: String
+      - progress: Integer
+      - message: String
+      - roadmapId: String
+      - error: String
+    }
+
+    class RoadmapVersionListResponse {
+      - versions: List<RoadmapVersionInfo>
+    }
+
+    class GoalHousingDto {
+      - id: String
+      - name: String
+      - moveInDate: String
+      - price: Long
+    }
+
+    class RoadmapStageDto {
+      - stageNumber: Integer
+      - stageName: String
+      - moveInDate: String
+      - duration: Integer
+      - housingCharacteristics: HousingCharacteristicsDto
+      - financialGoals: FinancialGoalsDto
+      - strategy: String
+      - tips: List<String>
+    }
+
+    class HousingCharacteristicsDto {
+      - estimatedPrice: Long
+      - location: String
+      - type: String
+      - features: List<String>
+    }
+
+    class FinancialGoalsDto {
+      - targetSavings: Long
+      - monthlySavings: Long
+      - loanAmount: Long
+      - loanProduct: String
+    }
+
+    class ExecutionGuideDto {
+      - monthlySavingsPlan: List<MonthlySavingsPlanDto>
+      - warnings: List<String>
+      - tips: List<String>
+    }
+
+    class MonthlySavingsPlanDto {
+      - period: String
+      - amount: Long
+      - purpose: String
+    }
+  }
+
+  ' ============================================
+  ' External Client Layer
+  ' ============================================
+  package "client" {
+
+    interface HousingClient <<External>> {
+      + getFinalHousing(userId: String): FinalHousing
+      + getHousingDetails(housingId: String): FinalHousing
+    }
+
+    interface UserClient <<External>> {
+      + getUserProfile(userId: String): UserProfile
+    }
+
+    interface AssetClient <<External>> {
+      + getAssetSummary(userId: String): AssetSummary
+    }
+
+    interface CalculatorClient <<External>> {
+      + getCalculationResult(housingId: String): CalculationResult
+    }
+
+    interface LlmClient <<External>> {
+      + generateRoadmap(inputData: RoadmapInputData): RoadmapAIResponse
+    }
+
+    class CircuitBreaker {
+      - failureThreshold: Integer
+      - timeout: Long
+      - state: CircuitState
+      --
+      + execute(callable: Callable): Object
+      + recordSuccess(): void
+      + recordFailure(): void
+      + isOpen(): boolean
+    }
+
+    enum CircuitState {
+      CLOSED
+      OPEN
+      HALF_OPEN
+    }
+  }
+
+  ' ============================================
+  ' Message Layer
+  ' ============================================
+  package "message" {
+
+    class RoadmapGenerationMessage {
+      - taskId: String
+      - userId: String
+      - finalHousingId: String
+      - timestamp: LocalDateTime
+    }
+
+    class RoadmapInputData {
+      - userProfile: UserProfile
+      - assetSummary: AssetSummary
+      - finalHousing: FinalHousing
+      - calculationResult: CalculationResult
+      - lifecycleEvents: List<LifecycleEvent>
+    }
+
+    class RoadmapAIResponse {
+      - stages: List<StageData>
+      - executionGuide: String
+    }
+
+    class StageData {
+      - stageNumber: Integer
+      - stageName: String
+      - targetDate: String
+      - housingType: String
+      - targetPrice: Long
+      - savingsGoal: Long
+      - monthlyTarget: Long
+      - reason: String
+    }
+  }
+
+  ' ============================================
+  ' Exception Layer
+  ' ============================================
+  package "exception" {
+
+    class ValidationException extends RuntimeException {
+      - code: String
+      - message: String
+    }
+
+    class EntityNotFoundException extends RuntimeException {
+      - code: String
+      - message: String
+    }
+
+    class ConflictException extends RuntimeException {
+      - code: String
+      - message: String
+      - taskId: String
+    }
+
+    class ServiceUnavailableException extends RuntimeException {
+      - code: String
+      - message: String
+    }
+
+    class UnauthorizedException extends RuntimeException {
+      - code: String
+      - message: String
+    }
+  }
+}
+
+' ============================================
+' Relationships
+' ============================================
+
+' Controller -> Service
+LifecycleEventController --> LifecycleEventService
+RoadmapController --> RoadmapService
+RoadmapController --> SseService
+
+' Service -> Repository
+LifecycleEventService --> LifecycleEventRepository
+RoadmapService --> RoadmapRepository
+RoadmapService --> RoadmapTaskRepository
+RoadmapService --> LifecycleEventRepository
+RoadmapWorker --> RoadmapTaskRepository
+RoadmapWorker --> RoadmapRepository
+RoadmapWorker --> LifecycleEventRepository
+
+' Service -> External Client
+RoadmapService --> HousingClient
+RoadmapService --> MessagePublisher
+RoadmapWorker --> UserClient
+RoadmapWorker --> AssetClient
+RoadmapWorker --> HousingClient
+RoadmapWorker --> CalculatorClient
+RoadmapWorker --> LlmClient
+RoadmapWorker --> CircuitBreaker
+RoadmapWorker --> SseService
+
+' Service -> Domain
+LifecycleEventService ..> LifecycleEvent
+RoadmapService ..> Roadmap
+RoadmapService ..> RoadmapTask
+RoadmapWorker ..> Roadmap
+RoadmapWorker ..> RoadmapStage
+RoadmapWorker ..> ExecutionGuide
+
+' Domain relationships
+Roadmap "1" *-- "many" RoadmapStage
+RoadmapStage *-- "1" HousingCharacteristics
+RoadmapStage *-- "1" FinancialGoals
+ExecutionGuide "1" *-- "many" MonthlySavingsPlan
+LifecycleEvent --> EventType
+Roadmap --> RoadmapStatus
+RoadmapTask --> TaskStatus
+
+' DTO -> Domain
+LifecycleEventRequest ..> LifecycleEvent
+LifecycleEventResponse ..> LifecycleEvent
+RoadmapResponse ..> Roadmap
+
+@enduml

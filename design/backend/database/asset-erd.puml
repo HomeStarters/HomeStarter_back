@@ -1,0 +1,98 @@
+@startuml asset-erd
+!theme mono
+
+' ============================================
+' Asset Service ERD
+' ============================================
+
+entity "assets" as assets {
+  * asset_id : BIGSERIAL <<PK>>
+  --
+  * user_id : VARCHAR(100)
+  * owner_type : VARCHAR(20)
+  total_assets : DECIMAL(15,0)
+  total_liabilities : DECIMAL(15,0)
+  net_assets : DECIMAL(15,0)
+  monthly_income : DECIMAL(12,0)
+  monthly_expenses : DECIMAL(12,0)
+  monthly_available_funds : DECIMAL(12,0)
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+  --
+  UNIQUE(user_id, owner_type)
+}
+
+entity "asset_items" as asset_items {
+  * asset_item_id : BIGSERIAL <<PK>>
+  --
+  * asset_id : BIGINT <<FK>>
+  * asset_name : VARCHAR(200)
+  * amount : DECIMAL(15,0)
+  * created_at : TIMESTAMP
+}
+
+entity "loan_items" as loan_items {
+  * loan_item_id : BIGSERIAL <<PK>>
+  --
+  * asset_id : BIGINT <<FK>>
+  * loan_name : VARCHAR(200)
+  * amount : DECIMAL(15,0)
+  * created_at : TIMESTAMP
+}
+
+entity "income_items" as income_items {
+  * income_item_id : BIGSERIAL <<PK>>
+  --
+  * asset_id : BIGINT <<FK>>
+  * income_name : VARCHAR(200)
+  * amount : DECIMAL(12,0)
+  * created_at : TIMESTAMP
+}
+
+entity "expense_items" as expense_items {
+  * expense_item_id : BIGSERIAL <<PK>>
+  --
+  * asset_id : BIGINT <<FK>>
+  * expense_name : VARCHAR(200)
+  * amount : DECIMAL(12,0)
+  * created_at : TIMESTAMP
+}
+
+' Relationships
+assets ||--o{ asset_items : "has"
+assets ||--o{ loan_items : "has"
+assets ||--o{ income_items : "has"
+assets ||--o{ expense_items : "has"
+
+note right of assets
+  자산 관리 부모 테이블
+  - user_id + owner_type 조합으로 유일성 보장
+  - 집계 컬럼: 순자산, 월간 가용자금 등
+  - 본인/배우자 구분 (SELF/SPOUSE)
+end note
+
+note bottom of asset_items
+  자산 항목 (1:N)
+  - 예금, 주식, 부동산 등
+  - CASCADE DELETE
+end note
+
+note bottom of loan_items
+  대출 항목 (1:N)
+  - 주택담보대출, 신용대출 등
+  - CASCADE DELETE
+end note
+
+note bottom of income_items
+  소득 항목 (1:N)
+  - 급여, 사업소득 등
+  - CASCADE DELETE
+end note
+
+note bottom of expense_items
+  지출 항목 (1:N)
+  - 생활비, 대출상환 등
+  - CASCADE DELETE
+end note
+
+@enduml

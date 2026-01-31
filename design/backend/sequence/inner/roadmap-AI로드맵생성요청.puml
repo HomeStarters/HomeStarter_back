@@ -1,0 +1,185 @@
+@startuml roadmap-AI로드맵생성요청
+!theme mono
+
+title Roadmap Service - AI 로드맵 생성 요청 내부 시퀀스 (비동기)
+
+participant "RoadmapController" as Ctrl
+participant "RoadmapService" as Svc
+participant "HousingClient<<E>>" as HousingClient
+participant "TaskRepository" as TaskRepo
+participant "EventRepository" as EventRepo
+participant "MessagePublisher" as Publisher
+database "Roadmap DB" as DB
+queue "Message Queue" as MQ
+participant "SSEEmitter" as SSE
+
+== AI 로드맵 생성 요청 ==
+
+-> Ctrl: POST /roadmap/generate
+activate Ctrl
+
+Ctrl -> Ctrl: JWT에서 userId 추출
+
+Ctrl -> Svc: generateRoadmap(userId)
+activate Svc
+
+Svc -> Svc: 필수 조건 검증 시작
+note right of Svc
+  검증 항목:
+  1. 최종목표 주택 선택됨
+  2. 생애주기 이벤트 1개 이상
+end note
+
+Svc -> HousingClient: 최종목표 주택 확인
+activate HousingClient
+note right of HousingClient
+  Circuit Breaker 적용:
+  Housing 서비스 장애 시
+  503 Service Unavailable
+end note
+
+HousingClient -> HousingClient: GET /housings/final?userId={userId}
+HousingClient --> Svc: FinalHousing 또는 null
+deactivate HousingClient
+
+alt 최종목표 주택 없음
+    Svc --> Ctrl: ValidationException
+    Ctrl --> : 400 Bad Request\n"최종목표 주택을 먼저 선택하세요"
+else 최종목표 주택 존재
+    Svc -> EventRepo: 생애주기 이벤트 개수 조회
+    activate EventRepo
+    EventRepo -> DB: SELECT COUNT(*)\nFROM lifecycle_events\nWHERE user_id = ?
+    DB --> EventRepo: 이벤트 개수
+    EventRepo --> Svc: count
+    deactivate EventRepo
+
+    alt 생애주기 이벤트 없음
+        Svc --> Ctrl: ValidationException
+        Ctrl --> : 400 Bad Request\n"생애주기 이벤트를 먼저 등록하세요"
+    else 필수 조건 충족
+        Svc -> TaskRepo: 기존 진행 중 작업 확인
+        activate TaskRepo
+        TaskRepo -> DB: SELECT * FROM roadmap_tasks\nWHERE user_id = ?\nAND status IN ('PENDING', 'PROCESSING')
+        DB --> TaskRepo: 진행 중 작업 또는 null
+        TaskRepo --> Svc: existingTask 또는 null
+        deactivate TaskRepo
+
+        alt 이미 진행 중인 작업 존재
+            Svc --> Ctrl: ConflictException
+            Ctrl --> : 409 Conflict\n{taskId, message: "이미 생성 중입니다"}
+        else 새 작업 생성 가능
+            Svc -> TaskRepo: 작업 생성
+            activate TaskRepo
+            TaskRepo -> DB: INSERT INTO roadmap_tasks\n(user_id, status, progress,\n created_at)
+            note right of DB
+              초기 상태:
+              - status: PENDING
+              - progress: 0
+            end note
+            DB --> TaskRepo: taskId 생성
+            TaskRepo --> Svc: RoadmapTask
+            deactivate TaskRepo
+
+            Svc -> Publisher: 로드맵 생성 작업 발행
+            activate Publisher
+
+            Publisher -> MQ: PUBLISH 작업 메시지
+            activate MQ
+            note right of MQ
+              메시지 페이로드:
+              {
+                taskId: "uuid",
+                userId: "uuid",
+                finalHousingId: "uuid",
+                timestamp: "2025-01-15T10:00:00Z"
+              }
+
+              라우팅 키: roadmap.generate
+              큐: roadmap-generation-queue
+            end note
+            MQ --> Publisher: 발행 완료
+            deactivate MQ
+
+            Publisher --> Svc: 발행 완료
+            deactivate Publisher
+
+            Svc -> SSE: SSE Emitter 생성 및 등록
+            activate SSE
+            note right of SSE
+              SSE 스트림 설정:
+              - 타임아웃: 10분
+              - 하트비트: 30초
+              - 재연결 허용
+            end note
+            SSE --> Svc: SseEmitter 객체
+            deactivate SSE
+
+            Svc -> Svc: SSE Emitter를 메모리에 저장
+            note right of Svc
+              ConcurrentHashMap에 저장:
+              key: taskId
+              value: SseEmitter
+            end note
+
+            Svc --> Ctrl: TaskResponse
+            deactivate Svc
+            note right of Ctrl
+              {
+                taskId: "uuid",
+                status: "PENDING",
+                progress: 0,
+                message: "작업이 시작되었습니다"
+              }
+            end note
+
+            Ctrl --> : 202 Accepted\n{taskId, status: "PENDING"}
+            deactivate Ctrl
+
+            note over Ctrl
+              클라이언트는 즉시 응답 받음
+              (3초 이내)
+            end note
+        end
+    end
+end
+
+== SSE 스트림 연결 ==
+
+-> Ctrl: GET /roadmap/tasks/{taskId}/stream
+activate Ctrl
+
+Ctrl -> Svc: getTaskStream(taskId, userId)
+activate Svc
+
+Svc -> TaskRepo: 작업 조회 및 소유자 확인
+activate TaskRepo
+TaskRepo -> DB: SELECT * FROM roadmap_tasks\nWHERE id = ?\nAND user_id = ?
+DB --> TaskRepo: RoadmapTask 또는 null
+TaskRepo --> Svc: RoadmapTask 또는 null
+deactivate TaskRepo
+
+alt 작업 없음 또는 소유자 불일치
+    Svc --> Ctrl: UnauthorizedException
+    Ctrl --> : 403 Forbidden
+else 작업 존재
+    Svc -> Svc: SSE Emitter 조회
+    note right of Svc
+      메모리에서 taskId로
+      기존 Emitter 조회
+    end note
+
+    Svc --> Ctrl: SseEmitter
+    deactivate Svc
+
+    Ctrl --> : SSE 스트림 연결
+    deactivate Ctrl
+
+    note over Ctrl
+      SSE 스트림:
+      - progress: 0~100
+      - message: 진행 상황
+      - status: PENDING/PROCESSING/COMPLETED/FAILED
+    end note
+end
+
+@enduml

@@ -1,0 +1,115 @@
+@startuml 01-주거비용계산
+!theme mono
+
+title UF01: 주거 비용 계산 및 최적화
+
+actor "사용자\n(사회초년생/신혼부부)" as User
+participant "비용계산 시스템" as System
+participant "금융기관 API" as BankAPI
+participant "부동산 시세 API" as EstateAPI
+database "계산 결과 저장소" as DB
+
+== 이벤트: 주거 유형 선택 ==
+
+User -> System : **커맨드**: 주거 유형 선택하기\n데이터: 유형(월세/전세/매매)
+activate System
+System -> System : **이벤트**: 주거 유형 선택됨\n데이터: 선택된 유형
+note right
+  **Policy/Rule**
+  - 선택 가능 유형: 월세, 전세, 매매
+  - 다중 선택 가능 (비교 목적)
+end note
+
+== 이벤트: 기본 정보 입력 ==
+
+User -> System : **커맨드**: 기본 정보 입력하기\n데이터: 보증금, 월세, 매매가, 소득
+System -> System : **이벤트**: 기본 정보 입력됨\n데이터: 금액정보, 월소득
+
+alt 대출 필요 시
+    User -> System : **커맨드**: 대출 조건 설정하기\n데이터: 대출금액, 이자율, 상환기간
+    System -> BankAPI : 대출 이자율 조회
+    activate BankAPI
+    BankAPI --> System : 현재 이자율 정보
+    deactivate BankAPI
+    System -> System : **이벤트**: 대출 조건 입력됨\n데이터: 대출금액, 이자율, 상환기간
+    note right
+      **Policy/Rule**
+      - 대출 상환 기간: 최대 30년
+      - 이자율: 시장 금리 기준
+    end note
+end
+
+== 이벤트: 비용 계산 요청 ==
+
+User -> System : **커맨드**: 비용 계산 요청하기
+System -> EstateAPI : 지역별 시세 정보 조회
+activate EstateAPI
+EstateAPI --> System : 시세 데이터
+deactivate EstateAPI
+
+System -> System : **이벤트**: 총 비용 계산됨\n데이터: 월별총비용, 연간총비용
+note right
+  **계산 항목**
+  • 월세: 보증금 이자 + 월세
+  • 전세: 전세금 이자 (기회비용)
+  • 매매: 대출이자 + 관리비 + 재산세
+end note
+
+== 이벤트: 소득 대비 적정성 분석 ==
+
+System -> System : **이벤트**: 소득 대비 적정성 분석됨\n데이터: 소득대비비율, 적정성평가
+note right
+  **Policy/Rule**
+  - 소득 대비 주거비 30% 이하 권장
+  - 30-40%: 주의 필요
+  - 40% 초과: 재검토 권장
+end note
+
+alt 소득 대비 주거비 40% 초과
+    System -> User : ⚠️ 경고: 주거비 부담 과다
+    note right
+      **리스크 알림**
+      현재 소득으로는 부담이 큽니다.
+      다른 옵션을 검토해보세요.
+    end note
+end
+
+== 이벤트: 비교 결과 생성 ==
+
+System -> System : **이벤트**: 비교 결과 생성됨\n데이터: 유형별비교표, 장단점분석
+note right
+  **비교 분석 항목**
+  • 초기 비용 (보증금/계약금)
+  • 월 지출 비용
+  • 연간 총 비용
+  • 5년/10년 누적 비용
+  • 자산 형성 효과
+end note
+
+System --> User : 계산 결과 및 비교표 제공
+
+== 이벤트: 계산 결과 저장 ==
+
+User -> System : **커맨드**: 결과 저장하기
+System -> DB : 계산 결과 저장
+activate DB
+System -> System : **이벤트**: 계산 결과 저장됨\n데이터: 저장ID, 저장일시
+DB --> System : 저장 완료
+deactivate DB
+deactivate System
+
+System --> User : 저장 완료 (추후 조회 가능)
+
+note over User, DB
+  **주요 데이터 흐름**
+  • 입력: 주거유형, 금액정보, 소득, 대출조건
+  • 외부 연동: 금융기관 이자율, 부동산 시세
+  • 출력: 총비용, 적정성평가, 비교표
+  • 저장: 계산결과, 사용자선택이력
+
+  **다음 플로우 연결**
+  • UF02로 전달: 예산범위, 적정주거비
+  • UF03에서 참조: 재무분석 기준
+end note
+
+@enduml

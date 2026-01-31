@@ -1,0 +1,746 @@
+openapi: 3.0.0
+info:
+  title: Roadmap Service API
+  description: 장기주거 로드맵 설계 및 관리 서비스 API
+  version: 1.0.0
+  contact:
+    name: Roadmap Service Team
+
+servers:
+  - url: https://api.home-starter.com/roadmap/v1
+    description: Production server
+  - url: https://virtserver.swaggerhub.com/home-starter/roadmap/1.0.0
+    description: SwaggerHub Mock server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: LifecycleEvents
+    description: 생애주기 이벤트 관리
+  - name: Roadmap
+    description: 장기주거 로드맵
+
+paths:
+  /lifecycle-events:
+    post:
+      summary: 생애주기 이벤트 등록
+      description: 새로운 생애주기 이벤트를 등록합니다
+      operationId: createLifecycleEvent
+      x-user-story: UFR-ROAD-010
+      x-controller: LifecycleEventController
+      tags:
+        - LifecycleEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifecycleEventRequest'
+            example:
+              name: "첫 아이 출산"
+              eventType: "BIRTH"
+              eventDate: "2026-03"
+              housingCriteria: "학군 좋은 지역, 중대형 아파트, 3룸 이상"
+      responses:
+        '201':
+          description: 이벤트 등록 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEventResponse'
+              example:
+                id: "event-uuid-001"
+                userId: "user-uuid-001"
+                name: "첫 아이 출산"
+                eventType: "BIRTH"
+                eventDate: "2026-03"
+                housingCriteria: "학군 좋은 지역, 중대형 아파트, 3룸 이상"
+                createdAt: "2024-12-20T15:30:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: 생애주기 이벤트 목록 조회
+      description: 등록된 모든 생애주기 이벤트를 조회합니다 (날짜순 정렬)
+      operationId: getLifecycleEvents
+      x-user-story: UFR-ROAD-010
+      x-controller: LifecycleEventController
+      tags:
+        - LifecycleEvents
+      parameters:
+        - name: eventType
+          in: query
+          description: 이벤트 유형 필터
+          schema:
+            type: string
+            enum: [MARRIAGE, BIRTH, CHILD_EDUCATION, RETIREMENT, OTHER]
+      responses:
+        '200':
+          description: 이벤트 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LifecycleEventResponse'
+                  total:
+                    type: integer
+              example:
+                events:
+                  - id: "event-uuid-001"
+                    userId: "user-uuid-001"
+                    name: "결혼"
+                    eventType: "MARRIAGE"
+                    eventDate: "2025-06"
+                    housingCriteria: "신혼집, 출퇴근 편리, 소형"
+                    createdAt: "2024-12-20T15:30:00Z"
+                  - id: "event-uuid-002"
+                    userId: "user-uuid-001"
+                    name: "첫 아이 출산"
+                    eventType: "BIRTH"
+                    eventDate: "2026-03"
+                    housingCriteria: "학군 좋은 지역, 중대형 아파트"
+                    createdAt: "2024-12-20T15:35:00Z"
+                total: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /lifecycle-events/{id}:
+    get:
+      summary: 생애주기 이벤트 상세 조회
+      description: 특정 이벤트의 상세 정보를 조회합니다
+      operationId: getLifecycleEvent
+      x-user-story: UFR-ROAD-010
+      x-controller: LifecycleEventController
+      tags:
+        - LifecycleEvents
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 이벤트 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 이벤트 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: 생애주기 이벤트 수정
+      description: 이벤트 정보를 수정합니다
+      operationId: updateLifecycleEvent
+      x-user-story: UFR-ROAD-040
+      x-controller: LifecycleEventController
+      tags:
+        - LifecycleEvents
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 이벤트 ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifecycleEventRequest'
+      responses:
+        '200':
+          description: 이벤트 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: 생애주기 이벤트 삭제
+      description: 이벤트를 삭제합니다
+      operationId: deleteLifecycleEvent
+      x-user-story: UFR-ROAD-040
+      x-controller: LifecycleEventController
+      tags:
+        - LifecycleEvents
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 이벤트 ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 이벤트 삭제 성공
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /roadmaps:
+    post:
+      summary: 장기주거 로드맵 생성 요청
+      description: AI를 활용하여 장기주거 로드맵을 생성합니다 (비동기 처리)
+      operationId: createRoadmap
+      x-user-story: UFR-ROAD-020
+      x-controller: RoadmapController
+      tags:
+        - Roadmap
+      responses:
+        '202':
+          description: 로드맵 생성 요청 접수
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                    description: 로드맵 생성 요청 ID
+                  status:
+                    type: string
+                    enum: [PROCESSING]
+                    description: 처리 상태
+                  message:
+                    type: string
+                    description: 처리 상태 메시지
+                  estimatedCompletionTime:
+                    type: integer
+                    description: 예상 완료 시간 (초)
+              example:
+                requestId: "roadmap-request-uuid-001"
+                status: "PROCESSING"
+                message: "로드맵을 생성하고 있습니다"
+                estimatedCompletionTime: 30
+        '400':
+          description: 잘못된 요청 (최종목표 주택 미설정 등)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: "INVALID_REQUEST"
+                message: "최종목표 주택이 설정되지 않았습니다"
+                timestamp: "2024-12-20T15:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: 장기주거 로드맵 조회
+      description: 생성된 장기주거 로드맵을 조회합니다
+      operationId: getRoadmap
+      x-user-story: UFR-ROAD-030
+      x-controller: RoadmapController
+      tags:
+        - Roadmap
+      parameters:
+        - name: version
+          in: query
+          description: 로드맵 버전 (미지정 시 최신 버전)
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 로드맵 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoadmapResponse'
+              example:
+                id: "roadmap-uuid-001"
+                userId: "user-uuid-001"
+                version: 1
+                status: "COMPLETED"
+                goalHousing:
+                  id: "housing-uuid-001"
+                  name: "래미안 강남 퍼스티지"
+                  moveInDate: "2035-06"
+                  price: 1500000000
+                stages:
+                  - stageNumber: 1
+                    stageName: "신혼집"
+                    moveInDate: "2025-06"
+                    duration: 36
+                    housingCharacteristics:
+                      estimatedPrice: 600000000
+                      location: "직장 근처 역세권"
+                      type: "전용 59㎡"
+                      features:
+                        - "출퇴근 편리"
+                        - "신혼집 적합"
+                    financialGoals:
+                      targetSavings: 100000000
+                      monthlySavings: 2000000
+                      loanAmount: 400000000
+                      loanProduct: "신혼부부 특별대출"
+                    strategy: "전세로 시작하여 자금 마련"
+                    tips:
+                      - "결혼 자금으로 전세 보증금 마련"
+                      - "월 200만원 저축 목표"
+                  - stageNumber: 2
+                    stageName: "육아 단계"
+                    moveInDate: "2028-06"
+                    duration: 84
+                    housingCharacteristics:
+                      estimatedPrice: 900000000
+                      location: "학군 좋은 지역"
+                      type: "전용 84㎡"
+                      features:
+                        - "초등학교 도보 10분"
+                        - "어린이집 근처"
+                    financialGoals:
+                      targetSavings: 300000000
+                      monthlySavings: 3000000
+                      loanAmount: 600000000
+                      loanProduct: "일반주택담보대출"
+                    strategy: "1단계 전세 정리 후 매매"
+                    tips:
+                      - "전세 보증금 + 저축금으로 초기 자금"
+                      - "자녀 출산 후 주거환경 우선"
+                executionGuide:
+                  monthlySavingsPlan:
+                    - period: "2025-06 ~ 2028-05"
+                      amount: 2000000
+                      purpose: "1단계 → 2단계 전환 자금"
+                    - period: "2028-06 ~ 2035-05"
+                      amount: 3000000
+                      purpose: "2단계 → 최종목표 전환 자금"
+                  warnings:
+                    - "금리 변동에 따른 대출상환액 증가 가능성"
+                    - "자녀 교육비 증가 고려 필요"
+                  tips:
+                    - "1단계에서 월 저축 습관 형성이 중요"
+                    - "2단계 진입 전 자산 재평가 필수"
+                createdAt: "2024-12-20T16:00:00Z"
+                updatedAt: "2024-12-20T16:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: 로드맵이 생성되지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: "NOT_FOUND"
+                message: "생성된 로드맵이 없습니다"
+                timestamp: "2024-12-20T15:30:00Z"
+
+    put:
+      summary: 장기주거 로드맵 재설계
+      description: 변경된 정보를 반영하여 로드맵을 재설계합니다 (비동기 처리)
+      operationId: updateRoadmap
+      x-user-story: UFR-ROAD-040
+      x-controller: RoadmapController
+      tags:
+        - Roadmap
+      responses:
+        '202':
+          description: 로드맵 재설계 요청 접수
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [PROCESSING]
+                  message:
+                    type: string
+                  estimatedCompletionTime:
+                    type: integer
+              example:
+                requestId: "roadmap-request-uuid-002"
+                status: "PROCESSING"
+                message: "로드맵을 재설계하고 있습니다"
+                estimatedCompletionTime: 30
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /roadmaps/status/{requestId}:
+    get:
+      summary: 로드맵 생성/재설계 상태 조회
+      description: 비동기 로드맵 생성/재설계 요청의 처리 상태를 조회합니다
+      operationId: getRoadmapStatus
+      x-user-story: UFR-ROAD-020
+      x-controller: RoadmapController
+      tags:
+        - Roadmap
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          description: 로드맵 요청 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 상태 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [PROCESSING, COMPLETED, FAILED]
+                  progress:
+                    type: integer
+                    description: 진행률 (0-100)
+                  message:
+                    type: string
+                  roadmapId:
+                    type: string
+                    description: 완료 시 로드맵 ID (status=COMPLETED일 때만)
+                  error:
+                    type: string
+                    description: 실패 시 에러 메시지 (status=FAILED일 때만)
+              examples:
+                processing:
+                  value:
+                    requestId: "roadmap-request-uuid-001"
+                    status: "PROCESSING"
+                    progress: 60
+                    message: "AI가 로드맵을 분석하고 있습니다"
+                completed:
+                  value:
+                    requestId: "roadmap-request-uuid-001"
+                    status: "COMPLETED"
+                    progress: 100
+                    message: "로드맵 생성이 완료되었습니다"
+                    roadmapId: "roadmap-uuid-001"
+                failed:
+                  value:
+                    requestId: "roadmap-request-uuid-001"
+                    status: "FAILED"
+                    progress: 0
+                    message: "로드맵 생성에 실패했습니다"
+                    error: "AI 서비스 연결 실패"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /roadmaps/versions:
+    get:
+      summary: 로드맵 버전 이력 조회
+      description: 저장된 로드맵 버전 목록을 조회합니다 (최대 3개)
+      operationId: getRoadmapVersions
+      x-user-story: UFR-ROAD-040
+      x-controller: RoadmapController
+      tags:
+        - Roadmap
+      responses:
+        '200':
+          description: 버전 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                          format: date-time
+                        changeDescription:
+                          type: string
+              example:
+                versions:
+                  - version: 3
+                    createdAt: "2024-12-20T16:00:00Z"
+                    changeDescription: "최종목표 주택 변경"
+                  - version: 2
+                    createdAt: "2024-12-15T10:00:00Z"
+                    changeDescription: "생애주기 이벤트 추가 (자녀교육)"
+                  - version: 1
+                    createdAt: "2024-12-10T14:00:00Z"
+                    changeDescription: "최초 생성"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 토큰을 사용한 인증
+
+  schemas:
+    LifecycleEventRequest:
+      type: object
+      required:
+        - name
+        - eventType
+        - eventDate
+      properties:
+        name:
+          type: string
+          description: 이벤트 이름
+          maxLength: 100
+        eventType:
+          type: string
+          enum: [MARRIAGE, BIRTH, CHILD_EDUCATION, RETIREMENT, OTHER]
+          description: 이벤트 유형
+        eventDate:
+          type: string
+          format: yyyy-MM
+          description: 이벤트 예정일
+        housingCriteria:
+          type: string
+          description: 주택선택 고려기준
+          maxLength: 200
+
+    LifecycleEventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        eventType:
+          type: string
+          enum: [MARRIAGE, BIRTH, CHILD_EDUCATION, RETIREMENT, OTHER]
+        eventDate:
+          type: string
+          format: yyyy-MM
+        housingCriteria:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    GoalHousing:
+      type: object
+      description: 최종목표 주택 정보
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        moveInDate:
+          type: string
+          format: yyyy-MM
+        price:
+          type: integer
+          format: int64
+
+    HousingCharacteristics:
+      type: object
+      description: 주택 특징
+      properties:
+        estimatedPrice:
+          type: integer
+          format: int64
+          description: 예상 가격
+        location:
+          type: string
+          description: 위치 설명
+        type:
+          type: string
+          description: 주택 타입
+        features:
+          type: array
+          description: 주요 특징
+          items:
+            type: string
+
+    FinancialGoals:
+      type: object
+      description: 재무 목표
+      properties:
+        targetSavings:
+          type: integer
+          format: int64
+          description: 목표 저축액
+        monthlySavings:
+          type: integer
+          format: int64
+          description: 월 저축액
+        loanAmount:
+          type: integer
+          format: int64
+          description: 대출 금액
+        loanProduct:
+          type: string
+          description: 추천 대출상품
+
+    RoadmapStage:
+      type: object
+      description: 로드맵 단계
+      properties:
+        stageNumber:
+          type: integer
+          description: 단계 번호
+        stageName:
+          type: string
+          description: 단계명
+        moveInDate:
+          type: string
+          format: yyyy-MM
+          description: 입주 시기
+        duration:
+          type: integer
+          description: 거주 기간 (개월)
+        housingCharacteristics:
+          $ref: '#/components/schemas/HousingCharacteristics'
+        financialGoals:
+          $ref: '#/components/schemas/FinancialGoals'
+        strategy:
+          type: string
+          description: 실행 전략
+        tips:
+          type: array
+          description: 주의사항 및 팁
+          items:
+            type: string
+
+    MonthlySavingsPlan:
+      type: object
+      properties:
+        period:
+          type: string
+          description: 저축 기간
+        amount:
+          type: integer
+          format: int64
+          description: 월 저축액
+        purpose:
+          type: string
+          description: 저축 목적
+
+    ExecutionGuide:
+      type: object
+      description: 실행 가이드
+      properties:
+        monthlySavingsPlan:
+          type: array
+          description: 월별 저축 플랜
+          items:
+            $ref: '#/components/schemas/MonthlySavingsPlan'
+        warnings:
+          type: array
+          description: 주의사항
+          items:
+            type: string
+        tips:
+          type: array
+          description: 팁
+          items:
+            type: string
+
+    RoadmapResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 로드맵 ID
+        userId:
+          type: string
+          description: 사용자 ID
+        version:
+          type: integer
+          description: 로드맵 버전
+        status:
+          type: string
+          enum: [PROCESSING, COMPLETED, FAILED]
+          description: 로드맵 상태
+        goalHousing:
+          $ref: '#/components/schemas/GoalHousing'
+        stages:
+          type: array
+          description: 단계별 계획
+          items:
+            $ref: '#/components/schemas/RoadmapStage'
+        executionGuide:
+          $ref: '#/components/schemas/ExecutionGuide'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: 에러 코드
+        message:
+          type: string
+          description: 에러 메시지
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "INVALID_REQUEST"
+            message: "입력 데이터가 올바르지 않습니다"
+            timestamp: "2024-12-20T15:30:00Z"
+
+    Unauthorized:
+      description: 인증 실패
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "UNAUTHORIZED"
+            message: "인증이 필요합니다"
+            timestamp: "2024-12-20T15:30:00Z"
+
+    NotFound:
+      description: 리소스를 찾을 수 없음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "NOT_FOUND"
+            message: "리소스를 찾을 수 없습니다"
+            timestamp: "2024-12-20T15:30:00Z"

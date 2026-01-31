@@ -1,0 +1,431 @@
+@startuml
+!theme mono
+
+title Calculator 서비스 클래스 설계 (Layered Architecture)
+
+package "com.dwj.homestarter.calculator" {
+
+    ' ============================================
+    ' Controller Layer
+    ' ============================================
+    package "controller" {
+        class CalculatorController {
+            - expenseCalculatorService: ExpenseCalculatorService
+            + calculateHousingExpenses(request: HousingExpensesRequest): ResponseEntity<CalculationResultResponse>
+            + getCalculationResults(housingId: String, status: String, sortBy: String, sortOrder: String, page: int, size: int): ResponseEntity<CalculationResultListResponse>
+            + getCalculationResult(id: String): ResponseEntity<CalculationResultResponse>
+            + deleteCalculationResult(id: String): ResponseEntity<Void>
+        }
+    }
+
+    ' ============================================
+    ' DTO Layer
+    ' ============================================
+    package "dto" {
+        package "request" {
+            class HousingExpensesRequest {
+                + housingId: String
+                + loanProductId: String
+                + loanAmount: Long
+                + loanTerm: Integer
+                + validate(): void
+            }
+        }
+
+        package "response" {
+            class CalculationResultResponse {
+                + id: String
+                + userId: String
+                + housingId: String
+                + housingName: String
+                + loanProductId: String
+                + loanProductName: String
+                + calculatedAt: LocalDateTime
+                + financialStatus: FinancialStatusDto
+                + loanAnalysis: LoanAnalysisDto
+                + afterMoveIn: AfterMoveInDto
+                + status: String
+            }
+
+            class CalculationResultListResponse {
+                + results: List<CalculationResultListItem>
+                + page: Integer
+                + size: Integer
+                + total: Long
+            }
+
+            class CalculationResultListItem {
+                + id: String
+                + housingName: String
+                + loanProductName: String
+                + calculatedAt: LocalDateTime
+                + status: String
+                + availableFunds: Long
+            }
+
+            class FinancialStatusDto {
+                + currentAssets: Long
+                + estimatedAssets: Long
+                + loanRequired: Long
+            }
+
+            class LoanAnalysisDto {
+                + ltv: Double
+                + dti: Double
+                + dsr: Double
+                + ltvLimit: Double
+                + dtiLimit: Double
+                + dsrLimit: Double
+                + isEligible: Boolean
+                + ineligibilityReasons: List<String>
+                + monthlyPayment: Long
+            }
+
+            class AfterMoveInDto {
+                + assets: Long
+                + monthlyExpenses: Long
+                + monthlyIncome: Long
+                + availableFunds: Long
+            }
+        }
+
+        package "external" {
+            class UserProfileDto {
+                + userId: String
+                + birthDate: LocalDate
+                + gender: String
+                + residence: String
+                + workLocation: String
+            }
+
+            class AssetDto {
+                + userId: String
+                + totalAssets: Long
+                + totalLoans: Long
+                + monthlyIncome: Long
+                + monthlyExpenses: Long
+            }
+
+            class HousingDto {
+                + housingId: String
+                + name: String
+                + type: String
+                + price: Long
+                + moveInDate: LocalDate
+            }
+
+            class LoanProductDto {
+                + loanProductId: String
+                + name: String
+                + ltvLimit: Double
+                + dtiLimit: Double
+                + dsrLimit: Double
+                + interestRate: Double
+                + maxAmount: Long
+            }
+        }
+    }
+
+    ' ============================================
+    ' Service Layer
+    ' ============================================
+    package "service" {
+        interface ExpenseCalculatorService {
+            + calculateHousingExpenses(request: HousingExpensesRequest, userId: String): CalculationResultResponse
+            + getCalculationResults(userId: String, housingId: String, status: String, pageable: Pageable): CalculationResultListResponse
+            + getCalculationResult(id: String, userId: String): CalculationResultResponse
+            + deleteCalculationResult(id: String, userId: String): void
+        }
+
+        class ExpenseCalculatorServiceImpl {
+            - calculatorRepository: CalculatorRepository
+            - cacheService: CacheService
+            - userServiceClient: UserServiceClient
+            - assetServiceClient: AssetServiceClient
+            - housingServiceClient: HousingServiceClient
+            - loanServiceClient: LoanServiceClient
+            - calculatorDomain: CalculatorDomain
+            + calculateHousingExpenses(request: HousingExpensesRequest, userId: String): CalculationResultResponse
+            + getCalculationResults(userId: String, housingId: String, status: String, pageable: Pageable): CalculationResultListResponse
+            + getCalculationResult(id: String, userId: String): CalculationResultResponse
+            + deleteCalculationResult(id: String, userId: String): void
+            - generateCacheKey(userId: String, housingId: String, loanProductId: String): String
+            - fetchExternalData(userId: String, housingId: String, loanProductId: String): ExternalDataBundle
+            - mapToResponse(entity: CalculationResultEntity): CalculationResultResponse
+            - mapToListItem(entity: CalculationResultEntity): CalculationResultListItem
+        }
+
+        class CacheService {
+            - redisTemplate: RedisTemplate<String, Object>
+            + get(key: String): Optional<Object>
+            + set(key: String, value: Object, ttl: Duration): void
+            + delete(key: String): void
+            + deletePattern(pattern: String): Long
+        }
+
+        package "client" {
+            interface UserServiceClient {
+                + getUserProfile(userId: String): UserProfileDto
+            }
+
+            interface AssetServiceClient {
+                + getAssetInfo(userId: String): AssetDto
+            }
+
+            interface HousingServiceClient {
+                + getHousingInfo(housingId: String): HousingDto
+            }
+
+            interface LoanServiceClient {
+                + getLoanProduct(loanProductId: String): LoanProductDto
+            }
+        }
+
+        package "event" {
+            class AssetEventListener {
+                - cacheService: CacheService
+                - calculatorRepository: CalculatorRepository
+                + handleAssetUpdated(event: AssetUpdatedEvent): void
+                - invalidateCacheByUserId(userId: String): void
+            }
+
+            class HousingEventListener {
+                - cacheService: CacheService
+                - calculatorRepository: CalculatorRepository
+                + handleHousingUpdated(event: HousingUpdatedEvent): void
+                - invalidateCacheByHousingId(housingId: String): void
+            }
+
+            class AssetUpdatedEvent {
+                + userId: String
+                + assetId: String
+                + updateType: String
+                + timestamp: LocalDateTime
+            }
+
+            class HousingUpdatedEvent {
+                + housingId: String
+                + updateType: String
+                + timestamp: LocalDateTime
+            }
+        }
+    }
+
+    ' ============================================
+    ' Domain Layer
+    ' ============================================
+    package "domain" {
+        class CalculatorDomain {
+            + calculate(user: UserProfileDto, asset: AssetDto, housing: HousingDto, loan: LoanProductDto, loanAmount: Long, loanTerm: Integer): CalculationResult
+            - calculateEstimatedAssets(asset: AssetDto, housing: HousingDto): Long
+            - calculateLoanRequired(housing: HousingDto, estimatedAssets: Long): Long
+            - calculateLTV(loanRequired: Long, housingPrice: Long): Double
+            - calculateDTI(monthlyPayment: Long, monthlyIncome: Long): Double
+            - calculateDSR(monthlyPayment: Long, monthlyIncome: Long, existingLoanPayment: Long): Double
+            - calculateMonthlyPayment(loanAmount: Long, interestRate: Double, loanTerm: Integer): Long
+            - checkEligibility(ltv: Double, dti: Double, dsr: Double, loan: LoanProductDto, loanRequired: Long): EligibilityResult
+            - calculateAfterMoveIn(asset: AssetDto, housing: HousingDto, monthlyPayment: Long, estimatedAssets: Long, loanRequired: Long): AfterMoveInResult
+        }
+
+        class CalculationResult {
+            + estimatedAssets: Long
+            + loanRequired: Long
+            + ltv: Double
+            + dti: Double
+            + dsr: Double
+            + isEligible: Boolean
+            + ineligibilityReasons: List<String>
+            + monthlyPayment: Long
+            + afterMoveInAssets: Long
+            + afterMoveInMonthlyExpenses: Long
+            + afterMoveInMonthlyIncome: Long
+            + afterMoveInAvailableFunds: Long
+        }
+
+        class EligibilityResult {
+            + isEligible: Boolean
+            + reasons: List<String>
+        }
+
+        class AfterMoveInResult {
+            + assets: Long
+            + monthlyExpenses: Long
+            + monthlyIncome: Long
+            + availableFunds: Long
+        }
+
+        class ExternalDataBundle {
+            + user: UserProfileDto
+            + asset: AssetDto
+            + housing: HousingDto
+            + loan: LoanProductDto
+        }
+    }
+
+    ' ============================================
+    ' Repository Layer
+    ' ============================================
+    package "repository" {
+        package "jpa" {
+            interface CalculatorRepository {
+                + save(entity: CalculationResultEntity): CalculationResultEntity
+                + findById(id: String): Optional<CalculationResultEntity>
+                + findByUserId(userId: String, pageable: Pageable): Page<CalculationResultEntity>
+                + findByUserIdAndHousingId(userId: String, housingId: String, pageable: Pageable): Page<CalculationResultEntity>
+                + findByUserIdAndStatus(userId: String, status: String, pageable: Pageable): Page<CalculationResultEntity>
+                + findByIdAndUserId(id: String, userId: String): Optional<CalculationResultEntity>
+                + findUserIdsByHousingId(housingId: String): List<String>
+                + deleteById(id: String): void
+            }
+        }
+
+        package "entity" {
+            class CalculationResultEntity {
+                + id: String
+                + userId: String
+                + housingId: String
+                + housingName: String
+                + loanProductId: String
+                + loanProductName: String
+                + loanAmount: Long
+                + loanTerm: Integer
+                + currentAssets: Long
+                + estimatedAssets: Long
+                + loanRequired: Long
+                + ltv: Double
+                + dti: Double
+                + dsr: Double
+                + ltvLimit: Double
+                + dtiLimit: Double
+                + dsrLimit: Double
+                + isEligible: Boolean
+                + ineligibilityReasons: String
+                + monthlyPayment: Long
+                + afterMoveInAssets: Long
+                + afterMoveInMonthlyExpenses: Long
+                + afterMoveInMonthlyIncome: Long
+                + afterMoveInAvailableFunds: Long
+                + status: String
+                + calculatedAt: LocalDateTime
+                + createdAt: LocalDateTime
+                + updatedAt: LocalDateTime
+            }
+        }
+    }
+
+    ' ============================================
+    ' Config Layer
+    ' ============================================
+    package "config" {
+        class RedisConfig {
+            + redisTemplate(): RedisTemplate<String, Object>
+            + redisConnectionFactory(): RedisConnectionFactory
+        }
+
+        class RabbitMQConfig {
+            + assetEventsQueue(): Queue
+            + housingEventsQueue(): Queue
+            + assetEventsBinding(): Binding
+            + housingEventsBinding(): Binding
+        }
+
+        class FeignClientConfig {
+            + userServiceClient(): UserServiceClient
+            + assetServiceClient(): AssetServiceClient
+            + housingServiceClient(): HousingServiceClient
+            + loanServiceClient(): LoanServiceClient
+        }
+    }
+}
+
+' ============================================
+' Relationships
+' ============================================
+
+' Controller Dependencies
+CalculatorController --> ExpenseCalculatorService
+CalculatorController --> HousingExpensesRequest
+CalculatorController --> CalculationResultResponse
+CalculatorController --> CalculationResultListResponse
+
+' Service Dependencies
+ExpenseCalculatorServiceImpl ..|> ExpenseCalculatorService
+ExpenseCalculatorServiceImpl --> CalculatorRepository
+ExpenseCalculatorServiceImpl --> CacheService
+ExpenseCalculatorServiceImpl --> UserServiceClient
+ExpenseCalculatorServiceImpl --> AssetServiceClient
+ExpenseCalculatorServiceImpl --> HousingServiceClient
+ExpenseCalculatorServiceImpl --> LoanServiceClient
+ExpenseCalculatorServiceImpl --> CalculatorDomain
+ExpenseCalculatorServiceImpl --> CalculationResultEntity
+ExpenseCalculatorServiceImpl --> ExternalDataBundle
+
+' Event Listener Dependencies
+AssetEventListener --> CacheService
+AssetEventListener --> CalculatorRepository
+AssetEventListener --> AssetUpdatedEvent
+HousingEventListener --> CacheService
+HousingEventListener --> CalculatorRepository
+HousingEventListener --> HousingUpdatedEvent
+
+' Domain Dependencies
+CalculatorDomain --> UserProfileDto
+CalculatorDomain --> AssetDto
+CalculatorDomain --> HousingDto
+CalculatorDomain --> LoanProductDto
+CalculatorDomain --> CalculationResult
+CalculatorDomain --> EligibilityResult
+CalculatorDomain --> AfterMoveInResult
+
+' Repository Dependencies
+CalculatorRepository --> CalculationResultEntity
+
+' DTO Relationships
+CalculationResultResponse --> FinancialStatusDto
+CalculationResultResponse --> LoanAnalysisDto
+CalculationResultResponse --> AfterMoveInDto
+CalculationResultListResponse --> CalculationResultListItem
+ExternalDataBundle --> UserProfileDto
+ExternalDataBundle --> AssetDto
+ExternalDataBundle --> HousingDto
+ExternalDataBundle --> LoanProductDto
+
+note right of CalculatorController
+    **Controller Layer**
+    - REST API 엔드포인트 처리
+    - 요청 검증 및 응답 생성
+    - HTTP 상태 코드 관리
+end note
+
+note right of ExpenseCalculatorServiceImpl
+    **Service Layer**
+    - 비즈니스 로직 조율
+    - 캐시 전략 구현
+    - 외부 서비스 호출 조율
+    - 트랜잭션 관리
+end note
+
+note right of CalculatorDomain
+    **Domain Layer**
+    - 핵심 재무 계산 로직
+    - LTV/DTI/DSR 계산
+    - 대출 적격성 판단
+    - 비즈니스 규칙 캡슐화
+end note
+
+note right of CalculatorRepository
+    **Repository Layer**
+    - 데이터 영속성 관리
+    - CRUD 작업
+    - 쿼리 메소드 정의
+end note
+
+note bottom of CacheService
+    **캐시 전략**
+    - Cache-Aside 패턴
+    - TTL: 1시간 (계산 결과)
+    - TTL: 5분 (목록)
+    - 이벤트 기반 무효화
+end note
+
+@enduml

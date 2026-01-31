@@ -1,0 +1,121 @@
+@startuml housing-최종목표주택선택
+!theme mono
+
+title Housing Service - 최종목표 주택 선택 내부 시퀀스 (UFR-HOUS-050)
+
+participant "HousingController" as HC
+participant "HousingService" as HS
+participant "HousingRepository" as HR
+database "Redis Cache<<E>>" as Cache
+participant "EventPublisher" as EP
+queue "Message Queue<<E>>" as MQ
+
+== 최종목표 주택 선택 ==
+
+-> HC: PATCH /housings/{housingId}/set-final
+activate HC
+
+HC -> HC: JWT에서 userId 추출
+
+HC -> HS: 최종목표 설정 요청\n(housingId, userId)
+activate HS
+
+HS -> HR: 주택 조회 및 소유자 확인
+activate HR
+HR -> HR: SELECT * FROM housing\nWHERE id = ?\nAND user_id = ?
+note right of HR
+  소유자 검증:
+  user_id 불일치 시 설정 불가
+end note
+
+alt 주택 없음 또는 소유자 불일치
+    HR --> HS: null
+    deactivate HR
+    HS --> HC: UnauthorizedException
+    HC --> : 403 Forbidden\n"권한이 없습니다"
+else 소유자 일치
+    HR --> HS: Housing 엔티티
+    deactivate HR
+
+    HS -> HS: 트랜잭션 시작
+
+    HS -> HR: 기존 최종목표 주택 해제
+    activate HR
+    note right of HR
+      동일 사용자의 모든 주택에서
+      최종목표 플래그 해제
+    end note
+
+    HR -> HR: UPDATE housing\nSET is_final = false,\n    updated_at = NOW()\nWHERE user_id = ?\nAND is_final = true
+    note right of HR
+      기존에 최종목표로 설정된
+      주택이 있다면 해제
+    end note
+    HR --> HS: 해제 완료
+    deactivate HR
+
+    HS -> HR: 선택한 주택을 최종목표로 설정
+    activate HR
+    HR -> HR: UPDATE housing\nSET is_final = true,\n    updated_at = NOW()\nWHERE id = ?
+    HR --> HS: 설정 완료
+    deactivate HR
+
+    HS -> HS: 트랜잭션 커밋
+
+    HS -> Cache: 캐시 무효화
+    activate Cache
+    Cache -> Cache: DEL housing:detail:{housingId}
+    Cache -> Cache: DEL housing:list:{userId}:*
+    Cache -> Cache: DEL housing:final:{userId}
+    Cache --> HS: 캐시 삭제 완료
+    deactivate Cache
+
+    HS -> EP: FinalHousingSelected 이벤트 생성
+    activate EP
+
+    EP -> MQ: 이벤트 발행
+    activate MQ
+    note right of MQ
+      이벤트 페이로드:
+      {
+        "housingId": "uuid",
+        "userId": "uuid",
+        "selectedAt": "2025-01-15T10:00:00Z"
+      }
+
+      구독자:
+      - Roadmap 서비스
+        (로드맵 생성 필수 조건 충족 확인)
+      - Calculator 서비스
+        (최종목표 기준 계산 갱신)
+    end note
+    MQ --> EP: 발행 완료
+    deactivate MQ
+
+    EP --> HS: 이벤트 발행 완료
+    deactivate EP
+
+    HS -> HR: 최종목표 주택 조회
+    activate HR
+    HR --> HS: Housing 엔티티 (isFinal=true)
+    deactivate HR
+
+    HS -> HS: HousingResponse DTO 변환
+    note right of HS
+      응답에 최종목표 플래그 포함:
+      {
+        "housingId": "uuid",
+        "name": "강남 아파트",
+        "isFinal": true,
+        ...
+      }
+    end note
+
+    HS --> HC: HousingResponse
+    deactivate HS
+
+    HC --> : 200 OK\n(최종목표 주택 정보)
+    deactivate HC
+end
+
+@enduml

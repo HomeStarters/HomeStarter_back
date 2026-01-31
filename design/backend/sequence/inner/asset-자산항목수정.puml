@@ -1,0 +1,160 @@
+@startuml asset-자산항목수정
+!theme mono
+
+title Asset Service - 자산 항목 수정 내부 시퀀스
+
+participant "AssetController" as Controller
+participant "AssetService" as Service
+participant "ValidationService" as Validation
+participant "AssetRepository" as Repository
+participant "EventPublisher" as EventPublisher
+database "Asset DB" as DB
+queue "Message Queue" as MQ
+
+== 자산 항목 수정 API ==
+
+-> Controller: PUT /assets/items/{itemId}\n{name, amount}
+activate Controller
+
+Controller -> Controller: 요청 데이터 수신
+note right of Controller
+  {
+    name: "주식",
+    amount: 15000000
+  }
+end note
+
+Controller -> Controller: JWT에서 userId 추출
+
+Controller -> Validation: validateAssetItem(request)
+activate Validation
+
+Validation -> Validation: 필수 항목 검증
+note right of Validation
+  - name 길이 검증 (2~50자)
+  - amount 양수 검증
+end note
+
+Validation -> Repository: findById(itemId)
+activate Repository
+Repository -> DB: SELECT * FROM asset_items\nWHERE id = ?
+DB --> Repository: AssetItem 또는 null
+Repository --> Validation: AssetItem 또는 null
+deactivate Repository
+
+alt 항목 없음
+    Validation --> Controller: EntityNotFoundException
+    Controller --> : 404 Not Found\n"항목을 찾을 수 없습니다"
+else 항목 존재
+    Validation -> Validation: 소유자 검증\n(userId 일치 여부)
+
+    alt 소유자 불일치
+        Validation --> Controller: UnauthorizedException
+        Controller --> : 403 Forbidden\n"수정 권한이 없습니다"
+    else 소유자 일치
+        Validation -> Repository: checkDuplicateName\n(userId, ownerType, itemType, name, excludeItemId)
+        activate Repository
+        Repository -> DB: 동일 항목명 존재 확인\n(본인 제외)
+        DB --> Repository: 중복 여부
+        Repository --> Validation: isDuplicate
+        deactivate Repository
+
+        alt 중복된 항목명 존재
+            Validation --> Controller: ValidationException\n("중복된 항목명입니다")
+            Controller --> : 400 Bad Request
+        else 검증 통과
+            Validation --> Controller: 검증 성공
+            deactivate Validation
+
+            Controller -> Service: updateAssetItem(itemId, request)
+            activate Service
+
+            Service -> Repository: findById(itemId)
+            activate Repository
+            Repository -> DB: SELECT
+            DB --> Repository: 기존 AssetItem
+            Repository --> Service: AssetItem
+            deactivate Repository
+
+            Service -> Service: 이전 금액 저장\n(이벤트용)
+            note right of Service
+              previousAmount = item.getAmount()
+            end note
+
+            Service -> Repository: update(assetItem)
+            activate Repository
+            Repository -> DB: UPDATE asset_items\nSET name = ?,\n    amount = ?,\n    updated_at = NOW()\nWHERE id = ?
+            DB --> Repository: 업데이트 완료
+            Repository --> Service: AssetItem
+            deactivate Repository
+
+            Service -> Repository: calculateTotal(userId, ownerType, itemType)
+            activate Repository
+            Repository -> DB: SELECT SUM(amount)\nFROM asset_items\nWHERE user_id = ?\nAND owner_type = ?\nAND item_type = ?
+            note right of DB
+              카테고리별 총액 재계산
+            end note
+            DB --> Repository: 총액
+            Repository --> Service: totalAmount
+            deactivate Repository
+
+            Service -> Service: 재무 요약 정보 재계산
+            note right of Service
+              - 순자산 재계산
+              - 월 가용자금 재계산
+            end note
+
+            Service -> EventPublisher: publishAssetUpdated(event)
+            activate EventPublisher
+            note right of EventPublisher
+              Event: AssetUpdated
+              {
+                eventId: UUID.randomUUID(),
+                eventType: "ASSET_UPDATED",
+                timestamp: LocalDateTime.now(),
+                userId: userId,
+                changeType: "ITEM_MODIFIED",
+                ownerType: ownerType,
+                itemType: itemType,
+                itemId: itemId,
+                previousAmount: 10000000,
+                newAmount: 15000000,
+                summary: {
+                  totalNetAssets: 계산값,
+                  totalMonthlyIncome: 계산값,
+                  totalMonthlyExpense: 계산값,
+                  monthlyAvailableFunds: 계산값
+                }
+              }
+            end note
+
+            EventPublisher -> MQ: Publish AssetUpdated Event
+            activate MQ
+            MQ --> EventPublisher: 이벤트 발행 성공
+            deactivate MQ
+
+            EventPublisher --> Service: 발행 완료
+            deactivate EventPublisher
+
+            Service --> Controller: AssetItemResponse
+            deactivate Service
+            note right of Controller
+              {
+                id: "item-id",
+                name: "주식",
+                amount: 15000000,
+                totalAssets: 70000000,
+                summary: {
+                  totalNetAssets: 90000000,
+                  monthlyAvailableFunds: 3000000
+                }
+              }
+            end note
+
+            Controller --> : 200 OK
+            deactivate Controller
+        end
+    end
+end
+
+@enduml

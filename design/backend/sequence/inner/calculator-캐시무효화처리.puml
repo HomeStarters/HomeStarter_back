@@ -1,0 +1,294 @@
+@startuml
+!theme mono
+
+title Calculator 서비스 - 캐시무효화처리 (내부 시퀀스)
+
+participant "Message Queue<<E>>\n(RabbitMQ)" as MQ
+participant "AssetEvent\nListener" as AssetListener
+participant "HousingEvent\nListener" as HousingListener
+participant "CacheInvalidation\nService" as CacheSvc
+database "Redis Cache<<E>>" as Cache
+participant "Calculator\nRepository" as Repo
+database "Calculator DB" as DB
+participant "Logging\nService" as Logger
+
+== 시나리오 1: Asset 변경 이벤트 처리 ==
+
+note over MQ, Logger
+    Asset 서비스에서 자산정보 수정 시
+    AssetUpdated 이벤트 발행
+end note
+
+MQ ->> AssetListener: CONSUME AssetUpdated\n(queue: calculator.asset.events)
+activate AssetListener
+
+note right of AssetListener
+    이벤트 구독 설정:
+    - Queue: calculator.asset.events
+    - Exchange: asset.events
+    - Routing Key: asset.updated
+    - Auto-Ack: false (수동 확인)
+end note
+
+AssetListener -> AssetListener: 이벤트 파싱\n- userId\n- assetId\n- updateType\n- timestamp
+
+note right of AssetListener
+    updateType:
+    - ASSET_AMOUNT_CHANGED
+    - LOAN_AMOUNT_CHANGED
+    - MONTHLY_INCOME_CHANGED
+    - MONTHLY_EXPENSE_CHANGED
+end note
+
+AssetListener -> CacheSvc: invalidateCacheByUserId(userId)
+activate CacheSvc
+
+note right of CacheSvc
+    사용자별 캐시 무효화
+    모든 계산 결과 캐시 삭제
+end note
+
+== 사용자별 캐시 키 조회 및 삭제 ==
+CacheSvc -> Cache: KEYS calc:{userId}:*\n(패턴 매칭으로 모든 계산 캐시 조회)
+activate Cache
+Cache --> CacheSvc: List<String> cacheKeys\n(예: calc:user123:housing456:loan789)
+deactivate Cache
+
+loop 각 캐시 키
+    CacheSvc -> Cache: DEL {cacheKey}
+    activate Cache
+    Cache --> CacheSvc: 1 (삭제 성공)
+    deactivate Cache
+end
+
+note right of CacheSvc
+    삭제된 캐시 수 집계
+    로그 기록용
+end note
+
+== 목록 캐시 무효화 ==
+CacheSvc -> Cache: DEL calc:list:{userId}:*\n(모든 페이지 목록 캐시 삭제)
+activate Cache
+Cache --> CacheSvc: 삭제된 키 수
+deactivate Cache
+
+CacheSvc --> AssetListener: InvalidationResult\n(삭제된 캐시 수, 처리 시간)
+deactivate CacheSvc
+
+== 로깅 및 모니터링 ==
+AssetListener -> Logger: logCacheInvalidation(\neventType: "AssetUpdated",\nuserId: userId,\ncacheKeysDeleted: count,\nprocessingTime: duration)
+activate Logger
+Logger --> AssetListener: void
+deactivate Logger
+
+note right of Logger
+    로그 내용:
+    - 이벤트 유형 및 ID
+    - 무효화된 캐시 수
+    - 처리 시간
+    - 타임스탬프
+end note
+
+== 메시지 확인 (ACK) ==
+alt 처리 성공
+    AssetListener -> MQ: ACK 메시지 확인
+    note right of AssetListener
+        메시지 큐에서 제거
+        재처리 방지
+    end note
+else 처리 실패
+    AssetListener -> MQ: NACK 메시지 거부\n→ 재큐잉
+    note right of AssetListener
+        재시도 횟수 제한:
+        - 최대 3회 재시도
+        - Exponential Backoff
+        - 3회 실패 시 DLQ로 이동
+    end note
+end
+
+deactivate AssetListener
+
+== 시나리오 2: Housing 변경 이벤트 처리 ==
+
+note over MQ, Logger
+    Housing 서비스에서 주택정보 수정 시
+    HousingUpdated 이벤트 발행
+end note
+
+MQ ->> HousingListener: CONSUME HousingUpdated\n(queue: calculator.housing.events)
+activate HousingListener
+
+note right of HousingListener
+    이벤트 구독 설정:
+    - Queue: calculator.housing.events
+    - Exchange: housing.events
+    - Routing Key: housing.updated
+    - Auto-Ack: false
+end note
+
+HousingListener -> HousingListener: 이벤트 파싱\n- userId\n- housingId\n- updateType\n- timestamp
+
+note right of HousingListener
+    updateType:
+    - PRICE_CHANGED
+    - MOVE_IN_DATE_CHANGED
+    - TYPE_CHANGED
+end note
+
+HousingListener -> CacheSvc: invalidateCacheByHousingId(housingId)
+activate CacheSvc
+
+note right of CacheSvc
+    주택별 캐시 무효화
+    해당 주택 관련 모든 계산 결과 삭제
+end note
+
+== 주택별 캐시 키 조회 및 삭제 ==
+CacheSvc -> Cache: KEYS calc:*:{housingId}:*\n(패턴 매칭으로 주택 관련 캐시 조회)
+activate Cache
+Cache --> CacheSvc: List<String> cacheKeys
+deactivate Cache
+
+loop 각 캐시 키
+    CacheSvc -> Cache: DEL {cacheKey}
+    activate Cache
+    Cache --> CacheSvc: 1 (삭제 성공)
+    deactivate Cache
+end
+
+== 영향받는 사용자 식별 ==
+CacheSvc -> Repo: findUserIdsByHousingId(housingId)
+activate Repo
+
+Repo -> DB: SELECT DISTINCT user_id\nFROM calculation_results\nWHERE housing_id = {housingId}
+DB --> Repo: List<Long> userIds
+
+Repo --> CacheSvc: List<Long> affectedUserIds
+deactivate Repo
+
+note right of CacheSvc
+    영향받는 사용자들의
+    목록 캐시도 무효화
+end note
+
+loop 각 사용자 ID
+    CacheSvc -> Cache: DEL calc:list:{userId}:*
+    activate Cache
+    Cache --> CacheSvc: 삭제된 키 수
+    deactivate Cache
+end
+
+CacheSvc --> HousingListener: InvalidationResult
+deactivate CacheSvc
+
+== 로깅 및 모니터링 ==
+HousingListener -> Logger: logCacheInvalidation(\neventType: "HousingUpdated",\nhousingId: housingId,\naffectedUsers: userIds.size,\ncacheKeysDeleted: count,\nprocessingTime: duration)
+activate Logger
+Logger --> HousingListener: void
+deactivate Logger
+
+== 메시지 확인 ==
+alt 처리 성공
+    HousingListener -> MQ: ACK 메시지 확인
+else 처리 실패
+    HousingListener -> MQ: NACK 메시지 거부\n→ 재큐잉
+    note right of HousingListener
+        재시도 정책:
+        - 최대 3회
+        - 1초 → 2초 → 4초 대기
+        - DLQ 이동
+    end note
+end
+
+deactivate HousingListener
+
+== 시나리오 3: 캐시 무효화 실패 처리 ==
+
+MQ ->> AssetListener: CONSUME AssetUpdated
+activate AssetListener
+
+AssetListener -> CacheSvc: invalidateCacheByUserId(userId)
+activate CacheSvc
+
+CacheSvc -> Cache: KEYS calc:{userId}:*
+activate Cache
+
+alt Redis 연결 실패
+    Cache --> CacheSvc: ConnectionException
+    deactivate Cache
+
+    note right of CacheSvc
+        Redis 장애 시
+        재시도 메커니즘 작동
+    end note
+
+    CacheSvc -> CacheSvc: 재시도 로직 시작\n(최대 3회, Exponential Backoff)
+
+    loop 재시도 (최대 3회)
+        CacheSvc -> CacheSvc: Thread.sleep(2^attempt × 1000)
+
+        CacheSvc -> Cache: KEYS calc:{userId}:*
+        activate Cache
+
+        alt 재시도 성공
+            Cache --> CacheSvc: List<String> cacheKeys
+            deactivate Cache
+
+            loop 각 캐시 키
+                CacheSvc -> Cache: DEL {cacheKey}
+                activate Cache
+                Cache --> CacheSvc: 1
+                deactivate Cache
+            end
+
+            CacheSvc --> AssetListener: InvalidationResult (성공)
+
+            note right of CacheSvc
+                재시도 성공
+                정상 처리 완료
+            end note
+
+        else 재시도 실패
+            Cache --> CacheSvc: ConnectionException
+            deactivate Cache
+        end
+    end
+
+    alt 모든 재시도 실패
+        CacheSvc --> AssetListener: InvalidationResult (실패)
+        deactivate CacheSvc
+
+        AssetListener -> Logger: logError(\neventType: "CacheInvalidationFailed",\nuserId: userId,\nretryCount: 3,\nerror: exception.message)
+        activate Logger
+        Logger --> AssetListener: void
+        deactivate Logger
+
+        note right of AssetListener
+            메시지를 DLQ로 이동
+            관리자 알림 발송
+            수동 개입 필요
+        end note
+
+        AssetListener -> MQ: NACK with requeue=false\n→ Dead Letter Queue
+
+        AssetListener -> AssetListener: sendAdminAlert(\n"Cache invalidation failed after 3 retries",\neventId, userId)
+
+        deactivate AssetListener
+    end
+end
+
+note over MQ, Logger
+    **캐시 무효화 모니터링 지표**:
+
+    - 이벤트 처리 시간: 평균 < 100ms
+    - 캐시 무효화 성공률: > 99.9%
+    - 재시도 발생률: < 1%
+    - DLQ 이동률: < 0.1%
+
+    **알림 조건**:
+    - Redis 연결 실패 지속 (1분 이상)
+    - DLQ에 메시지 누적 (10개 이상)
+    - 캐시 무효화 실패율 급증 (> 5%)
+end note
+
+@enduml

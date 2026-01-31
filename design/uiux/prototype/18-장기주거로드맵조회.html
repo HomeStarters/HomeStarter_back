@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>장기주거 로드맵</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Timeline Section */
+        .timeline-section {
+            padding: var(--spacing-md);
+            background: var(--background);
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .timeline-wrapper {
+            min-width: max-content;
+            padding: var(--spacing-xl) 0;
+        }
+
+        .timeline-track {
+            position: relative;
+            display: flex;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) 0;
+        }
+
+        /* Current Marker */
+        .current-marker {
+            position: relative;
+            min-width: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: var(--spacing-lg);
+        }
+
+        .current-label {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .current-icon {
+            font-size: 24px;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .current-line {
+            width: 2px;
+            height: 160px;
+            background: var(--primary);
+        }
+
+        /* Stage Cards */
+        .stage-card {
+            min-width: 240px;
+            height: 180px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stage-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stage-card.active {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stage-icon {
+            font-size: 32px;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stage-name {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-2xs);
+        }
+
+        .stage-date {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stage-price {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+            margin-top: auto;
+        }
+
+        .stage-type {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Lifecycle Events */
+        .events-track {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: var(--spacing-md);
+            padding-left: 100px;
+        }
+
+        .event-marker {
+            min-width: 240px;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+        }
+
+        .event-icon {
+            font-size: 16px;
+        }
+
+        /* Guide Section */
+        .guide-section {
+            padding: var(--spacing-lg) var(--spacing-md);
+        }
+
+        .guide-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .guide-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .guide-item {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .guide-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .guide-value {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            margin-top: var(--spacing-xs);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease;
+        }
+
+        .progress-label {
+            font-size: var(--font-size-sm);
+            color: var(--success);
+            margin-top: var(--spacing-2xs);
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            box-shadow: var(--shadow-xl);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bottom-sheet.active {
+            transform: translateY(0);
+        }
+
+        .bottom-sheet-header {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .bottom-sheet-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .bottom-sheet-body {
+            padding: var(--spacing-md);
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .detail-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .detail-section-title {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-grid {
+            display: grid;
+            gap: var(--spacing-sm);
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .detail-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+        }
+
+        .detail-text {
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .backdrop.active {
+            display: block;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .action-buttons .btn {
+            flex: 1;
+        }
+
+        @media (min-width: 768px) {
+            .stage-card {
+                min-width: 280px;
+                height: 200px;
+            }
+
+            .event-marker {
+                min-width: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">장기주거 로드맵</h1>
+        <div class="header-actions"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Timeline Section -->
+            <div class="timeline-section">
+                <div class="timeline-wrapper">
+                    <div class="timeline-track">
+                        <!-- Lifecycle Events Track -->
+                        <div class="events-track" id="eventsTrack"></div>
+
+                        <!-- Current Marker -->
+                        <div class="current-marker">
+                            <div class="current-label">현재</div>
+                            <div class="current-icon">📍</div>
+                            <div class="current-line"></div>
+                        </div>
+
+                        <!-- Stage Cards -->
+                        <div id="stageCards"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guide Section -->
+            <div class="guide-section">
+                <div class="guide-card">
+                    <h2 class="guide-title">현재 실행가이드</h2>
+
+                    <div class="guide-item">
+                        <div class="guide-label">월별 저축 플랜</div>
+                        <div class="guide-value" id="monthlySavings">0원</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="savingsProgress" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-label" id="savingsLabel">목표 대비 0% 달성</div>
+                    </div>
+
+                    <div class="guide-item">
+                        <div class="guide-label">다음 단계까지</div>
+                        <div class="guide-value" id="timeRemaining">-</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="timeProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="button" class="btn btn-secondary" id="editRoadmapBtn">
+                    로드맵 수정
+                </button>
+                <button type="button" class="btn btn-secondary" id="downloadBtn">
+                    PDF 다운로드
+                </button>
+                <button type="button" class="btn btn-primary" id="shareBtn">
+                    공유하기
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Backdrop -->
+    <div class="backdrop" id="backdrop"></div>
+
+    <!-- Bottom Sheet -->
+    <div class="bottom-sheet" id="detailSheet">
+        <div class="bottom-sheet-header">
+            <h2 class="bottom-sheet-title" id="sheetTitle">단계 상세</h2>
+            <button class="modal-close" id="closeSheet" aria-label="닫기" style="width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: var(--text-secondary); font-size: 24px;">&times;</button>
+        </div>
+        <div class="bottom-sheet-body" id="sheetBody">
+            <!-- Content will be rendered here -->
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // Sample roadmap data
+        const sampleRoadmap = {
+            stages: [
+                {
+                    id: 1,
+                    name: '1단계 - 신혼집',
+                    icon: '🏠',
+                    date: '2026-03',
+                    price: 300000000,
+                    type: '전세 60㎡',
+                    location: '서울 강남구',
+                    houseType: '아파트 60㎡',
+                    considerations: '신혼집, 출퇴근 편리, 소형',
+                    financialGoal: {
+                        needed: 300000000,
+                        savings: 100000000,
+                        loan: 200000000
+                    },
+                    strategy: {
+                        monthlySavings: 2500000,
+                        investment: '안정적인 예적금 위주로 자산 관리',
+                        caution: '대출 한도와 금리 변동성 주의'
+                    }
+                },
+                {
+                    id: 2,
+                    name: '2단계 - 자녀 양육집',
+                    icon: '👶',
+                    date: '2030-06',
+                    price: 500000000,
+                    type: '매매 84㎡',
+                    location: '서울 강남구',
+                    houseType: '아파트 84㎡',
+                    considerations: '학군 좋은 지역, 중대형',
+                    financialGoal: {
+                        needed: 500000000,
+                        savings: 250000000,
+                        loan: 250000000
+                    },
+                    strategy: {
+                        monthlySavings: 3000000,
+                        investment: '주택청약 및 적립식 펀드 병행',
+                        caution: '학군 지역 시세 상승률 모니터링 필요'
+                    }
+                },
+                {
+                    id: 3,
+                    name: '3단계 - 최종목표',
+                    icon: '🏡',
+                    date: '2035-12',
+                    price: 800000000,
+                    type: '매매 120㎡',
+                    location: '서울 강남구',
+                    houseType: '아파트 120㎡',
+                    considerations: '명문학군, 대형, 쾌적한 환경',
+                    financialGoal: {
+                        needed: 800000000,
+                        savings: 500000000,
+                        loan: 300000000
+                    },
+                    strategy: {
+                        monthlySavings: 4000000,
+                        investment: '기존 주택 매각 자금 활용 및 자산 재배분',
+                        caution: '대출 상환 능력 고려한 신중한 의사결정'
+                    }
+                }
+            ]
+        };
+
+        // Get lifecycle events
+        const lifecycleEvents = Storage.getItem('lifecycle_events') || [];
+
+        // Elements
+        const eventsTrack = document.getElementById('eventsTrack');
+        const stageCards = document.getElementById('stageCards');
+        const backdrop = document.getElementById('backdrop');
+        const detailSheet = document.getElementById('detailSheet');
+        const sheetTitle = document.getElementById('sheetTitle');
+        const sheetBody = document.getElementById('sheetBody');
+        const closeSheet = document.getElementById('closeSheet');
+        const editRoadmapBtn = document.getElementById('editRoadmapBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const shareBtn = document.getElementById('shareBtn');
+
+        let selectedStage = null;
+
+        // Render lifecycle events
+        function renderEvents() {
+            if (lifecycleEvents.length === 0) {
+                eventsTrack.style.display = 'none';
+                return;
+            }
+
+            eventsTrack.innerHTML = lifecycleEvents.map(event => {
+                const icons = {
+                    '결혼': '💒',
+                    '출산': '👶',
+                    '자녀교육': '🎓',
+                    '은퇴': '🌴',
+                    '기타': '📌'
+                };
+
+                return `
+                    <div class="event-marker">
+                        <span class="event-icon">${icons[event.type] || '📌'}</span>
+                        <span>${event.name}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render stages
+        function renderStages() {
+            stageCards.innerHTML = sampleRoadmap.stages.map((stage, index) => {
+                const [year, month] = stage.date.split('-');
+
+                return `
+                    <div class="stage-card" data-stage="${stage.id}" onclick="selectStage(${stage.id})">
+                        <div class="stage-icon">${stage.icon}</div>
+                        <div class="stage-name">${stage.name}</div>
+                        <div class="stage-date">${year}년 ${parseInt(month)}월</div>
+                        <div class="stage-price">${Utils.formatCurrency(stage.price)}원</div>
+                        <div class="stage-type">${stage.type}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Select stage
+        window.selectStage = function(stageId) {
+            selectedStage = sampleRoadmap.stages.find(s => s.id === stageId);
+            if (!selectedStage) return;
+
+            // Update active state
+            document.querySelectorAll('.stage-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelector(`[data-stage="${stageId}"]`).classList.add('active');
+
+            // Render detail
+            sheetTitle.textContent = selectedStage.name;
+            sheetBody.innerHTML = `
+                <div class="detail-section">
+                    <h3 class="detail-section-title">추천 주택 특징</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">위치</span>
+                            <span class="detail-value">${selectedStage.location}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">타입</span>
+                            <span class="detail-value">${selectedStage.houseType}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">예상 가격</span>
+                            <span class="detail-value">${Utils.formatCurrency(selectedStage.price)}원</span>
+                        </div>
+                        <div style="margin-top: var(--spacing-sm);">
+                            <div class="detail-label" style="margin-bottom: var(--spacing-xs);">주요 고려사항</div>
+                            <div class="detail-text">${selectedStage.considerations}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="detail-section-title">재무 목표</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">필요 자금</span>
+                            <span class="detail-value">${Utils.formatCurrency(selectedStage.financialGoal.needed)}원</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">저축 목표</span>
+                            <span class="detail-value">${Utils.formatCurrency(selectedStage.financialGoal.savings)}원</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">예상 대출</span>
+                            <span class="detail-value">${Utils.formatCurrency(selectedStage.financialGoal.loan)}원</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="detail-section-title">실행 전략</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">월별 저축액</span>
+                            <span class="detail-value">${Utils.formatCurrency(selectedStage.strategy.monthlySavings)}원</span>
+                        </div>
+                        <div style="margin-top: var(--spacing-sm);">
+                            <div class="detail-label" style="margin-bottom: var(--spacing-xs);">투자 방향</div>
+                            <div class="detail-text">${selectedStage.strategy.investment}</div>
+                        </div>
+                        <div style="margin-top: var(--spacing-sm);">
+                            <div class="detail-label" style="margin-bottom: var(--spacing-xs);">주의사항</div>
+                            <div class="detail-text">${selectedStage.strategy.caution}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            backdrop.classList.add('active');
+            detailSheet.classList.add('active');
+        };
+
+        // Close sheet
+        function closeSheetFn() {
+            backdrop.classList.remove('active');
+            detailSheet.classList.remove('active');
+        }
+
+        closeSheet.addEventListener('click', closeSheetFn);
+        backdrop.addEventListener('click', closeSheetFn);
+
+        // Update guide section
+        function updateGuide() {
+            const firstStage = sampleRoadmap.stages[0];
+            document.getElementById('monthlySavings').textContent =
+                Utils.formatCurrency(firstStage.strategy.monthlySavings) + '원';
+
+            // Simulate progress (60% for demo)
+            document.getElementById('savingsProgress').style.width = '60%';
+            document.getElementById('savingsLabel').textContent = '목표 대비 60% 달성';
+
+            // Calculate time remaining
+            const targetDate = new Date(firstStage.date + '-01');
+            const now = new Date();
+            const diffTime = targetDate - now;
+            const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+
+            document.getElementById('timeRemaining').textContent = `${diffMonths}개월 남음`;
+            document.getElementById('timeProgress').style.width = '40%';
+        }
+
+        // Action buttons
+        editRoadmapBtn.addEventListener('click', () => {
+            window.location.href = '17-생애주기이벤트관리.html';
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            UI.showToast('PDF 다운로드 기능은 프로토타입에서 제공하지 않습니다', 'info');
+        });
+
+        shareBtn.addEventListener('click', () => {
+            UI.showToast('공유 기능은 프로토타입에서 제공하지 않습니다', 'info');
+        });
+
+        // Initialize
+        renderEvents();
+        renderStages();
+        updateGuide();
+
+        // Auto-select first stage
+        setTimeout(() => {
+            selectStage(1);
+        }, 500);
+    </script>
+
+    <!-- 하단 탭 네비게이션 (Mobile) -->
+    <nav class="bottom-nav">
+        <a href="00-대시보드.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+                <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>홈</span>
+        </a>
+        <a href="13-입주희망주택목록.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>주택</span>
+        </a>
+        <a href="15-입주후지출계산.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>계산</span>
+        </a>
+        <a href="18-장기주거로드맵조회.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>로드맵</span>
+        </a>
+    </nav>
+</body>
+</html>

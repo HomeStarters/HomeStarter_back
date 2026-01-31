@@ -1,0 +1,133 @@
+@startuml housing-입주희망주택입력
+!theme mono
+
+title Housing Service - 입주희망주택 입력 내부 시퀀스
+
+participant "HousingController" as HC
+participant "HousingService" as HS
+participant "HousingValidator" as HV
+participant "HousingRepository" as HR
+participant "TransportRepository" as TR
+participant "CommuteTimeRepository" as CTR
+database "Redis Cache<<E>>" as Cache
+participant "KakaoMapClient<<E>>" as Kakao
+participant "CircuitBreaker" as CB
+participant "EventPublisher" as EP
+queue "Message Queue<<E>>" as MQ
+
+== 입주희망주택 정보 입력 ==
+
+-> HC: POST /housings\n(주택정보, 교통호재, 출퇴근시간)
+activate HC
+
+HC -> HV: 입력값 유효성 검증 요청
+activate HV
+HV -> HV: 필수 필드 검증\n(주택유형, 입주희망년월, 주택이름 등)
+HV -> HV: 가격 형식 검증
+HV -> HV: 입주희망년월 미래 날짜 확인
+HV --> HC: 검증 완료
+deactivate HV
+
+HC -> HS: 주택 생성 요청
+activate HS
+
+HS -> HS: Housing 엔티티 생성
+HS -> HR: 주택 기본정보 저장
+activate HR
+HR -> HR: INSERT INTO housing\n(type, move_in_date, name, address, price 등)
+HR --> HS: 저장된 Housing 엔티티 반환
+deactivate HR
+
+note right of HS
+  교통호재와 출퇴근 시간은
+  중첩 데이터로 별도 테이블에 저장
+end note
+
+loop 각 교통호재별
+    HS -> TR: 교통호재 정보 저장
+    activate TR
+    TR -> TR: INSERT INTO transport_benefit\n(housing_id, name, opening_date)
+    TR --> HS: 저장된 TransportBenefit 엔티티
+    deactivate TR
+
+    loop 교통호재별 출퇴근 시간
+        HS -> CTR: 출퇴근 시간 정보 저장
+        activate CTR
+        CTR -> CTR: INSERT INTO commute_time\n(transport_id, owner_before, owner_after,\nspouse_before, spouse_after)
+        CTR --> HS: 저장된 CommuteTime 엔티티
+        deactivate CTR
+    end
+end
+
+== Kakao Map API 연동 (Circuit Breaker 적용) ==
+
+HS -> CB: 주소 → 좌표 변환 요청
+activate CB
+
+alt Circuit Breaker Closed (정상)
+    CB -> Kakao: 주소 검색 API 호출
+    activate Kakao
+    Kakao --> CB: 위도/경도 반환
+    deactivate Kakao
+
+    CB --> HS: 좌표 정보 반환
+
+    HS -> HR: 좌표 정보 업데이트
+    activate HR
+    HR -> HR: UPDATE housing\nSET latitude = ?, longitude = ?
+    HR --> HS: 업데이트 완료
+    deactivate HR
+
+    HS -> Cache: 좌표 정보 캐싱
+    activate Cache
+    Cache --> HS: 캐싱 완료
+    deactivate Cache
+
+else Circuit Breaker Open (장애 상태)
+    CB --> HS: 서비스 장애 응답
+    note right
+      기본값(null) 설정
+      나중에 배치로 재처리
+    end note
+
+else Circuit Breaker Half-Open (복구 시도)
+    CB -> Kakao: 복구 확인 요청
+    activate Kakao
+    Kakao --> CB: 응답
+    deactivate Kakao
+    CB --> HS: 상태에 따라 처리
+end
+
+deactivate CB
+
+== 이벤트 발행 ==
+
+HS -> EP: HousingCreated 이벤트 생성
+activate EP
+
+EP -> MQ: 이벤트 발행
+activate MQ
+note right
+  이벤트 페이로드:
+  {
+    "housingId": "uuid",
+    "userId": "uuid",
+    "address": "서울시 강남구...",
+    "price": 500000000,
+    "createdAt": "2025-01-15T10:00:00Z"
+  }
+end note
+MQ --> EP: 발행 완료
+deactivate MQ
+
+EP --> HS: 이벤트 발행 완료
+deactivate EP
+
+HS --> HC: 생성된 Housing 엔티티 반환
+deactivate HS
+
+HC -> HC: HousingResponse DTO 변환
+HC --> : 201 Created\n(주택 ID, 전체 정보)
+deactivate HC
+
+@enduml

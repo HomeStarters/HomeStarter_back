@@ -1,0 +1,203 @@
+@startuml user-simple
+!theme mono
+
+title User 서비스 - 클래스 다이어그램 (간소화)
+
+package "com.dwj.homestarter.user" {
+
+    ' Controller Layer
+    package "controller" {
+        class UserController {
+            + registerUser()
+            + loginUser()
+            + logoutUser()
+            + getUserProfile()
+            + updateUserProfile()
+        }
+
+        note right of UserController
+            <b>Controller 메소드 - API 매핑표</b>
+
+            registerUser: POST /users/register
+            회원가입
+
+            loginUser: POST /users/login
+            로그인
+
+            logoutUser: POST /users/logout
+            로그아웃
+
+            getUserProfile: GET /users/profile
+            기본정보 조회
+
+            updateUserProfile: PUT /users/profile
+            기본정보 수정
+        end note
+    }
+
+    ' Service Layer
+    package "service" {
+        interface UserService {
+            + register()
+            + login()
+            + logout()
+            + getUserProfile()
+            + updateUserProfile()
+            + existsByUserId()
+            + existsByEmail()
+        }
+
+        class UserServiceImpl implements UserService
+
+        class JwtTokenProvider {
+            + generateAccessToken()
+            + generateRefreshToken()
+            + validateToken()
+            + getUserIdFromToken()
+            + getExpirationTime()
+            + getRemainingTime()
+        }
+    }
+
+    ' Repository Layer
+    package "repository" {
+        package "jpa" {
+            interface UserRepository {
+                + findByUserId()
+                + findByEmail()
+                + existsByUserId()
+                + existsByEmail()
+            }
+
+            interface UserProfileRepository {
+                + findByUserId()
+                + deleteByUserId()
+            }
+        }
+
+        package "entity" {
+            class UserEntity {
+                - id: Long
+                - userId: String
+                - name: String
+                - email: String
+                - phoneNumber: String
+                - password: String
+                - role: String
+                - lastLoginAt: LocalDateTime
+                - createdAt: LocalDateTime
+                - updatedAt: LocalDateTime
+            }
+
+            class UserProfileEntity {
+                - id: Long
+                - userId: String
+                - birthDate: LocalDate
+                - gender: Gender
+                - currentAddress: AddressEmbeddable
+                - userWorkplaceAddress: AddressEmbeddable
+                - spouseWorkplaceAddress: AddressEmbeddable
+                - investmentPropensity: InvestmentPropensity
+                - createdAt: LocalDateTime
+                - updatedAt: LocalDateTime
+            }
+
+            class AddressEmbeddable {
+                - roadAddress: String
+                - jibunAddress: String
+                - postalCode: String
+                - latitude: Double
+                - longitude: Double
+            }
+
+            enum Gender {
+                MALE
+                FEMALE
+            }
+
+            enum InvestmentPropensity {
+                HIGH
+                MEDIUM
+                LOW
+            }
+        }
+    }
+
+    ' Domain Layer
+    package "domain" {
+        class User
+        class UserProfile
+        class Address
+    }
+
+    ' DTO Layer
+    package "dto" {
+        package "request" {
+            class UserRegisterRequest
+            class UserLoginRequest
+            class UserProfileUpdateRequest
+            class AddressRequest
+        }
+
+        package "response" {
+            class UserRegisterResponse
+            class UserLoginResponse
+            class UserProfileResponse
+            class UserBasicInfo
+            class AddressResponse
+        }
+
+        package "service" {
+            class UserRegisterDto
+            class UserLoginDto
+            class UserDto
+            class UserProfileDto
+            class UserProfileUpdateDto
+            class AddressDto
+        }
+    }
+
+    ' Config Layer
+    package "config" {
+        class SecurityConfig
+        class JwtAuthenticationFilter
+        class RedisConfig
+        class SwaggerConfig
+    }
+}
+
+package "com.dwj.homestarter.common" {
+    package "dto" {
+        class ApiResponse<T>
+    }
+
+    package "exception" {
+        class BusinessException
+        class UnauthorizedException
+        class NotFoundException
+        class ValidationException
+        class GlobalExceptionHandler
+    }
+}
+
+' Relationships
+UserController --> UserService
+UserController --> JwtTokenProvider
+UserServiceImpl ..|> UserService
+UserServiceImpl --> UserRepository
+UserServiceImpl --> UserProfileRepository
+UserServiceImpl --> JwtTokenProvider
+
+UserRepository --> UserEntity
+UserProfileRepository --> UserProfileEntity
+UserProfileEntity *-- AddressEmbeddable
+UserProfileEntity *-- Gender
+UserProfileEntity *-- InvestmentPropensity
+
+UserEntity --> User
+UserProfileEntity --> UserProfile
+UserProfile *-- Address
+
+JwtAuthenticationFilter --> JwtTokenProvider
+
+@enduml

@@ -1,0 +1,103 @@
+# Kafka 설치 설정 (개발환경 - minikube)
+# 작성일: 2025-12-29
+# 설치 대상: minikube 클러스터
+
+global:
+  storageClass: "standard"
+
+# KRaft 모드 활성화 (ZooKeeper 제거)
+kraft:
+  enabled: true
+
+# 인증 설정 (개발환경: PLAINTEXT)
+auth:
+  clientProtocol: plaintext
+  interBrokerProtocol: plaintext
+  sasl:
+    enabled: false
+  tls:
+    enabled: false
+
+# Listener 설정
+listeners:
+  client:
+    containerPort: 9092
+    protocol: PLAINTEXT
+    name: CLIENT
+  controller:
+    name: CONTROLLER
+    containerPort: 9093
+    protocol: PLAINTEXT
+  interbroker:
+    containerPort: 9094
+    protocol: PLAINTEXT
+    name: INTERNAL
+  external:
+    containerPort: 9095
+    protocol: PLAINTEXT
+    name: EXTERNAL
+
+# 외부 접근 설정 비활성화 (개발환경에서는 port-forward 사용)
+externalAccess:
+  enabled: false
+
+# Controller 설정 (KRaft) - minikube 리소스 최적화
+controller:
+  replicaCount: 1
+  heapOpts: "-Xmx512m -Xms512m"
+  persistence:
+    enabled: true
+    size: 5Gi
+  automountServiceAccountToken: true
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 500m
+    requests:
+      memory: 512Mi
+      cpu: 250m
+
+# Broker 설정 - minikube 리소스 최적화
+broker:
+  replicaCount: 1
+  heapOpts: "-Xmx1g -Xms1g"
+  persistence:
+    enabled: true
+    size: 10Gi
+  automountServiceAccountToken: true
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 1
+    requests:
+      memory: 1Gi
+      cpu: 500m
+
+# Topic 설정
+deleteTopicEnable: true
+autoCreateTopicsEnable: false
+numPartitions: 3
+defaultReplicationFactor: 1  # minikube는 단일 broker이므로 1로 설정
+
+# Offset 설정
+offsets:
+  topic:
+    replicationFactor: 1  # minikube는 단일 broker이므로 1로 설정
+
+# 이미지 설정 (Helm Chart 기본값 사용)
+# image:
+#   registry: docker.io
+#   repository: bitnami/kafka
+
+# RBAC 설정
+rbac:
+  create: true
+
+# Broker 추가 설정
+extraConfig: |
+  min.insync.replicas=1
+  compression.type=lz4
+  log.retention.hours=24
+  log.segment.bytes=1073741824
+  num.network.threads=4
+  num.io.threads=4

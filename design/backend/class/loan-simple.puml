@@ -1,0 +1,277 @@
+@startuml loan-simple
+!theme mono
+
+title Loan Service - Simplified Class Design with API Mapping
+
+' ========================================
+' Controller Layer
+' ========================================
+package "controller" <<Rectangle>> {
+    class LoanProductController {
+        + getLoanProducts()
+        + getLoanProductDetail()
+    }
+
+    class LoanProductAdminController {
+        + createLoanProduct()
+        + updateLoanProduct()
+        + deleteLoanProduct()
+    }
+}
+
+' ========================================
+' Service Layer
+' ========================================
+package "service" <<Rectangle>> {
+    class LoanProductService {
+        + getLoanProducts()
+        + getLoanProductById()
+        + createLoanProduct()
+        + updateLoanProduct()
+        + deleteLoanProduct()
+    }
+
+    class AuthorizationService {
+        + verifyToken()
+        + checkAdminRole()
+    }
+
+    class CacheService {
+        + get()
+        + set()
+        + delete()
+        + deletePattern()
+    }
+}
+
+' ========================================
+' Domain Layer
+' ========================================
+package "domain" <<Rectangle>> {
+    class LoanProduct {
+        - id: Long
+        - name: String
+        - loanLimit: Long
+        - ltvLimit: Double
+        - dtiLimit: Double
+        - dsrLimit: Double
+        - interestRate: Double
+        - targetHousing: String
+        - incomeRequirement: String
+        - applicantRequirement: String
+        - remarks: String
+        - active: boolean
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+    }
+}
+
+' ========================================
+' Repository Layer
+' ========================================
+package "repository" <<Rectangle>> {
+    interface LoanProductRepository {
+        + findAll()
+        + findById()
+        + findByActiveTrue()
+        + save()
+        + deleteById()
+        + existsById()
+    }
+}
+
+' ========================================
+' DTO Layer
+' ========================================
+package "dto" <<Rectangle>> {
+    class LoanProductListResponse
+    class LoanProductResponse
+    class LoanProductDTO
+    class CreateLoanProductRequest
+    class UpdateLoanProductRequest
+    class PageInfo
+    class ApiResponse
+    class ErrorResponse
+}
+
+' ========================================
+' Relationships
+' ========================================
+LoanProductController --> LoanProductService
+LoanProductAdminController --> LoanProductService
+LoanProductAdminController --> AuthorizationService
+LoanProductService --> LoanProductRepository
+LoanProductService --> CacheService
+LoanProductRepository --> LoanProduct
+
+' ========================================
+' API Mapping Table
+' ========================================
+note right of LoanProductController
+<b>Controller 메소드 - API 매핑표</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<b>LoanProductController (일반 사용자 API)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>1. getLoanProducts()</b>
+   - <b>HTTP Method:</b> GET
+   - <b>Endpoint:</b> /api/v1/loans
+   - <b>Operation ID:</b> getLoanProducts
+   - <b>User Story:</b> UFR-LOAN-010
+   - <b>Description:</b> 대출상품 목록 조회 (필터/정렬/페이징)
+   - <b>Parameters:</b>
+     • housingType: String (query, optional)
+       - 대상주택 유형 필터
+       - enum: [ALL, APARTMENT, VILLA, HOUSE]
+       - default: ALL
+     • sortBy: String (query, optional)
+       - 정렬 기준
+       - enum: [INTEREST_RATE, LOAN_LIMIT, CREATED_AT]
+       - default: CREATED_AT
+     • sortOrder: String (query, optional)
+       - 정렬 순서
+       - enum: [ASC, DESC]
+       - default: ASC
+     • keyword: String (query, optional)
+       - 검색 키워드 (대출이름, 대상주택)
+       - maxLength: 100
+     • page: int (query, optional)
+       - 페이지 번호 (0부터 시작)
+       - minimum: 0
+       - default: 0
+     • size: int (query, optional)
+       - 페이지당 항목 수
+       - minimum: 1, maximum: 100
+       - default: 20
+   - <b>Response:</b> 200 OK
+     • ResponseEntity<LoanProductListResponse>
+     • Content: 대출상품 목록 + 페이징 정보
+   - <b>Errors:</b>
+     • 400 Bad Request: 유효성 검증 실패
+     • 500 Internal Server Error: 서버 오류
+   - <b>Security:</b> bearerAuth (일반 사용자)
+
+<b>2. getLoanProductDetail()</b>
+   - <b>HTTP Method:</b> GET
+   - <b>Endpoint:</b> /api/v1/loans/{id}
+   - <b>Operation ID:</b> getLoanProductDetail
+   - <b>User Story:</b> UFR-LOAN-020
+   - <b>Description:</b> 대출상품 상세 조회
+   - <b>Parameters:</b>
+     • id: Long (path, required)
+       - 대출상품 ID
+   - <b>Response:</b> 200 OK
+     • ResponseEntity<LoanProductResponse>
+     • Content: 대출상품 상세 정보
+   - <b>Errors:</b>
+     • 400 Bad Request: 잘못된 요청
+     • 404 Not Found: 리소스를 찾을 수 없음
+     • 500 Internal Server Error: 서버 오류
+   - <b>Security:</b> bearerAuth (일반 사용자)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<b>LoanProductAdminController (관리자 API)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>3. createLoanProduct()</b>
+   - <b>HTTP Method:</b> POST
+   - <b>Endpoint:</b> /api/v1/loans
+   - <b>Operation ID:</b> createLoanProduct
+   - <b>User Story:</b> AFR-LOAN-030
+   - <b>Description:</b> 대출상품 등록 (관리자)
+   - <b>Request Body:</b> CreateLoanProductRequest
+     • name: String (required, minLength: 1, maxLength: 100)
+     • loanLimit: Long (required, minimum: 1)
+     • ltvLimit: Double (required, 0-100%)
+     • dtiLimit: Double (required, 0-100%)
+     • dsrLimit: Double (required, 0-100%)
+     • interestRate: Double (required, minimum: 0)
+     • targetHousing: String (required, minLength: 1, maxLength: 200)
+     • incomeRequirement: String (optional, maxLength: 500)
+     • applicantRequirement: String (optional, maxLength: 500)
+     • remarks: String (optional, maxLength: 1000)
+   - <b>Response:</b> 201 Created
+     • ResponseEntity<LoanProductResponse>
+     • Location: /api/v1/loans/{productId}
+     • Content: 등록된 대출상품 정보
+   - <b>Errors:</b>
+     • 400 Bad Request: 유효성 검증 실패
+     • 401 Unauthorized: 인증 실패
+     • 403 Forbidden: 권한 없음
+     • 500 Internal Server Error: 서버 오류
+   - <b>Security:</b> bearerAuth [ROLE_ADMIN]
+
+<b>4. updateLoanProduct()</b>
+   - <b>HTTP Method:</b> PUT
+   - <b>Endpoint:</b> /api/v1/loans/{id}
+   - <b>Operation ID:</b> updateLoanProduct
+   - <b>User Story:</b> AFR-LOAN-030
+   - <b>Description:</b> 대출상품 수정 (관리자)
+   - <b>Parameters:</b>
+     • id: Long (path, required)
+       - 대출상품 ID
+   - <b>Request Body:</b> UpdateLoanProductRequest
+     • name: String (required, minLength: 1, maxLength: 100)
+     • loanLimit: Long (required, minimum: 1)
+     • ltvLimit: Double (required, 0-100%)
+     • dtiLimit: Double (required, 0-100%)
+     • dsrLimit: Double (required, 0-100%)
+     • interestRate: Double (required, minimum: 0)
+     • targetHousing: String (required, minLength: 1, maxLength: 200)
+     • incomeRequirement: String (optional, maxLength: 500)
+     • applicantRequirement: String (optional, maxLength: 500)
+     • remarks: String (optional, maxLength: 1000)
+     • active: boolean (required)
+   - <b>Response:</b> 200 OK
+     • ResponseEntity<LoanProductResponse>
+     • Content: 수정된 대출상품 정보
+   - <b>Errors:</b>
+     • 400 Bad Request: 유효성 검증 실패
+     • 401 Unauthorized: 인증 실패
+     • 403 Forbidden: 권한 없음
+     • 404 Not Found: 리소스를 찾을 수 없음
+     • 500 Internal Server Error: 서버 오류
+   - <b>Security:</b> bearerAuth [ROLE_ADMIN]
+
+<b>5. deleteLoanProduct()</b>
+   - <b>HTTP Method:</b> DELETE
+   - <b>Endpoint:</b> /api/v1/loans/{id}
+   - <b>Operation ID:</b> deleteLoanProduct
+   - <b>User Story:</b> AFR-LOAN-030
+   - <b>Description:</b> 대출상품 삭제 (관리자)
+                소프트 삭제 적용 (active = false)
+   - <b>Parameters:</b>
+     • id: Long (path, required)
+       - 대출상품 ID
+   - <b>Response:</b> 200 OK
+     • ResponseEntity<ApiResponse>
+     • Content: 삭제 완료 메시지
+   - <b>Errors:</b>
+     • 400 Bad Request: 사용 중인 대출상품은 삭제 불가
+       - ErrorCode: LOAN_PRODUCT_IN_USE
+       - Message: "현재 사용 중인 대출상품은 삭제할 수 없습니다"
+     • 401 Unauthorized: 인증 실패
+     • 403 Forbidden: 권한 없음
+     • 404 Not Found: 리소스를 찾을 수 없음
+     • 500 Internal Server Error: 서버 오류
+   - <b>Security:</b> bearerAuth [ROLE_ADMIN]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>공통 사항</b>
+• <b>Base URL (Local):</b> http://localhost:8083/api/v1
+• <b>Base URL (Prod):</b> https://api.homehelper.com/loan-service/api/v1
+• <b>Authentication:</b> JWT Bearer Token
+• <b>Content-Type:</b> application/json
+• <b>Response Format:</b> JSON
+
+<b>레이어별 역할</b>
+• <b>Controller:</b> HTTP 요청/응답 처리, 파라미터 검증
+• <b>Service:</b> 비즈니스 로직, 트랜잭션 관리, 캐시 관리
+• <b>Repository:</b> 데이터 접근, JPA 쿼리 메소드
+• <b>Domain:</b> JPA 엔티티, 데이터베이스 테이블 매핑
+• <b>DTO:</b> 요청/응답 객체, 데이터 변환
+
+end note
+
+@enduml

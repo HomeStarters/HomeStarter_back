@@ -1,0 +1,152 @@
+@startuml housing-주택정보수정
+!theme mono
+
+title Housing Service - 주택정보 수정 내부 시퀀스 (UFR-HOUS-040)
+
+participant "HousingController" as HC
+participant "HousingService" as HS
+participant "HousingValidator" as HV
+participant "HousingRepository" as HR
+participant "TransportRepository" as TR
+participant "CommuteTimeRepository" as CTR
+database "Redis Cache<<E>>" as Cache
+participant "KakaoMapClient<<E>>" as Kakao
+participant "CircuitBreaker" as CB
+participant "EventPublisher" as EP
+queue "Message Queue<<E>>" as MQ
+
+== 주택정보 수정 ==
+
+-> HC: PUT /housings/{housingId}\n(수정된 정보)
+activate HC
+
+HC -> HC: JWT에서 userId 추출
+
+HC -> HV: 입력값 유효성 검증
+activate HV
+HV -> HV: 필수 필드 검증
+HV -> HV: 가격 형식 검증
+HV -> HV: 입주희망년월 검증
+HV --> HC: 검증 완료
+deactivate HV
+
+HC -> HS: 주택 수정 요청\n(housingId, userId, updateRequest)
+activate HS
+
+HS -> HR: 주택 조회 및 소유자 확인
+activate HR
+HR -> HR: SELECT * FROM housing\nWHERE id = ?\nAND user_id = ?
+note right of HR
+  소유자 검증:
+  user_id 불일치 시 수정 불가
+end note
+
+alt 주택 없음 또는 소유자 불일치
+    HR --> HS: null
+    deactivate HR
+    HS --> HC: UnauthorizedException
+    HC --> : 403 Forbidden\n"수정 권한이 없습니다"
+else 소유자 일치
+    HR --> HS: Housing 엔티티
+    deactivate HR
+
+    HS -> HS: 기존 주소 저장 (변경 여부 확인용)
+
+    HS -> HR: 주택 기본정보 업데이트
+    activate HR
+    HR -> HR: UPDATE housing\nSET name = ?, address = ?,\n    price = ?, area = ?,\n    move_in_date = ?,\n    updated_at = NOW()
+    HR --> HS: 업데이트 완료
+    deactivate HR
+
+    HS -> TR: 기존 교통호재 삭제
+    activate TR
+    TR -> TR: DELETE FROM transport_benefit\nWHERE housing_id = ?
+    TR --> HS: 삭제 완료
+    deactivate TR
+
+    loop 새로운 교통호재별
+        HS -> TR: 교통호재 정보 재등록
+        activate TR
+        TR -> TR: INSERT INTO transport_benefit
+        TR --> HS: TransportBenefit 엔티티
+        deactivate TR
+
+        loop 교통호재별 출퇴근 시간
+            HS -> CTR: 출퇴근 시간 정보 재등록
+            activate CTR
+            CTR -> CTR: INSERT INTO commute_time
+            CTR --> HS: CommuteTime 엔티티
+            deactivate CTR
+        end
+    end
+
+    alt 주소 변경된 경우
+        HS -> CB: 주소 → 좌표 변환 요청
+        activate CB
+
+        alt Circuit Breaker Closed
+            CB -> Kakao: 주소 검색 API 호출
+            activate Kakao
+            Kakao --> CB: 새 좌표 반환
+            deactivate Kakao
+
+            CB --> HS: 좌표 정보 반환
+
+            HS -> HR: 좌표 정보 업데이트
+            activate HR
+            HR -> HR: UPDATE housing\nSET latitude = ?,\n    longitude = ?
+            HR --> HS: 업데이트 완료
+            deactivate HR
+
+        else Circuit Breaker Open/Half-Open
+            CB --> HS: 서비스 장애 응답
+            note right of HS
+              좌표는 null 유지
+              배치로 재처리
+            end note
+        end
+        deactivate CB
+    end
+
+    HS -> Cache: 캐시 무효화
+    activate Cache
+    Cache -> Cache: DEL housing:detail:{housingId}
+    Cache -> Cache: DEL housing:list:{userId}:*
+    Cache --> HS: 캐시 삭제 완료
+    deactivate Cache
+
+    HS -> EP: HousingUpdated 이벤트 생성
+    activate EP
+
+    EP -> MQ: 이벤트 발행
+    activate MQ
+    note right of MQ
+      이벤트 페이로드:
+      {
+        "housingId": "uuid",
+        "userId": "uuid",
+        "updatedFields": [
+          "address", "price"
+        ],
+        "updatedAt": "2025-01-15T10:00:00Z"
+      }
+    end note
+    MQ --> EP: 발행 완료
+    deactivate MQ
+
+    EP --> HS: 이벤트 발행 완료
+    deactivate EP
+
+    HS -> HR: 수정된 주택 전체 조회
+    activate HR
+    HR --> HS: Housing 엔티티
+    deactivate HR
+
+    HS --> HC: HousingResponse DTO
+    deactivate HS
+
+    HC --> : 200 OK\n(업데이트된 정보)
+    deactivate HC
+end
+
+@enduml

@@ -1,0 +1,60 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.0' apply false
+    id 'io.spring.dependency-management' version '1.1.6' apply false
+    id 'io.freefair.lombok' version '8.10' apply false
+}
+
+group = 'com.dwj.homestarter'
+version = '1.0.0'
+
+allprojects {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.freefair.lombok'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+
+    // Common versions for all subprojects
+    ext {
+        jjwtVersion = '0.12.5'
+        springdocVersion = '2.5.0'
+        mapstructVersion = '1.5.5.Final'
+        commonsLang3Version = '3.14.0'
+        commonsIoVersion = '2.16.1'
+        hypersistenceVersion = '3.7.3'
+        openaiVersion = '0.18.2'
+        feignJacksonVersion = '13.1'
+    }
+}
+
+// Configure all subprojects with Spring dependency management
+subprojects {
+    apply plugin: 'io.spring.dependency-management'
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:3.3.0"
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.2"
+        }
+    }
+}

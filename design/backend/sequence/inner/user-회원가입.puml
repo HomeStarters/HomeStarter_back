@@ -1,0 +1,80 @@
+@startuml user-회원가입
+!theme mono
+
+title User 서비스 - 회원가입 내부 시퀀스
+
+actor "Frontend" as FE
+participant "UserController" as UC
+participant "UserService" as US
+participant "UserRepository" as UR
+database "User DB" as DB
+
+== 회원가입 처리 ==
+
+FE -> UC: POST /api/users/register\n(이름, 이메일, 연락처, 아이디, 비밀번호)
+activate UC
+
+note over UC
+  요청 데이터 검증:
+  - 이름: 2자 이상
+  - 이메일: 형식 검증
+  - 연락처: 휴대폰 번호 형식
+  - 아이디: 5자 이상 영문/숫자
+  - 비밀번호: 8자 이상 영문/숫자/특수문자
+end note
+
+UC -> US: 회원가입 요청\n(회원정보 DTO)
+activate US
+
+US -> UR: 아이디 중복 확인 요청\n(아이디)
+activate UR
+UR -> DB: 아이디로 사용자 조회
+activate DB
+DB --> UR: 조회 결과
+deactivate DB
+UR --> US: 중복 여부 반환
+deactivate UR
+
+alt 아이디 중복
+  US --> UC: BusinessException\n(아이디 중복)
+  UC --> FE: 400 Bad Request\n(아이디가 이미 존재합니다)
+else 아이디 사용 가능
+  US -> UR: 이메일 중복 확인 요청\n(이메일)
+  activate UR
+  UR -> DB: 이메일로 사용자 조회
+  activate DB
+  DB --> UR: 조회 결과
+  deactivate DB
+  UR --> US: 중복 여부 반환
+  deactivate UR
+
+  alt 이메일 중복
+    US --> UC: BusinessException\n(이메일 중복)
+    UC --> FE: 400 Bad Request\n(이메일이 이미 존재합니다)
+  else 이메일 사용 가능
+    note over US
+      비밀번호 암호화 처리:
+      - BCrypt 알고리즘 사용
+      - Salt 자동 생성
+    end note
+
+    US -> US: 비밀번호 암호화\n(BCrypt)
+
+    US -> UR: 사용자 정보 저장 요청\n(User Entity)
+    activate UR
+    UR -> DB: 사용자 정보 INSERT\n(이름, 이메일, 연락처, 아이디, 암호화된 비밀번호)
+    activate DB
+    DB --> UR: 저장 완료\n(생성된 사용자 ID)
+    deactivate DB
+    UR --> US: User Entity 반환
+    deactivate UR
+
+    US --> UC: 회원가입 성공\n(사용자 ID)
+    deactivate US
+
+    UC --> FE: 201 Created\n(사용자 ID, 이름, 이메일)
+    deactivate UC
+  end
+end
+
+@enduml

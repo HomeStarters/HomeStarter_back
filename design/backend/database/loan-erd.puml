@@ -1,0 +1,60 @@
+@startuml loan-erd
+!theme mono
+
+' 제목
+title Loan Service - Entity Relationship Diagram
+
+' 엔티티 정의
+entity "loan_products" as loan_products {
+  * **id** : BIGSERIAL <<PK>>
+  --
+  * name : VARCHAR(100) <<UK>>
+  * loan_limit : BIGINT
+  * ltv_limit : DECIMAL(5,2)
+  * dti_limit : DECIMAL(5,2)
+  * dsr_limit : DECIMAL(5,2)
+  * interest_rate : DECIMAL(5,2)
+  * target_housing : VARCHAR(200)
+  income_requirement : VARCHAR(200)
+  applicant_requirement : VARCHAR(200)
+  remarks : TEXT
+  * active : BOOLEAN
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' 인덱스 정보
+note right of loan_products
+  **Primary Key**
+  - pk_loan_products (id)
+
+  **Unique Key**
+  - uk_loan_product_name (name, active)
+
+  **Indexes**
+  - idx_active (active)
+  - idx_target_housing (target_housing)
+  - idx_interest_rate (interest_rate)
+  - idx_loan_limit (loan_limit)
+  - idx_created_at (created_at)
+  - idx_name_search (name) GIN
+
+  **Check Constraints**
+  - chk_loan_limit: loan_limit >= 0
+  - chk_ltv_limit: 0 <= ltv_limit <= 100
+  - chk_dti_limit: 0 <= dti_limit <= 100
+  - chk_dsr_limit: 0 <= dsr_limit <= 100
+  - chk_interest_rate: 0 <= interest_rate <= 100
+end note
+
+' 테이블 설명
+note bottom of loan_products
+  **대출상품 정보**
+  - 조회 중심 테이블 (읽기:쓰기 = 95:5)
+  - 소프트 삭제 방식 (active 플래그)
+  - 예상 레코드: 100-500건
+  - 캐시 전략: Cache-Aside
+  - Redis DB: 3번
+end note
+
+@enduml

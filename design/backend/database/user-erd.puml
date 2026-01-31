@@ -1,0 +1,88 @@
+@startuml user-erd
+!theme mono
+
+' Entity Relationship Diagram for User Service
+
+entity "users" as users {
+  * id : BIGSERIAL <<PK>>
+  --
+  * user_id : VARCHAR(50) <<UK>>
+  * name : VARCHAR(100)
+  * email : VARCHAR(100) <<UK>>
+  * phone_number : VARCHAR(20)
+  * password : VARCHAR(255)
+  * role : VARCHAR(20)
+  last_login_at : TIMESTAMP
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+entity "user_profiles" as profiles {
+  * id : BIGSERIAL <<PK>>
+  --
+  * user_id : VARCHAR(50) <<UK,FK>>
+  * birth_date : DATE
+  * gender : VARCHAR(10)
+  current_address : JSONB
+  user_workplace_address : JSONB
+  spouse_workplace_address : JSONB
+  * investment_propensity : VARCHAR(10)
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' Relationships
+users ||--|| profiles : "user_id"
+
+' Notes
+note right of users
+  **사용자 기본 정보**
+  - 회원가입, 로그인, 인증
+  - user_id: 로그인 아이디 (4-20자)
+  - password: BCrypt 암호화
+  - role: USER, ADMIN
+end note
+
+note right of profiles
+  **사용자 프로필 정보**
+  - 개인정보, 선호도
+  - gender: MALE, FEMALE
+  - investment_propensity: HIGH, MEDIUM, LOW
+  - 주소는 JSONB로 저장
+
+  **주소 JSON 구조**:
+  {
+    "roadAddress": "도로명주소",
+    "jibunAddress": "지번주소",
+    "postalCode": "우편번호",
+    "latitude": 위도,
+    "longitude": 경도
+  }
+end note
+
+' Indexes
+note bottom of users
+  **인덱스**
+  - PK: id
+  - UK: user_id, email
+  - IDX: phone_number, last_login_at
+
+  **제약조건**
+  - user_id: 영문, 숫자 4-20자
+  - email: 유효한 이메일 형식
+  - role: USER, ADMIN
+end note
+
+note bottom of profiles
+  **인덱스**
+  - PK: id
+  - UK: user_id
+  - IDX: birth_date, gender, investment_propensity
+
+  **제약조건**
+  - FK: user_id → users.user_id (CASCADE)
+  - gender: MALE, FEMALE
+  - investment_propensity: HIGH, MEDIUM, LOW
+end note
+
+@enduml

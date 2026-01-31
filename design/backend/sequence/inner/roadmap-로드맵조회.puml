@@ -1,0 +1,164 @@
+@startuml roadmap-로드맵조회
+!theme mono
+
+title Roadmap Service - 로드맵 조회 내부 시퀀스
+
+participant "RoadmapController" as Ctrl
+participant "RoadmapService" as Svc
+participant "RoadmapRepository" as Repo
+participant "EventRepository" as EventRepo
+database "Roadmap DB" as DB
+database "Redis Cache<<E>>" as Cache
+
+== 로드맵 조회 ==
+
+-> Ctrl: GET /roadmap
+activate Ctrl
+
+Ctrl -> Ctrl: JWT에서 userId 추출
+
+Ctrl -> Svc: getRoadmap(userId)
+activate Svc
+
+Svc -> Cache: 캐시 조회 시도\nkey: "roadmap:{userId}"
+activate Cache
+
+alt 캐시 히트
+    Cache --> Svc: 캐시된 로드맵 반환
+    deactivate Cache
+
+    note right of Svc
+      캐시 TTL: 30분
+      로드맵은 자주 변경되지 않음
+    end note
+
+else 캐시 미스
+    Cache --> Svc: null
+    deactivate Cache
+
+    Svc -> Repo: 사용자 로드맵 조회
+    activate Repo
+
+    Repo -> DB: SELECT * FROM roadmaps\nWHERE user_id = ?\nORDER BY generated_at DESC\nLIMIT 1
+    note right of DB
+      가장 최근 생성된 로드맵 조회
+    end note
+
+    DB --> Repo: Roadmap 또는 null
+
+    alt 로드맵 없음
+        Repo --> Svc: null
+        deactivate Repo
+        Svc --> Ctrl: EntityNotFoundException
+        Ctrl --> : 404 Not Found\n"로드맵을 먼저 생성하세요"
+    else 로드맵 존재
+        Repo --> Svc: Roadmap 엔티티
+        deactivate Repo
+
+        Svc -> Repo: 로드맵 단계 조회
+        activate Repo
+        Repo -> DB: SELECT * FROM roadmap_stages\nWHERE roadmap_id = ?\nORDER BY stage_number
+        note right of DB
+          단계별 상세 정보:
+          - 단계 번호
+          - 단계명
+          - 목표 시기
+          - 주택 유형
+          - 목표 금액
+          - 저축 목표
+          - 월 목표 금액
+          - 추천 이유
+        end note
+        DB --> Repo: 단계 목록
+        Repo --> Svc: List<RoadmapStage>
+        deactivate Repo
+
+        Svc -> Repo: 실행 가이드 조회
+        activate Repo
+        Repo -> DB: SELECT * FROM execution_guide\nWHERE roadmap_id = ?
+        DB --> Repo: ExecutionGuide
+        Repo --> Svc: ExecutionGuide
+        deactivate Repo
+
+        Svc -> EventRepo: 생애주기 이벤트 조회
+        activate EventRepo
+        EventRepo -> DB: SELECT * FROM lifecycle_events\nWHERE user_id = ?\nORDER BY event_date
+        note right of DB
+          타임라인에 마커로 표시할
+          생애주기 이벤트
+        end note
+        DB --> EventRepo: 이벤트 목록
+        EventRepo --> Svc: List<LifecycleEvent>
+        deactivate EventRepo
+
+        Svc -> Svc: 타임라인 데이터 생성
+        note right of Svc
+          타임라인 구성:
+          1. 현재 시점
+          2. 각 단계별 마일스톤
+          3. 생애주기 이벤트 마커
+          4. 최종목표 주택
+
+          시간순 정렬 및 시각화 데이터 생성
+        end note
+
+        Svc -> Svc: RoadmapResponse DTO 생성
+        note right of Svc
+          응답 구조:
+          {
+            roadmapId: "uuid",
+            generatedAt: "2025-01-15T10:00:00Z",
+            timeline: [
+              {
+                date: "2025-01",
+                type: "CURRENT",
+                label: "현재"
+              },
+              {
+                date: "2025-06",
+                type: "STAGE",
+                stageNumber: 1,
+                label: "전세 시작"
+              },
+              {
+                date: "2026-01",
+                type: "EVENT",
+                eventName: "결혼"
+              },
+              ...
+            ],
+            stages: [
+              {
+                stageNumber: 1,
+                stageName: "전세 시작",
+                targetDate: "2025-06",
+                housingType: "전세",
+                targetPrice: 200000000,
+                savingsGoal: 150000000,
+                monthlyTarget: 2500000,
+                reason: "초기 자금 마련 단계..."
+              },
+              ...
+            ],
+            executionGuide: {
+              monthlyPlan: "...",
+              tips: "...",
+              warnings: "..."
+            }
+          }
+        end note
+
+        Svc -> Cache: 로드맵 캐싱 (30분)
+        activate Cache
+        Cache --> Svc: 캐싱 완료
+        deactivate Cache
+    end
+end
+
+Svc --> Ctrl: RoadmapResponse
+deactivate Svc
+
+Ctrl --> : 200 OK\n(타임라인 + 단계별 상세정보)
+deactivate Ctrl
+
+@enduml

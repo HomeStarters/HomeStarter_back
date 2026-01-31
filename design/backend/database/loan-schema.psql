@@ -1,0 +1,423 @@
+-- ============================================================
+-- Loan Service Database Schema
+-- ============================================================
+-- Database: loan_db
+-- DBMS: PostgreSQL 15+
+-- Charset: UTF8
+-- Timezone: Asia/Seoul
+-- ============================================================
+
+-- ============================================================
+-- 1. 데이터베이스 생성 (초기 설정)
+-- ============================================================
+
+-- CREATE DATABASE loan_db
+--   WITH OWNER = postgres
+--   ENCODING = 'UTF8'
+--   LC_COLLATE = 'en_US.UTF-8'
+--   LC_CTYPE = 'en_US.UTF-8'
+--   TEMPLATE = template0;
+
+-- \c loan_db
+
+-- ============================================================
+-- 2. 확장 설치
+-- ============================================================
+
+-- Full Text Search를 위한 pg_trgm 확장
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+COMMENT ON EXTENSION pg_trgm IS '삼중자(trigram) 기반 텍스트 유사도 검색 지원';
+
+-- ============================================================
+-- 3. 스키마 생성 (선택사항)
+-- ============================================================
+
+-- CREATE SCHEMA IF NOT EXISTS loan;
+-- SET search_path TO loan, public;
+
+-- ============================================================
+-- 4. 테이블 생성
+-- ============================================================
+
+-- 4.1 대출상품 테이블
+DROP TABLE IF EXISTS loan_products CASCADE;
+
+CREATE TABLE loan_products (
+    -- 기본 정보
+    id                      BIGSERIAL                   NOT NULL,
+    name                    VARCHAR(100)                NOT NULL,
+
+    -- 대출 조건
+    loan_limit              BIGINT                      NOT NULL,
+    ltv_limit               DECIMAL(5,2)                NOT NULL,
+    dti_limit               DECIMAL(5,2)                NOT NULL,
+    dsr_limit               DECIMAL(5,2)                NOT NULL,
+    interest_rate           DECIMAL(5,2)                NOT NULL,
+
+    -- 자격 요건
+    target_housing          VARCHAR(200)                NOT NULL,
+    income_requirement      VARCHAR(200)                NULL,
+    applicant_requirement   VARCHAR(200)                NULL,
+
+    -- 추가 정보
+    remarks                 TEXT                        NULL,
+
+    -- 상태 및 메타데이터
+    active                  BOOLEAN                     NOT NULL DEFAULT true,
+    created_at              TIMESTAMP                   NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMP                   NOT NULL DEFAULT NOW(),
+
+    -- 제약조건
+    CONSTRAINT pk_loan_products PRIMARY KEY (id),
+    CONSTRAINT uk_loan_product_name UNIQUE (name, active),
+    CONSTRAINT chk_loan_limit CHECK (loan_limit >= 0),
+    CONSTRAINT chk_ltv_limit CHECK (ltv_limit >= 0 AND ltv_limit <= 100),
+    CONSTRAINT chk_dti_limit CHECK (dti_limit >= 0 AND dti_limit <= 100),
+    CONSTRAINT chk_dsr_limit CHECK (dsr_limit >= 0 AND dsr_limit <= 100),
+    CONSTRAINT chk_interest_rate CHECK (interest_rate >= 0 AND interest_rate <= 100)
+);
+
+-- 테이블 코멘트
+COMMENT ON TABLE loan_products IS '대출상품 정보 테이블';
+
+-- 컬럼 코멘트
+COMMENT ON COLUMN loan_products.id IS '대출상품 ID (자동증가)';
+COMMENT ON COLUMN loan_products.name IS '대출이름';
+COMMENT ON COLUMN loan_products.loan_limit IS '대출한도 (원 단위)';
+COMMENT ON COLUMN loan_products.ltv_limit IS 'LTV 한도 (%)';
+COMMENT ON COLUMN loan_products.dti_limit IS 'DTI 한도 (%)';
+COMMENT ON COLUMN loan_products.dsr_limit IS 'DSR 한도 (%)';
+COMMENT ON COLUMN loan_products.interest_rate IS '금리 (연 %)';
+COMMENT ON COLUMN loan_products.target_housing IS '대상주택';
+COMMENT ON COLUMN loan_products.income_requirement IS '소득요건';
+COMMENT ON COLUMN loan_products.applicant_requirement IS '신청자요건';
+COMMENT ON COLUMN loan_products.remarks IS '비고 (특이사항)';
+COMMENT ON COLUMN loan_products.active IS '활성화 여부 (true: 활성, false: 비활성)';
+COMMENT ON COLUMN loan_products.created_at IS '등록일시';
+COMMENT ON COLUMN loan_products.updated_at IS '수정일시';
+
+-- ============================================================
+-- 5. 인덱스 생성
+-- ============================================================
+
+-- 5.1 활성화 상품 조회 최적화
+CREATE INDEX idx_active ON loan_products (active)
+WHERE active = true;
+
+COMMENT ON INDEX idx_active IS '활성화된 대출상품 조회 최적화';
+
+-- 5.2 주택유형 필터링 최적화
+CREATE INDEX idx_target_housing ON loan_products (target_housing);
+
+COMMENT ON INDEX idx_target_housing IS '대상주택 필터링 최적화';
+
+-- 5.3 금리순 정렬 최적화
+CREATE INDEX idx_interest_rate ON loan_products (interest_rate);
+
+COMMENT ON INDEX idx_interest_rate IS '금리순 정렬 최적화';
+
+-- 5.4 한도순 정렬 최적화
+CREATE INDEX idx_loan_limit ON loan_products (loan_limit);
+
+COMMENT ON INDEX idx_loan_limit IS '대출한도순 정렬 최적화';
+
+-- 5.5 최근 등록순 정렬 최적화
+CREATE INDEX idx_created_at ON loan_products (created_at DESC);
+
+COMMENT ON INDEX idx_created_at IS '최근 등록순 정렬 최적화';
+
+-- 5.6 대출이름 검색 최적화 (Full Text Search)
+CREATE INDEX idx_name_search ON loan_products USING gin (name gin_trgm_ops);
+
+COMMENT ON INDEX idx_name_search IS '대출이름 LIKE 검색 최적화 (pg_trgm)';
+
+-- ============================================================
+-- 6. 트리거 생성
+-- ============================================================
+
+-- 6.1 updated_at 자동 갱신 트리거
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_loan_products_updated_at
+BEFORE UPDATE ON loan_products
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+COMMENT ON FUNCTION update_updated_at_column() IS '수정일시 자동 갱신 함수';
+COMMENT ON TRIGGER trg_update_loan_products_updated_at ON loan_products IS '수정 시 updated_at 자동 갱신';
+
+-- ============================================================
+-- 7. 감사 로그 (선택사항)
+-- ============================================================
+
+-- 7.1 감사 로그 테이블
+CREATE TABLE IF NOT EXISTS loan_products_audit (
+    audit_id        BIGSERIAL                   PRIMARY KEY,
+    loan_product_id BIGINT                      NOT NULL,
+    operation       VARCHAR(10)                 NOT NULL,
+    changed_by      VARCHAR(100)                NULL,
+    changed_at      TIMESTAMP                   NOT NULL DEFAULT NOW(),
+    old_data        JSONB                       NULL,
+    new_data        JSONB                       NULL
+);
+
+COMMENT ON TABLE loan_products_audit IS '대출상품 변경 이력 테이블';
+COMMENT ON COLUMN loan_products_audit.audit_id IS '감사 로그 ID';
+COMMENT ON COLUMN loan_products_audit.loan_product_id IS '대출상품 ID';
+COMMENT ON COLUMN loan_products_audit.operation IS '작업 유형 (INSERT/UPDATE/DELETE)';
+COMMENT ON COLUMN loan_products_audit.changed_by IS '변경자';
+COMMENT ON COLUMN loan_products_audit.changed_at IS '변경일시';
+COMMENT ON COLUMN loan_products_audit.old_data IS '변경 전 데이터 (JSON)';
+COMMENT ON COLUMN loan_products_audit.new_data IS '변경 후 데이터 (JSON)';
+
+-- 7.2 감사 로그 트리거
+CREATE OR REPLACE FUNCTION loan_products_audit_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO loan_products_audit (loan_product_id, operation, new_data)
+        VALUES (NEW.id, 'INSERT', row_to_json(NEW));
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO loan_products_audit (loan_product_id, operation, old_data, new_data)
+        VALUES (OLD.id, 'UPDATE', row_to_json(OLD), row_to_json(NEW));
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO loan_products_audit (loan_product_id, operation, old_data)
+        VALUES (OLD.id, 'DELETE', row_to_json(OLD));
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_loan_products_audit
+AFTER INSERT OR UPDATE OR DELETE ON loan_products
+FOR EACH ROW EXECUTE FUNCTION loan_products_audit_trigger();
+
+COMMENT ON FUNCTION loan_products_audit_trigger() IS '대출상품 변경 이력 기록 함수';
+COMMENT ON TRIGGER trg_loan_products_audit ON loan_products IS '변경 이력 자동 기록';
+
+-- 7.3 감사 로그 인덱스
+CREATE INDEX idx_audit_loan_product_id ON loan_products_audit (loan_product_id);
+CREATE INDEX idx_audit_changed_at ON loan_products_audit (changed_at DESC);
+
+-- ============================================================
+-- 8. 초기 데이터 삽입
+-- ============================================================
+
+-- 8.1 대출상품 샘플 데이터
+INSERT INTO loan_products (
+    name, loan_limit, ltv_limit, dti_limit, dsr_limit,
+    interest_rate, target_housing, income_requirement,
+    applicant_requirement, remarks, active
+) VALUES
+-- 신혼부부 특별대출
+(
+    '신혼부부 특별대출',
+    300000000,
+    70.00,
+    60.00,
+    40.00,
+    2.50,
+    '6억 이하 아파트',
+    '부부합산 연소득 7천만원 이하',
+    '무주택자, 생애최초',
+    '신혼부부 우대금리 적용',
+    true
+),
+-- 디딤돌대출
+(
+    '디딤돌대출',
+    500000000,
+    80.00,
+    60.00,
+    50.00,
+    3.20,
+    '9억 이하 전 주택유형',
+    '연소득 6천만원 이하',
+    '무주택 또는 1주택자',
+    '서민·실수요자 주거안정 지원',
+    true
+),
+-- 보금자리론
+(
+    '보금자리론',
+    600000000,
+    70.00,
+    60.00,
+    40.00,
+    3.50,
+    '9억 이하 주택',
+    NULL,
+    '실거주 목적',
+    '주택구입자금 대출',
+    true
+),
+-- 적격대출
+(
+    '적격대출',
+    400000000,
+    70.00,
+    50.00,
+    40.00,
+    3.80,
+    '9억 이하 아파트',
+    NULL,
+    '일반 실수요자',
+    '은행별 조건 상이',
+    true
+),
+-- 생애최초 특례대출
+(
+    '생애최초 특례대출',
+    350000000,
+    80.00,
+    60.00,
+    50.00,
+    2.30,
+    '6억 이하 전 주택유형',
+    '부부합산 연소득 8천만원 이하',
+    '생애최초 주택구입자',
+    '소득공제 혜택 있음',
+    true
+),
+-- 청년 우대대출
+(
+    '청년 우대대출',
+    250000000,
+    70.00,
+    60.00,
+    40.00,
+    2.70,
+    '5억 이하 아파트',
+    '연소득 5천만원 이하',
+    '만 19세~34세 무주택 청년',
+    '청년 주거안정 지원',
+    true
+),
+-- 일반 주택담보대출
+(
+    '일반 주택담보대출',
+    1000000000,
+    60.00,
+    50.00,
+    40.00,
+    4.50,
+    '전 주택유형',
+    NULL,
+    NULL,
+    '일반 주택담보대출',
+    true
+),
+-- 전세자금대출
+(
+    '전세자금대출',
+    300000000,
+    80.00,
+    60.00,
+    50.00,
+    3.00,
+    '9억 이하 전세주택',
+    '연소득 5천만원 이하',
+    '무주택자',
+    '전세보증금 대출',
+    true
+),
+-- 월세자금대출
+(
+    '월세자금대출',
+    40000000,
+    NULL,
+    60.00,
+    50.00,
+    3.50,
+    '월세주택',
+    '연소득 5천만원 이하',
+    '무주택자',
+    '월세보증금 및 월세 지원',
+    true
+),
+-- 장기전세주택대출
+(
+    '장기전세주택대출',
+    200000000,
+    90.00,
+    60.00,
+    50.00,
+    2.80,
+    '공공임대주택',
+    '연소득 6천만원 이하',
+    '무주택자',
+    '장기공공임대주택 입주자',
+    true
+);
+
+-- ============================================================
+-- 9. 권한 설정
+-- ============================================================
+
+-- 9.1 일반 사용자 권한 (조회 전용)
+-- CREATE USER loan_user WITH PASSWORD 'secure_password';
+-- GRANT CONNECT ON DATABASE loan_db TO loan_user;
+-- GRANT SELECT ON loan_products TO loan_user;
+
+-- 9.2 관리자 권한 (모든 작업)
+-- CREATE USER loan_admin WITH PASSWORD 'admin_password';
+-- GRANT CONNECT ON DATABASE loan_db TO loan_admin;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON loan_products TO loan_admin;
+-- GRANT USAGE, SELECT ON SEQUENCE loan_products_id_seq TO loan_admin;
+-- GRANT SELECT, INSERT ON loan_products_audit TO loan_admin;
+
+-- ============================================================
+-- 10. 통계 정보 갱신
+-- ============================================================
+
+ANALYZE loan_products;
+ANALYZE loan_products_audit;
+
+-- ============================================================
+-- 11. 스키마 완료 메시지
+-- ============================================================
+
+DO $$
+BEGIN
+    RAISE NOTICE '============================================================';
+    RAISE NOTICE 'Loan Service Database Schema Created Successfully';
+    RAISE NOTICE '============================================================';
+    RAISE NOTICE 'Database: loan_db';
+    RAISE NOTICE 'Tables: loan_products, loan_products_audit';
+    RAISE NOTICE 'Initial Data: 10 loan products inserted';
+    RAISE NOTICE '============================================================';
+END $$;
+
+-- ============================================================
+-- 12. 검증 쿼리
+-- ============================================================
+
+-- 테이블 존재 확인
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN ('loan_products', 'loan_products_audit')
+ORDER BY table_name;
+
+-- 인덱스 확인
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE tablename = 'loan_products'
+ORDER BY indexname;
+
+-- 초기 데이터 확인
+SELECT id, name, loan_limit, interest_rate, active
+FROM loan_products
+ORDER BY id;
+
+-- 통계 정보 확인
+SELECT schemaname, tablename, n_live_tup, last_analyze
+FROM pg_stat_user_tables
+WHERE tablename IN ('loan_products', 'loan_products_audit');

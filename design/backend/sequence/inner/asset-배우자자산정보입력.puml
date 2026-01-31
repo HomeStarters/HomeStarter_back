@@ -1,0 +1,369 @@
+@startuml asset-배우자자산정보입력
+!theme mono
+
+title Asset 서비스 내부 시퀀스 - 배우자 자산정보 입력 (UFR-ASST-020)
+
+participant "Controller" as Controller
+participant "AssetService" as Service
+participant "ValidationService" as Validation
+participant "AssetRepository" as Repository
+participant "EventPublisher" as EventPublisher
+database "Asset DB" as DB
+queue "Message Queue" as MQ
+
+== 배우자 자산정보 조회 API ==
+Controller -> Service: getUserAssets(userId, ownerType)
+note right
+  ownerType = "SPOUSE"
+end note
+
+Service -> Repository: findByUserIdAndOwnerType(userId, "SPOUSE")
+Repository -> DB: 사용자의 배우자 자산 항목 조회
+DB --> Repository: 자산 항목 목록
+Repository --> Service: List<AssetItem>
+
+Service -> Repository: getSpouseStatus(userId)
+Repository -> DB: 배우자 유무 상태 조회
+DB --> Repository: hasSpouse 플래그
+Repository --> Service: hasSpouse
+
+Service -> Service: 카테고리별 그룹화 및 총액 계산
+note right
+  - 자산, 대출, 월소득, 월지출별로 그룹화
+  - 각 카테고리 총액 계산
+end note
+
+Service --> Controller: AssetSummaryResponse
+note right
+  {
+    hasSpouse: true/false,
+    assets: [...],
+    loans: [...],
+    incomes: [...],
+    expenses: [...],
+    totalAssets: 금액,
+    totalLoans: 금액,
+    totalIncome: 금액,
+    totalExpense: 금액
+  }
+end note
+
+Controller --> Controller: 200 OK 응답
+
+== 배우자 없음 선택 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    hasSpouse: false
+  }
+end note
+
+Controller -> Service: updateSpouseStatus(userId, false)
+Service -> Repository: updateSpouseStatus(userId, false)
+Repository -> DB: 배우자 유무 상태 업데이트
+DB --> Repository: 업데이트 완료
+Repository --> Service: 성공
+
+Service -> Repository: findByUserIdAndOwnerType(userId, "SPOUSE")
+Repository -> DB: 기존 배우자 자산 항목 조회
+DB --> Repository: List<AssetItem>
+Repository --> Service: existingItems
+
+alt 기존 배우자 데이터 존재
+    Service -> Repository: deleteAll(existingItems)
+    Repository -> DB: 배우자 자산 항목 전체 삭제
+    note right
+      ownerType = "SPOUSE"인
+      모든 항목 삭제
+    end note
+    DB --> Repository: 삭제 완료
+    Repository --> Service: 삭제 성공
+end
+
+Service --> Controller: SpouseStatusResponse
+note right
+  {
+    hasSpouse: false
+  }
+end note
+
+Controller --> Controller: 200 OK 응답
+
+== 배우자 있음 선택 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    hasSpouse: true
+  }
+end note
+
+Controller -> Service: updateSpouseStatus(userId, true)
+Service -> Repository: updateSpouseStatus(userId, true)
+Repository -> DB: 배우자 유무 상태 업데이트
+DB --> Repository: 업데이트 완료
+Repository --> Service: 성공
+
+Service --> Controller: SpouseStatusResponse
+note right
+  {
+    hasSpouse: true
+  }
+end note
+
+Controller --> Controller: 200 OK 응답
+
+== 배우자 자산 항목 추가 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    ownerType: "SPOUSE",
+    itemType: "ASSET",
+    name: "적금",
+    amount: 20000000
+  }
+end note
+
+Controller -> Validation: validateAssetItem(request)
+Validation -> Repository: getSpouseStatus(userId)
+Repository -> DB: 배우자 유무 상태 조회
+DB --> Repository: hasSpouse
+Repository --> Validation: hasSpouse
+
+alt hasSpouse = false
+    Validation --> Controller: ValidationException("배우자 없음으로 설정되어 있습니다")
+    Controller --> Controller: 400 Bad Request 응답
+else hasSpouse = true
+    Validation -> Validation: 필수 항목 검증
+    note right
+      - userId 존재 확인
+      - ownerType = "SPOUSE" 검증
+      - itemType 값 검증
+      - name 길이 검증 (2~50자)
+      - amount 양수 검증
+    end note
+
+    Validation -> Repository: checkDuplicateName(userId, ownerType, itemType, name)
+    Repository -> DB: 동일 항목명 존재 확인
+    DB --> Repository: 중복 여부
+    Repository --> Validation: isDuplicate
+
+    alt 중복된 항목명 존재
+        Validation --> Controller: ValidationException("중복된 항목명입니다")
+        Controller --> Controller: 400 Bad Request 응답
+    else 검증 통과
+        Validation --> Controller: 검증 성공
+
+        Controller -> Service: createAssetItem(request)
+        Service -> Repository: save(assetItem)
+        Repository -> DB: 배우자 자산 항목 저장
+        DB --> Repository: 저장된 항목
+        Repository --> Service: AssetItem
+
+        Service -> Repository: calculateTotal(userId, "SPOUSE", itemType)
+        Repository -> DB: 카테고리별 총액 계산
+        note right
+          ownerType = "SPOUSE"와
+          itemType으로 필터링하여 SUM 계산
+        end note
+        DB --> Repository: 총액
+        Repository --> Service: totalAmount
+
+        Service -> Service: 재무 요약 정보 계산
+
+        Service -> EventPublisher: publishAssetUpdated(event)
+        note right
+          Event: AssetUpdated
+          {
+            eventId: UUID.randomUUID(),
+            eventType: "ASSET_UPDATED",
+            timestamp: LocalDateTime.now(),
+            userId: userId,
+            changeType: "ITEM_ADDED",
+            ownerType: "SPOUSE",
+            itemType: "ASSET",
+            summary: {
+              totalNetAssets: 계산값,
+              totalMonthlyIncome: 계산값,
+              totalMonthlyExpense: 계산값,
+              monthlyAvailableFunds: 계산값
+            }
+          }
+        end note
+        EventPublisher -> MQ: Publish AssetUpdated Event
+        MQ --> EventPublisher: 이벤트 발행 성공
+        EventPublisher --> Service: 발행 완료
+
+        Service --> Controller: AssetItemResponse
+        note right
+          {
+            id: "item-id",
+            name: "적금",
+            amount: 20000000,
+            totalAssets: 20000000
+          }
+        end note
+
+        Controller --> Controller: 201 Created 응답
+    end
+end
+
+== 배우자 월소득 항목 추가 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    ownerType: "SPOUSE",
+    itemType: "INCOME",
+    name: "급여",
+    amount: 2500000
+  }
+end note
+
+Controller -> Validation: validateAssetItem(request)
+Validation -> Repository: getSpouseStatus(userId)
+Repository -> DB: 배우자 유무 상태 조회
+DB --> Repository: hasSpouse
+Repository --> Validation: hasSpouse
+
+alt hasSpouse = true
+    Validation -> Validation: 필수 항목 검증
+    Validation -> Repository: checkDuplicateName(userId, "SPOUSE", "INCOME", name)
+    Repository -> DB: 동일 항목명 존재 확인
+    DB --> Repository: 중복 여부
+    Repository --> Validation: isDuplicate
+
+    alt 검증 통과
+        Validation --> Controller: 검증 성공
+
+        Controller -> Service: createAssetItem(request)
+        Service -> Repository: save(assetItem)
+        Repository -> DB: 배우자 월소득 항목 저장
+        DB --> Repository: 저장된 항목
+        Repository --> Service: AssetItem
+
+        Service -> Repository: calculateTotal(userId, "SPOUSE", "INCOME")
+        Repository -> DB: 배우자 월소득 총액 계산
+        DB --> Repository: 총 월소득
+        Repository --> Service: totalIncomeAmount
+
+        Service -> Service: 재무 요약 정보 계산
+
+        Service -> EventPublisher: publishAssetUpdated(event)
+        note right
+          Event: AssetUpdated
+          {
+            eventId: UUID.randomUUID(),
+            eventType: "ASSET_UPDATED",
+            timestamp: LocalDateTime.now(),
+            userId: userId,
+            changeType: "ITEM_ADDED",
+            ownerType: "SPOUSE",
+            itemType: "INCOME",
+            summary: {
+              totalNetAssets: 계산값,
+              totalMonthlyIncome: 계산값,
+              totalMonthlyExpense: 계산값,
+              monthlyAvailableFunds: 계산값
+            }
+          }
+        end note
+        EventPublisher -> MQ: Publish AssetUpdated Event
+        MQ --> EventPublisher: 이벤트 발행 성공
+        EventPublisher --> Service: 발행 완료
+
+        Service --> Controller: AssetItemResponse
+        note right
+          {
+            id: "item-id",
+            name: "급여",
+            amount: 2500000,
+            totalIncome: 2500000
+          }
+        end note
+
+        Controller --> Controller: 201 Created 응답
+    end
+end
+
+== 배우자 월지출 항목 추가 API ==
+Controller -> Controller: 요청 데이터 수신
+note right
+  {
+    userId: "user-id",
+    ownerType: "SPOUSE",
+    itemType: "EXPENSE",
+    name: "생활비",
+    amount: 1000000
+  }
+end note
+
+Controller -> Validation: validateAssetItem(request)
+Validation -> Repository: getSpouseStatus(userId)
+Repository -> DB: 배우자 유무 상태 조회
+DB --> Repository: hasSpouse
+Repository --> Validation: hasSpouse
+
+alt hasSpouse = true
+    Validation -> Validation: 필수 항목 검증
+    Validation -> Repository: checkDuplicateName(userId, "SPOUSE", "EXPENSE", name)
+    Repository -> DB: 동일 항목명 존재 확인
+    DB --> Repository: 중복 여부
+    Repository --> Validation: isDuplicate
+
+    alt 검증 통과
+        Validation --> Controller: 검증 성공
+
+        Controller -> Service: createAssetItem(request)
+        Service -> Repository: save(assetItem)
+        Repository -> DB: 배우자 월지출 항목 저장
+        DB --> Repository: 저장된 항목
+        Repository --> Service: AssetItem
+
+        Service -> Repository: calculateTotal(userId, "SPOUSE", "EXPENSE")
+        Repository -> DB: 배우자 월지출 총액 계산
+        DB --> Repository: 총 월지출
+        Repository --> Service: totalExpenseAmount
+
+        Service -> Service: 재무 요약 정보 계산
+
+        Service -> EventPublisher: publishAssetUpdated(event)
+        note right
+          Event: AssetUpdated
+          {
+            eventId: UUID.randomUUID(),
+            eventType: "ASSET_UPDATED",
+            timestamp: LocalDateTime.now(),
+            userId: userId,
+            changeType: "ITEM_ADDED",
+            ownerType: "SPOUSE",
+            itemType: "EXPENSE",
+            summary: {
+              totalNetAssets: 계산값,
+              totalMonthlyIncome: 계산값,
+              totalMonthlyExpense: 계산값,
+              monthlyAvailableFunds: 계산값
+            }
+          }
+        end note
+        EventPublisher -> MQ: Publish AssetUpdated Event
+        MQ --> EventPublisher: 이벤트 발행 성공
+        EventPublisher --> Service: 발행 완료
+
+        Service --> Controller: AssetItemResponse
+        note right
+          {
+            id: "item-id",
+            name: "생활비",
+            amount: 1000000,
+            totalExpense: 1000000
+          }
+        end note
+
+        Controller --> Controller: 201 Created 응답
+    end
+end
+
+@enduml

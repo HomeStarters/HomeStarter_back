@@ -1,0 +1,112 @@
+@startuml user-기본정보입력
+!theme mono
+
+title User 서비스 내부 시퀀스 - 기본정보 입력 (UFR-USER-040)
+
+participant "Controller" as Controller
+participant "AuthService" as AuthService
+participant "UserService" as Service
+participant "ValidationService" as Validation
+participant "UserRepository" as Repository
+database "User DB" as DB
+
+== 기본정보 입력 API ==
+Controller -> Controller: POST /api/users/profile 요청 수신
+note right
+  Authorization: Bearer {token}
+  {
+    age: 28,
+    maritalStatus: "MARRIED",
+    numberOfChildren: 0,
+    hasPet: true,
+    currentResidence: "서울시 강남구"
+  }
+end note
+
+Controller -> AuthService: validateToken(token)
+AuthService -> AuthService: JWT 토큰 검증
+note right
+  - 토큰 서명 검증
+  - 만료 시간 확인
+  - 토큰에서 userId 추출
+end note
+
+alt 토큰 유효하지 않음
+    AuthService --> Controller: UnauthorizedException
+    Controller --> Controller: 401 Unauthorized 응답
+else 토큰 유효
+    AuthService --> Controller: userId
+
+    Controller -> Validation: validateProfileRequest(request)
+    Validation -> Validation: 필수 항목 검증
+    note right
+      - age: 19~100 범위 검증
+      - maritalStatus: SINGLE/MARRIED 값 검증
+      - numberOfChildren: 0 이상 검증
+      - hasPet: boolean 검증
+      - currentResidence: 2~100자 검증
+    end note
+
+    alt 검증 실패
+        Validation --> Controller: ValidationException
+        Controller --> Controller: 400 Bad Request 응답
+    else 검증 통과
+        Validation --> Controller: 검증 성공
+
+        Controller -> Service: createUserProfile(userId, profileRequest)
+        Service -> Repository: findById(userId)
+        Repository -> DB: SELECT * FROM users WHERE id = {userId}
+        DB --> Repository: User Entity
+        Repository --> Service: User
+
+        alt 사용자 없음
+            Service --> Controller: NotFoundException("사용자를 찾을 수 없습니다")
+            Controller --> Controller: 404 Not Found 응답
+        else 사용자 존재
+            Service -> Repository: checkProfileExists(userId)
+            Repository -> DB: SELECT COUNT(*) FROM user_profiles\nWHERE user_id = {userId}
+            DB --> Repository: count
+            Repository --> Service: exists
+
+            alt 프로필 이미 존재
+                Service --> Controller: BusinessException("이미 기본정보가 등록되어 있습니다")
+                Controller --> Controller: 409 Conflict 응답
+            else 프로필 없음
+                Service -> Service: UserProfile 엔티티 생성
+                note right
+                  UserProfile {
+                    userId: userId,
+                    age: 28,
+                    maritalStatus: MARRIED,
+                    numberOfChildren: 0,
+                    hasPet: true,
+                    currentResidence: "서울시 강남구",
+                    createdAt: LocalDateTime.now()
+                  }
+                end note
+
+                Service -> Repository: save(userProfile)
+                Repository -> DB: INSERT INTO user_profiles\n(...values...)
+                DB --> Repository: 저장 완료
+                Repository --> Service: UserProfile
+
+                Service --> Controller: ProfileResponse
+                note right
+                  {
+                    userId: "user-id",
+                    age: 28,
+                    maritalStatus: "MARRIED",
+                    numberOfChildren: 0,
+                    hasPet: true,
+                    currentResidence: "서울시 강남구",
+                    createdAt: "2025-01-15T10:00:00Z"
+                  }
+                end note
+
+                Controller --> Controller: 201 Created 응답
+            end
+        end
+    end
+end
+
+@enduml

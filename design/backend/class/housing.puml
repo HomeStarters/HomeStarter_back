@@ -1,0 +1,570 @@
+@startuml housing
+!theme mono
+
+title Housing Service - 클래스 설계 (Layered Architecture)
+
+package "com.dwj.homestarter.housing.controller" {
+    class HousingController {
+        - housingService: HousingService
+        --
+        + createHousing(request: HousingCreateRequest): ResponseEntity<HousingResponse>
+        + getHousings(housingType: String, sortBy: String, sortOrder: String): ResponseEntity<HousingListResponse>
+        + getHousing(id: String): ResponseEntity<HousingResponse>
+        + updateHousing(id: String, request: HousingUpdateRequest): ResponseEntity<HousingResponse>
+        + deleteHousing(id: String): ResponseEntity<Void>
+        + setGoalHousing(id: String): ResponseEntity<GoalHousingResponse>
+        --
+        - extractUserId(): String
+        - validateRequest(request: Object): void
+    }
+}
+
+package "com.dwj.homestarter.housing.service" {
+    class HousingService {
+        - housingRepository: HousingRepository
+        - transportRepository: TransportationRepository
+        - commuteTimeRepository: CommuteTimeRepository
+        - housingValidator: HousingValidator
+        - kakaoMapClient: KakaoMapClient
+        - circuitBreaker: CircuitBreaker
+        - eventPublisher: EventPublisher
+        - cacheManager: CacheManager
+        --
+        + createHousing(userId: String, request: HousingCreateRequest): Housing
+        + getHousings(userId: String, housingType: String, sortBy: String, sortOrder: String): List<Housing>
+        + getHousing(id: String, userId: String): Housing
+        + updateHousing(id: String, userId: String, request: HousingUpdateRequest): Housing
+        + deleteHousing(id: String, userId: String): void
+        + setGoalHousing(id: String, userId: String): Housing
+        --
+        - convertAddressToCoordinates(address: String): Coordinates
+        - validateOwnership(housing: Housing, userId: String): void
+        - clearGoalHousing(userId: String): void
+        - invalidateCache(housingId: String, userId: String): void
+        - publishEvent(event: DomainEvent): void
+    }
+
+    class HousingValidator {
+        --
+        + validateCreateRequest(request: HousingCreateRequest): void
+        + validateUpdateRequest(request: HousingUpdateRequest): void
+        + validateMoveInDate(moveInDate: String): void
+        + validatePrice(price: Long): void
+        + validateHousingType(housingType: String): void
+        --
+        - isValidDateFormat(date: String): boolean
+        - isFutureDate(date: String): boolean
+    }
+}
+
+package "com.dwj.homestarter.housing.domain.model" {
+    class Housing {
+        - id: String
+        - userId: String
+        - housingType: HousingType
+        - moveInDate: String
+        - name: String
+        - address: Address
+        - completionDate: String
+        - price: Long
+        - type: String
+        - transportations: List<Transportation>
+        - complexInfo: ComplexInfo
+        - livingEnvironment: LivingEnvironment
+        - isGoal: boolean
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        --
+        + setGoal(isGoal: boolean): void
+        + updateBasicInfo(request: HousingUpdateRequest): void
+        + validateOwnership(userId: String): boolean
+        --
+        - updateTransportations(transportations: List<Transportation>): void
+    }
+
+    class Address <<ValueObject>> {
+        - fullAddress: String
+        - roadAddress: String
+        - jibunAddress: String
+        - zipCode: String
+        - latitude: Double
+        - longitude: Double
+        --
+        + updateCoordinates(latitude: Double, longitude: Double): void
+        + equals(other: Address): boolean
+        + hashCode(): int
+    }
+
+    class Transportation {
+        - id: String
+        - housingId: String
+        - name: String
+        - openingDate: String
+        - commuteTime: CommuteTime
+        - createdAt: LocalDateTime
+        --
+        + updateCommuteTime(commuteTime: CommuteTime): void
+    }
+
+    class CommuteTime <<ValueObject>> {
+        - selfBefore: Integer
+        - selfAfter: Integer
+        - spouseBefore: Integer
+        - spouseAfter: Integer
+        --
+        + calculateTimeSaved(): Integer
+        + equals(other: CommuteTime): boolean
+        + hashCode(): int
+    }
+
+    class ComplexInfo <<ValueObject>> {
+        - complexCount: Integer
+        - tradingVolume: String
+        --
+        + equals(other: ComplexInfo): boolean
+        + hashCode(): int
+    }
+
+    class LivingEnvironment <<ValueObject>> {
+        - surroundings: String
+        - sunlight: SunlightLevel
+        - view: String
+        - noise: NoiseLevel
+        - memo: String
+        --
+        + equals(other: LivingEnvironment): boolean
+        + hashCode(): int
+    }
+
+    enum HousingType {
+        SALE
+        JEONSE
+        MONTHLY_RENT
+    }
+
+    enum SunlightLevel {
+        HIGH
+        MEDIUM
+        LOW
+    }
+
+    enum NoiseLevel {
+        HIGH
+        MEDIUM
+        LOW
+    }
+}
+
+package "com.dwj.homestarter.housing.repository" {
+    interface HousingRepository {
+        + save(housing: Housing): Housing
+        + findById(id: String): Optional<Housing>
+        + findByUserId(userId: String): List<Housing>
+        + findByUserIdAndHousingType(userId: String, housingType: HousingType): List<Housing>
+        + findByUserIdWithSort(userId: String, sort: Sort): List<Housing>
+        + findGoalHousingByUserId(userId: String): Optional<Housing>
+        + deleteById(id: String): void
+        + existsByIdAndUserId(id: String, userId: String): boolean
+        + clearGoalHousing(userId: String): void
+    }
+
+    interface TransportationRepository {
+        + save(transportation: Transportation): Transportation
+        + saveAll(transportations: List<Transportation>): List<Transportation>
+        + findByHousingId(housingId: String): List<Transportation>
+        + deleteByHousingId(housingId: String): void
+    }
+
+    interface CommuteTimeRepository {
+        + save(commuteTime: CommuteTime): CommuteTime
+        + findByTransportationId(transportationId: String): Optional<CommuteTime>
+        + deleteByTransportationId(transportationId: String): void
+    }
+}
+
+package "com.dwj.homestarter.housing.dto.request" {
+    class HousingCreateRequest {
+        + housingType: String
+        + moveInDate: String
+        + name: String
+        + address: AddressRequest
+        + completionDate: String
+        + price: Long
+        + type: String
+        + transportations: List<TransportationRequest>
+        + complexInfo: ComplexInfoRequest
+        + livingEnvironment: LivingEnvironmentRequest
+        --
+        + toEntity(userId: String): Housing
+    }
+
+    class HousingUpdateRequest {
+        + housingType: String
+        + moveInDate: String
+        + name: String
+        + address: AddressRequest
+        + completionDate: String
+        + price: Long
+        + type: String
+        + transportations: List<TransportationRequest>
+        + complexInfo: ComplexInfoRequest
+        + livingEnvironment: LivingEnvironmentRequest
+    }
+
+    class AddressRequest {
+        + fullAddress: String
+        + roadAddress: String
+        + jibunAddress: String
+        + zipCode: String
+        + latitude: Double
+        + longitude: Double
+        --
+        + toValueObject(): Address
+    }
+
+    class TransportationRequest {
+        + name: String
+        + openingDate: String
+        + commuteTime: CommuteTimeRequest
+        --
+        + toEntity(housingId: String): Transportation
+    }
+
+    class CommuteTimeRequest {
+        + selfBefore: Integer
+        + selfAfter: Integer
+        + spouseBefore: Integer
+        + spouseAfter: Integer
+        --
+        + toValueObject(): CommuteTime
+    }
+
+    class ComplexInfoRequest {
+        + complexCount: Integer
+        + tradingVolume: String
+        --
+        + toValueObject(): ComplexInfo
+    }
+
+    class LivingEnvironmentRequest {
+        + surroundings: String
+        + sunlight: String
+        + view: String
+        + noise: String
+        + memo: String
+        --
+        + toValueObject(): LivingEnvironment
+    }
+}
+
+package "com.dwj.homestarter.housing.dto.response" {
+    class HousingResponse {
+        + id: String
+        + userId: String
+        + housingType: String
+        + moveInDate: String
+        + name: String
+        + address: AddressResponse
+        + completionDate: String
+        + price: Long
+        + type: String
+        + transportations: List<TransportationResponse>
+        + complexInfo: ComplexInfoResponse
+        + livingEnvironment: LivingEnvironmentResponse
+        + isGoal: boolean
+        + createdAt: String
+        + updatedAt: String
+        --
+        + {static} from(housing: Housing): HousingResponse
+    }
+
+    class HousingListResponse {
+        + housings: List<HousingListItem>
+        + total: Integer
+        --
+        + {static} from(housings: List<Housing>): HousingListResponse
+    }
+
+    class HousingListItem {
+        + id: String
+        + name: String
+        + housingType: String
+        + address: AddressSimple
+        + price: Long
+        + moveInDate: String
+        + type: String
+        + isGoal: boolean
+        --
+        + {static} from(housing: Housing): HousingListItem
+    }
+
+    class GoalHousingResponse {
+        + id: String
+        + isGoal: boolean
+        + message: String
+        --
+        + {static} from(housing: Housing): GoalHousingResponse
+    }
+
+    class AddressResponse {
+        + fullAddress: String
+        + roadAddress: String
+        + jibunAddress: String
+        + zipCode: String
+        + latitude: Double
+        + longitude: Double
+        --
+        + {static} from(address: Address): AddressResponse
+    }
+
+    class AddressSimple {
+        + fullAddress: String
+        --
+        + {static} from(address: Address): AddressSimple
+    }
+
+    class TransportationResponse {
+        + name: String
+        + openingDate: String
+        + commuteTime: CommuteTimeResponse
+        --
+        + {static} from(transportation: Transportation): TransportationResponse
+    }
+
+    class CommuteTimeResponse {
+        + selfBefore: Integer
+        + selfAfter: Integer
+        + spouseBefore: Integer
+        + spouseAfter: Integer
+        --
+        + {static} from(commuteTime: CommuteTime): CommuteTimeResponse
+    }
+
+    class ComplexInfoResponse {
+        + complexCount: Integer
+        + tradingVolume: String
+        --
+        + {static} from(complexInfo: ComplexInfo): ComplexInfoResponse
+    }
+
+    class LivingEnvironmentResponse {
+        + surroundings: String
+        + sunlight: String
+        + view: String
+        + noise: String
+        + memo: String
+        --
+        + {static} from(livingEnvironment: LivingEnvironment): LivingEnvironmentResponse
+    }
+
+    class ErrorResponse {
+        + code: String
+        + message: String
+        + timestamp: String
+        --
+        + {static} of(code: String, message: String): ErrorResponse
+    }
+}
+
+package "com.dwj.homestarter.housing.infrastructure" {
+    class KakaoMapClient {
+        - restTemplate: RestTemplate
+        - apiKey: String
+        - baseUrl: String
+        --
+        + searchAddress(address: String): Coordinates
+        --
+        - buildSearchUrl(address: String): String
+        - parseResponse(response: String): Coordinates
+    }
+
+    class CircuitBreaker {
+        - state: CircuitState
+        - failureCount: int
+        - failureThreshold: int
+        - timeout: Duration
+        --
+        + execute(operation: Supplier<T>): T
+        + isOpen(): boolean
+        + isHalfOpen(): boolean
+        --
+        - recordSuccess(): void
+        - recordFailure(): void
+        - transitionToOpen(): void
+        - transitionToClosed(): void
+    }
+
+    enum CircuitState {
+        CLOSED
+        OPEN
+        HALF_OPEN
+    }
+
+    class EventPublisher {
+        - kafkaTemplate: KafkaTemplate
+        - objectMapper: ObjectMapper
+        --
+        + publish(event: DomainEvent): void
+        --
+        - convertToJson(event: DomainEvent): String
+    }
+
+    class CacheManager {
+        - redisTemplate: RedisTemplate
+        --
+        + get(key: String): Optional<Object>
+        + put(key: String, value: Object, ttl: Duration): void
+        + evict(key: String): void
+        + evictPattern(pattern: String): void
+        --
+        - buildKey(prefix: String, id: String): String
+    }
+}
+
+package "com.dwj.homestarter.housing.event" {
+    interface DomainEvent {
+        + getEventId(): String
+        + getEventType(): String
+        + getOccurredAt(): LocalDateTime
+    }
+
+    class HousingCreatedEvent implements DomainEvent {
+        - eventId: String
+        - housingId: String
+        - userId: String
+        - address: String
+        - price: Long
+        - occurredAt: LocalDateTime
+        --
+        + {static} of(housing: Housing): HousingCreatedEvent
+    }
+
+    class HousingUpdatedEvent implements DomainEvent {
+        - eventId: String
+        - housingId: String
+        - userId: String
+        - updatedFields: List<String>
+        - occurredAt: LocalDateTime
+        --
+        + {static} of(housing: Housing, fields: List<String>): HousingUpdatedEvent
+    }
+
+    class GoalHousingSelectedEvent implements DomainEvent {
+        - eventId: String
+        - housingId: String
+        - userId: String
+        - occurredAt: LocalDateTime
+        --
+        + {static} of(housing: Housing): GoalHousingSelectedEvent
+    }
+}
+
+package "com.dwj.homestarter.housing.exception" {
+    class HousingNotFoundException extends RuntimeException {
+        + HousingNotFoundException(housingId: String)
+    }
+
+    class UnauthorizedAccessException extends RuntimeException {
+        + UnauthorizedAccessException(message: String)
+    }
+
+    class InvalidHousingDataException extends RuntimeException {
+        + InvalidHousingDataException(message: String)
+    }
+
+    class ExternalServiceException extends RuntimeException {
+        + ExternalServiceException(message: String, cause: Throwable)
+    }
+}
+
+' Relationships
+HousingController --> HousingService : uses
+HousingController --> HousingCreateRequest : receives
+HousingController --> HousingUpdateRequest : receives
+HousingController --> HousingResponse : returns
+HousingController --> HousingListResponse : returns
+HousingController --> GoalHousingResponse : returns
+HousingController --> ErrorResponse : returns
+
+HousingService --> HousingRepository : uses
+HousingService --> TransportationRepository : uses
+HousingService --> CommuteTimeRepository : uses
+HousingService --> HousingValidator : uses
+HousingService --> KakaoMapClient : uses
+HousingService --> CircuitBreaker : uses
+HousingService --> EventPublisher : uses
+HousingService --> CacheManager : uses
+HousingService --> Housing : manages
+
+Housing --> Address : contains
+Housing --> Transportation : contains
+Housing --> ComplexInfo : contains
+Housing --> LivingEnvironment : contains
+Housing --> HousingType : uses
+Transportation --> CommuteTime : contains
+
+HousingValidator --> InvalidHousingDataException : throws
+
+HousingRepository --> Housing : persists
+TransportationRepository --> Transportation : persists
+
+KakaoMapClient --> ExternalServiceException : throws
+CircuitBreaker --> CircuitState : uses
+
+EventPublisher --> DomainEvent : publishes
+EventPublisher --> HousingCreatedEvent : publishes
+EventPublisher --> HousingUpdatedEvent : publishes
+EventPublisher --> GoalHousingSelectedEvent : publishes
+
+HousingCreateRequest --> AddressRequest : contains
+HousingCreateRequest --> TransportationRequest : contains
+HousingUpdateRequest --> AddressRequest : contains
+HousingUpdateRequest --> TransportationRequest : contains
+TransportationRequest --> CommuteTimeRequest : contains
+
+HousingResponse --> AddressResponse : contains
+HousingResponse --> TransportationResponse : contains
+HousingResponse --> ComplexInfoResponse : contains
+HousingResponse --> LivingEnvironmentResponse : contains
+HousingListResponse --> HousingListItem : contains
+HousingListItem --> AddressSimple : contains
+TransportationResponse --> CommuteTimeResponse : contains
+
+note top of HousingController
+  <b>Presentation Layer</b>
+  - REST API 엔드포인트 제공
+  - 요청 검증 및 응답 변환
+  - JWT 인증 처리
+end note
+
+note top of HousingService
+  <b>Business Layer</b>
+  - 비즈니스 로직 처리
+  - 트랜잭션 관리
+  - 이벤트 발행
+  - 캐시 관리
+end note
+
+note top of Housing
+  <b>Domain Layer</b>
+  - 도메인 엔티티 및 Value Objects
+  - 도메인 규칙 및 비즈니스 제약사항
+  - JPA Entity 매핑
+end note
+
+note top of HousingRepository
+  <b>Persistence Layer</b>
+  - 데이터 영속성 관리
+  - Spring Data JPA Repository
+  - 쿼리 메서드 정의
+end note
+
+note top of KakaoMapClient
+  <b>Infrastructure Layer</b>
+  - 외부 서비스 연동
+  - 캐시 관리
+  - 이벤트 발행
+  - Circuit Breaker 패턴
+end note
+
+@enduml

@@ -1,0 +1,246 @@
+-- ============================================
+-- User Service Database Schema
+-- PostgreSQL 15.x
+-- ============================================
+-- Description: 사용자 서비스 데이터베이스 스키마
+-- Author: 길동 (아키텍트)
+-- Date: 2025-12-29
+-- ============================================
+
+-- 스키마 생성
+CREATE SCHEMA IF NOT EXISTS user_service;
+
+-- 스키마 설정
+SET search_path TO user_service;
+
+-- ============================================
+-- 1. users (사용자 기본 정보)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    phone_number VARCHAR(20) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    last_login_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_users_phone_number ON users(phone_number);
+CREATE INDEX idx_users_last_login_at ON users(last_login_at);
+
+-- 제약조건 추가
+ALTER TABLE users
+ADD CONSTRAINT chk_users_user_id_format
+CHECK (user_id ~ '^[a-z0-9]{4,20}$');
+
+ALTER TABLE users
+ADD CONSTRAINT chk_users_email_format
+CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+
+ALTER TABLE users
+ADD CONSTRAINT chk_users_role
+CHECK (role IN ('USER', 'ADMIN'));
+
+ALTER TABLE users
+ADD CONSTRAINT chk_users_phone_format
+CHECK (phone_number ~ '^010-[0-9]{4}-[0-9]{4}$');
+
+-- 테이블 주석
+COMMENT ON TABLE users IS '사용자 기본 정보 테이블';
+COMMENT ON COLUMN users.id IS '기본키 (자동 증가)';
+COMMENT ON COLUMN users.user_id IS '사용자 아이디 (로그인용, 4-20자)';
+COMMENT ON COLUMN users.name IS '사용자 이름';
+COMMENT ON COLUMN users.email IS '이메일 주소';
+COMMENT ON COLUMN users.phone_number IS '전화번호 (010-XXXX-XXXX)';
+COMMENT ON COLUMN users.password IS 'BCrypt 암호화된 비밀번호';
+COMMENT ON COLUMN users.role IS '사용자 역할 (USER, ADMIN)';
+COMMENT ON COLUMN users.last_login_at IS '마지막 로그인 시간';
+COMMENT ON COLUMN users.created_at IS '생성 시간';
+COMMENT ON COLUMN users.updated_at IS '수정 시간';
+
+-- ============================================
+-- 2. user_profiles (사용자 프로필 정보)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE user_profiles (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL UNIQUE,
+    birth_date DATE NOT NULL,
+    gender VARCHAR(10) NOT NULL,
+    current_address JSONB,
+    user_workplace_address JSONB,
+    spouse_workplace_address JSONB,
+    investment_propensity VARCHAR(10) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_user_profiles_birth_date ON user_profiles(birth_date);
+CREATE INDEX idx_user_profiles_gender ON user_profiles(gender);
+CREATE INDEX idx_user_profiles_investment ON user_profiles(investment_propensity);
+
+-- 외래키 제약조건
+ALTER TABLE user_profiles
+ADD CONSTRAINT fk_user_profiles_user_id
+FOREIGN KEY (user_id) REFERENCES users(user_id)
+ON DELETE CASCADE
+ON UPDATE CASCADE;
+
+-- 제약조건 추가
+ALTER TABLE user_profiles
+ADD CONSTRAINT chk_user_profiles_gender
+CHECK (gender IN ('MALE', 'FEMALE'));
+
+ALTER TABLE user_profiles
+ADD CONSTRAINT chk_user_profiles_investment
+CHECK (investment_propensity IN ('HIGH', 'MEDIUM', 'LOW'));
+
+ALTER TABLE user_profiles
+ADD CONSTRAINT chk_user_profiles_birth_date
+CHECK (birth_date >= '1900-01-01' AND birth_date <= CURRENT_DATE);
+
+-- 테이블 주석
+COMMENT ON TABLE user_profiles IS '사용자 프로필 정보 테이블';
+COMMENT ON COLUMN user_profiles.id IS '기본키 (자동 증가)';
+COMMENT ON COLUMN user_profiles.user_id IS '사용자 아이디 (외래키)';
+COMMENT ON COLUMN user_profiles.birth_date IS '생년월일';
+COMMENT ON COLUMN user_profiles.gender IS '성별 (MALE, FEMALE)';
+COMMENT ON COLUMN user_profiles.current_address IS '현재 거주지 주소 (JSONB)';
+COMMENT ON COLUMN user_profiles.user_workplace_address IS '본인 직장 주소 (JSONB)';
+COMMENT ON COLUMN user_profiles.spouse_workplace_address IS '배우자 직장 주소 (JSONB)';
+COMMENT ON COLUMN user_profiles.investment_propensity IS '투자 성향 (HIGH, MEDIUM, LOW)';
+COMMENT ON COLUMN user_profiles.created_at IS '생성 시간';
+COMMENT ON COLUMN user_profiles.updated_at IS '수정 시간';
+
+-- ============================================
+-- 3. 트리거: updated_at 자동 업데이트
+-- ============================================
+
+-- 트리거 함수 생성
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- users 테이블 트리거
+CREATE TRIGGER trigger_users_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- user_profiles 테이블 트리거
+CREATE TRIGGER trigger_user_profiles_updated_at
+BEFORE UPDATE ON user_profiles
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- 4. 권한 설정 (선택적)
+-- ============================================
+
+-- 애플리케이션 사용자 생성 (필요 시)
+-- CREATE USER app_user WITH PASSWORD 'your_secure_password';
+
+-- 권한 부여 (필요 시)
+-- GRANT USAGE ON SCHEMA user_service TO app_user;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA user_service TO app_user;
+-- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA user_service TO app_user;
+
+-- ============================================
+-- 5. 샘플 데이터 (테스트용, 선택적)
+-- ============================================
+
+-- 샘플 사용자 1
+INSERT INTO users (user_id, name, email, phone_number, password, role)
+VALUES (
+    'testuser1',
+    '김테스트',
+    'test1@example.com',
+    '010-1234-5678',
+    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- BCrypt: password123
+    'USER'
+);
+
+INSERT INTO user_profiles (user_id, birth_date, gender, current_address, investment_propensity)
+VALUES (
+    'testuser1',
+    '1990-01-15',
+    'MALE',
+    '{"roadAddress": "서울특별시 강남구 테헤란로 123", "jibunAddress": "서울특별시 강남구 역삼동 123-45", "postalCode": "06234", "latitude": 37.5012345, "longitude": 127.0398765}'::jsonb,
+    'MEDIUM'
+);
+
+-- 샘플 사용자 2
+INSERT INTO users (user_id, name, email, phone_number, password, role)
+VALUES (
+    'testuser2',
+    '이테스트',
+    'test2@example.com',
+    '010-2345-6789',
+    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- BCrypt: password123
+    'USER'
+);
+
+INSERT INTO user_profiles (user_id, birth_date, gender, current_address, user_workplace_address, investment_propensity)
+VALUES (
+    'testuser2',
+    '1992-05-20',
+    'FEMALE',
+    '{"roadAddress": "서울특별시 서초구 서초대로 456", "jibunAddress": "서울특별시 서초구 서초동 456-78", "postalCode": "06789", "latitude": 37.4912345, "longitude": 127.0298765}'::jsonb,
+    '{"roadAddress": "서울특별시 강남구 역삼로 789", "jibunAddress": "서울특별시 강남구 역삼동 789-01", "postalCode": "06123", "latitude": 37.5112345, "longitude": 127.0498765}'::jsonb,
+    'HIGH'
+);
+
+-- ============================================
+-- 6. 스키마 검증 쿼리
+-- ============================================
+
+-- 테이블 목록 확인
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'user_service'
+ORDER BY table_name;
+
+-- 인덱스 확인
+SELECT
+    tablename,
+    indexname,
+    indexdef
+FROM pg_indexes
+WHERE schemaname = 'user_service'
+ORDER BY tablename, indexname;
+
+-- 제약조건 확인
+SELECT
+    conname AS constraint_name,
+    conrelid::regclass AS table_name,
+    contype AS constraint_type,
+    pg_get_constraintdef(oid) AS constraint_definition
+FROM pg_constraint
+WHERE connamespace = 'user_service'::regnamespace
+ORDER BY conrelid::regclass::text, conname;
+
+-- 테이블 크기 확인
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'user_service'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- ============================================
+-- 완료
+-- ============================================

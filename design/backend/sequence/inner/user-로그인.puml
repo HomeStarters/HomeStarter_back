@@ -1,0 +1,119 @@
+@startuml user-로그인
+!theme mono
+
+title User 서비스 - 로그인 내부 시퀀스
+
+actor "Frontend" as FE
+participant "UserController" as UC
+participant "UserService" as US
+participant "UserRepository" as UR
+participant "JwtTokenProvider" as JWT
+database "User DB" as DB
+database "Redis Cache<<E>>" as Cache
+
+== 로그인 처리 ==
+
+FE -> UC: POST /api/users/login\n(아이디, 비밀번호)
+activate UC
+
+note over UC
+  요청 데이터 검증:
+  - 아이디: 필수 입력
+  - 비밀번호: 필수 입력
+end note
+
+UC -> US: 로그인 요청\n(아이디, 비밀번호)
+activate US
+
+US -> UR: 아이디로 사용자 조회\n(아이디)
+activate UR
+UR -> DB: 아이디로 사용자 정보 조회
+activate DB
+DB --> UR: 사용자 정보
+deactivate DB
+UR --> US: User Entity 반환
+deactivate UR
+
+alt 사용자 없음
+  US --> UC: BusinessException\n(사용자 없음)
+  UC --> FE: 401 Unauthorized\n(아이디 또는 비밀번호를 확인해주세요)
+else 사용자 존재
+  note over US
+    비밀번호 검증:
+    - BCrypt.matches() 사용
+    - 암호화된 비밀번호와 비교
+  end note
+
+  US -> US: 비밀번호 검증\n(입력 비밀번호, 저장된 암호화 비밀번호)
+
+  alt 비밀번호 불일치
+    note over US
+      로그인 실패 횟수 증가:
+      - 5회 연속 실패 시 계정 잠금
+    end note
+
+    US -> Cache: 로그인 실패 횟수 증가\n(아이디)
+    activate Cache
+    Cache --> US: 현재 실패 횟수
+    deactivate Cache
+
+    alt 실패 횟수 >= 5
+      US --> UC: BusinessException\n(계정 잠금)
+      UC --> FE: 403 Forbidden\n(30분간 계정이 잠겼습니다)
+    else 실패 횟수 < 5
+      US --> UC: BusinessException\n(비밀번호 불일치)
+      UC --> FE: 401 Unauthorized\n(아이디 또는 비밀번호를 확인해주세요)
+    end
+
+  else 비밀번호 일치
+    note over US
+      로그인 성공 처리:
+      - 실패 횟수 초기화
+      - 마지막 로그인 시간 업데이트
+    end note
+
+    US -> Cache: 로그인 실패 횟수 초기화\n(아이디)
+    activate Cache
+    Cache --> US: 초기화 완료
+    deactivate Cache
+
+    US -> UR: 마지막 로그인 시간 업데이트\n(사용자 ID)
+    activate UR
+    UR -> DB: 마지막 로그인 시간 UPDATE
+    activate DB
+    DB --> UR: 업데이트 완료
+    deactivate DB
+    UR --> US: 완료
+    deactivate UR
+
+    note over JWT
+      JWT 토큰 생성:
+      - Access Token (유효기간: 1시간)
+      - Refresh Token (유효기간: 7일)
+      - Payload: 사용자 ID, 이메일, 역할
+    end note
+
+    US -> JWT: Access Token 생성 요청\n(사용자 ID, 이메일, 역할)
+    activate JWT
+    JWT --> US: Access Token
+    deactivate JWT
+
+    US -> JWT: Refresh Token 생성 요청\n(사용자 ID)
+    activate JWT
+    JWT --> US: Refresh Token
+    deactivate JWT
+
+    US -> Cache: Refresh Token 저장\n(사용자 ID, Refresh Token, TTL: 7일)
+    activate Cache
+    Cache --> US: 저장 완료
+    deactivate Cache
+
+    US --> UC: 로그인 성공\n(Access Token, Refresh Token, 사용자 정보)
+    deactivate US
+
+    UC --> FE: 200 OK\n(Access Token, Refresh Token,\n사용자 ID, 이름, 이메일)
+    deactivate UC
+  end
+end
+
+@enduml

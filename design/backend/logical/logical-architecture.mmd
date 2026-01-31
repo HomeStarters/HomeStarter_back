@@ -1,0 +1,84 @@
+graph TB
+    Client["클라이언트<br/>(Web/Mobile)"]
+
+    subgraph "API Gateway Layer"
+        Gateway["API Gateway<br/>Gateway Routing<br/>JWT 인증, Rate Limiting"]
+    end
+
+    subgraph "외부 서비스"
+        KakaoMap["카카오맵 API<br/>(주소 검색)"]
+        LLMAPI["LLM API<br/>(Claude/GPT)<br/>AI 로드맵 생성"]
+    end
+
+    subgraph "마이크로서비스"
+        User["User Service<br/>인증/인가<br/>기본정보 관리"]
+        Asset["Asset Service<br/>자산정보 관리<br/>복수 항목 CRUD"]
+        Loan["Loan Service<br/>대출상품 관리<br/>CRUD"]
+        Housing["Housing Service<br/>주택정보 관리<br/>교통호재 관리"]
+        Calculator["Calculator Service<br/>재무계산<br/>Cache-Aside 패턴"]
+        Roadmap["Roadmap Service<br/>AI 로드맵 설계<br/>Async Request-Reply"]
+    end
+
+    subgraph "인프라스트럭처"
+        Redis["Redis Cache<br/>계산 결과 캐싱<br/>주소 검색 캐싱"]
+        MQ["Message Queue<br/>(RabbitMQ)<br/>Publisher-Subscriber"]
+        DB[("PostgreSQL<br/>서비스별 독립 DB")]
+        SSE["SSE/WebSocket<br/>실시간 진행 상황"]
+    end
+
+    %% 클라이언트 → Gateway
+    Client -->|"HTTPS 요청"| Gateway
+
+    %% Gateway → 서비스 (동기)
+    Gateway -->|"[User]인증/인가"| User
+    Gateway -->|"[Asset]자산 관리"| Asset
+    Gateway -->|"[Loan]대출상품 조회"| Loan
+    Gateway -->|"[Housing]주택 관리"| Housing
+    Gateway -->|"[Calc]계산 요청"| Calculator
+    Gateway -->|"[Roadmap]로드맵 요청"| Roadmap
+
+    %% 외부 API (Circuit Breaker)
+    Gateway -.->|"Circuit Breaker<br/>Retry"| KakaoMap
+    Roadmap -.->|"Circuit Breaker<br/>Retry"| LLMAPI
+
+    %% Calculator → 다중 서비스 조회 (동기)
+    Calculator -->|"사용자 정보 조회"| User
+    Calculator -->|"자산정보 조회"| Asset
+    Calculator -->|"주택정보 조회"| Housing
+    Calculator -->|"대출상품 조회"| Loan
+
+    %% Calculator ↔ Redis (Cache-Aside)
+    Calculator <-->|"캐시 조회/저장"| Redis
+
+    %% Roadmap 비동기 처리
+    Roadmap ->>|"[Roadmap]AI 작업 등록"| MQ
+    MQ ->>|"AI Worker 처리"| LLMAPI
+    Roadmap <-->|"실시간 진행 상황"| SSE
+    SSE <-->|"SSE 스트림"| Client
+
+    %% 이벤트 전파 (Publisher-Subscriber)
+    Asset ->>|"[Asset]AssetUpdated 이벤트"| MQ
+    Housing ->>|"[Housing]HousingUpdated 이벤트"| MQ
+    MQ ->>|"캐시 무효화 이벤트"| Calculator
+    Calculator -->|"캐시 무효화"| Redis
+
+    %% 데이터베이스 연결
+    User --> DB
+    Asset --> DB
+    Loan --> DB
+    Housing --> DB
+    Calculator --> DB
+    Roadmap --> DB
+
+    %% 스타일
+    classDef gatewayStyle fill:#4A90E2,color:#fff,stroke:#333,stroke-width:2px
+    classDef cacheStyle fill:#F5A623,color:#fff,stroke:#333,stroke-width:2px
+    classDef asyncStyle fill:#50E3C2,color:#000,stroke:#333,stroke-width:2px
+    classDef infraStyle fill:#D0021B,color:#fff,stroke:#333,stroke-width:2px
+    classDef externalStyle fill:#BD10E0,color:#fff,stroke:#333,stroke-width:2px
+
+    class Gateway gatewayStyle
+    class Calculator,Roadmap cacheStyle
+    class MQ asyncStyle
+    class Redis,DB infraStyle
+    class KakaoMap,LLMAPI,SSE externalStyle

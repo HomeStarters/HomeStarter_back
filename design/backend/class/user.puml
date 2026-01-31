@@ -1,0 +1,437 @@
+@startuml user
+!theme mono
+
+title User 서비스 - 클래스 다이어그램
+
+package "com.dwj.homestarter.user" {
+
+    ' Controller Layer
+    package "controller" {
+        class UserController {
+            - userService: UserService
+            - jwtTokenProvider: JwtTokenProvider
+            + registerUser(request: UserRegisterRequest): ResponseEntity<ApiResponse<UserRegisterResponse>>
+            + loginUser(request: UserLoginRequest): ResponseEntity<ApiResponse<UserLoginResponse>>
+            + logoutUser(accessToken: String): ResponseEntity<ApiResponse<Void>>
+            + getUserProfile(userId: String): ResponseEntity<ApiResponse<UserProfile>>
+            + updateUserProfile(userId: String, request: UserProfileUpdateRequest): ResponseEntity<ApiResponse<UserProfile>>
+        }
+    }
+
+    ' Service Layer
+    package "service" {
+        interface UserService {
+            + register(request: UserRegisterDto): UserRegisterDto
+            + login(request: UserLoginDto): UserLoginDto
+            + logout(userId: String, accessToken: String): void
+            + getUserProfile(userId: String): UserProfileDto
+            + updateUserProfile(userId: String, request: UserProfileUpdateDto): UserProfileDto
+            + existsByUserId(userId: String): boolean
+            + existsByEmail(email: String): boolean
+        }
+
+        class UserServiceImpl implements UserService {
+            - userRepository: UserRepository
+            - userProfileRepository: UserProfileRepository
+            - passwordEncoder: PasswordEncoder
+            - jwtTokenProvider: JwtTokenProvider
+            - redisTemplate: RedisTemplate
+            + register(request: UserRegisterDto): UserRegisterDto
+            + login(request: UserLoginDto): UserLoginDto
+            + logout(userId: String, accessToken: String): void
+            + getUserProfile(userId: String): UserProfileDto
+            + updateUserProfile(userId: String, request: UserProfileUpdateDto): UserProfileDto
+            + existsByUserId(userId: String): boolean
+            + existsByEmail(email: String): boolean
+            - validatePassword(rawPassword: String, encodedPassword: String): boolean
+            - incrementLoginFailCount(userId: String): int
+            - resetLoginFailCount(userId: String): void
+            - isAccountLocked(userId: String): boolean
+            - saveRefreshToken(userId: String, refreshToken: String): void
+            - deleteRefreshToken(userId: String): void
+            - addTokenToBlacklist(token: String, ttl: long): void
+            - updateLastLoginTime(userId: String): void
+        }
+
+        class JwtTokenProvider {
+            - secretKey: String
+            - accessTokenValidityInMilliseconds: long
+            - refreshTokenValidityInMilliseconds: long
+            + generateAccessToken(userId: String, email: String, role: String): String
+            + generateRefreshToken(userId: String): String
+            + validateToken(token: String): boolean
+            + getUserIdFromToken(token: String): String
+            + getExpirationTime(token: String): long
+            + getRemainingTime(token: String): long
+            - createToken(claims: Map<String, Object>, validityInMilliseconds: long): String
+            - getClaims(token: String): Claims
+        }
+    }
+
+    ' Repository Layer
+    package "repository" {
+        package "jpa" {
+            interface UserRepository extends JpaRepository {
+                + findByUserId(userId: String): Optional<UserEntity>
+                + findByEmail(email: String): Optional<UserEntity>
+                + existsByUserId(userId: String): boolean
+                + existsByEmail(email: String): boolean
+            }
+
+            interface UserProfileRepository extends JpaRepository {
+                + findByUserId(userId: String): Optional<UserProfileEntity>
+                + deleteByUserId(userId: String): void
+            }
+        }
+
+        package "entity" {
+            class UserEntity {
+                - id: Long
+                - userId: String
+                - name: String
+                - email: String
+                - phoneNumber: String
+                - password: String
+                - role: String
+                - lastLoginAt: LocalDateTime
+                - createdAt: LocalDateTime
+                - updatedAt: LocalDateTime
+                + UserEntity()
+                + toDto(): UserDto
+            }
+
+            class UserProfileEntity {
+                - id: Long
+                - userId: String
+                - birthDate: LocalDate
+                - gender: Gender
+                - currentAddress: AddressEmbeddable
+                - userWorkplaceAddress: AddressEmbeddable
+                - spouseWorkplaceAddress: AddressEmbeddable
+                - investmentPropensity: InvestmentPropensity
+                - createdAt: LocalDateTime
+                - updatedAt: LocalDateTime
+                + UserProfileEntity()
+                + toDto(): UserProfileDto
+            }
+
+            class AddressEmbeddable {
+                - roadAddress: String
+                - jibunAddress: String
+                - postalCode: String
+                - latitude: Double
+                - longitude: Double
+                + AddressEmbeddable()
+            }
+
+            enum Gender {
+                MALE
+                FEMALE
+            }
+
+            enum InvestmentPropensity {
+                HIGH
+                MEDIUM
+                LOW
+            }
+        }
+    }
+
+    ' Domain Layer
+    package "domain" {
+        class User {
+            - userId: String
+            - name: String
+            - email: String
+            - phoneNumber: String
+            - password: String
+            - role: String
+            - lastLoginAt: LocalDateTime
+            + User()
+            + toEntity(): UserEntity
+        }
+
+        class UserProfile {
+            - userId: String
+            - birthDate: LocalDate
+            - gender: Gender
+            - currentAddress: Address
+            - userWorkplaceAddress: Address
+            - spouseWorkplaceAddress: Address
+            - investmentPropensity: InvestmentPropensity
+            + UserProfile()
+            + toEntity(): UserProfileEntity
+        }
+
+        class Address {
+            - roadAddress: String
+            - jibunAddress: String
+            - postalCode: String
+            - latitude: Double
+            - longitude: Double
+            + Address()
+            + toEmbeddable(): AddressEmbeddable
+        }
+    }
+
+    ' DTO Layer
+    package "dto" {
+        package "request" {
+            class UserRegisterRequest {
+                - name: String
+                - email: String
+                - phoneNumber: String
+                - userId: String
+                - password: String
+                - passwordConfirm: String
+                - agreeTerms: boolean
+                + validate(): void
+                + toDto(): UserRegisterDto
+            }
+
+            class UserLoginRequest {
+                - userId: String
+                - password: String
+                - rememberMe: boolean
+                + validate(): void
+                + toDto(): UserLoginDto
+            }
+
+            class UserProfileUpdateRequest {
+                - currentAddress: AddressRequest
+                - userWorkplaceAddress: AddressRequest
+                - spouseWorkplaceAddress: AddressRequest
+                - investmentPropensity: String
+                + validate(): void
+                + toDto(): UserProfileUpdateDto
+            }
+
+            class AddressRequest {
+                - roadAddress: String
+                - jibunAddress: String
+                - postalCode: String
+                - latitude: Double
+                - longitude: Double
+                + validate(): void
+                + toDto(): AddressDto
+            }
+        }
+
+        package "response" {
+            class UserRegisterResponse {
+                - userId: String
+                - email: String
+                + fromDto(dto: UserRegisterDto): UserRegisterResponse
+            }
+
+            class UserLoginResponse {
+                - accessToken: String
+                - refreshToken: String
+                - tokenType: String
+                - expiresIn: int
+                - user: UserBasicInfo
+                + fromDto(dto: UserLoginDto): UserLoginResponse
+            }
+
+            class UserProfileResponse {
+                - userId: String
+                - name: String
+                - email: String
+                - phoneNumber: String
+                - birthDate: LocalDate
+                - gender: String
+                - currentAddress: AddressResponse
+                - userWorkplaceAddress: AddressResponse
+                - spouseWorkplaceAddress: AddressResponse
+                - investmentPropensity: String
+                - createdAt: LocalDateTime
+                - updatedAt: LocalDateTime
+                + fromDto(dto: UserProfileDto): UserProfileResponse
+            }
+
+            class UserBasicInfo {
+                - userId: String
+                - name: String
+                - email: String
+            }
+
+            class AddressResponse {
+                - roadAddress: String
+                - jibunAddress: String
+                - postalCode: String
+                - latitude: Double
+                - longitude: Double
+                + fromDto(dto: AddressDto): AddressResponse
+            }
+        }
+
+        package "service" {
+            class UserRegisterDto {
+                - name: String
+                - email: String
+                - phoneNumber: String
+                - userId: String
+                - password: String
+                + toDomain(): User
+            }
+
+            class UserLoginDto {
+                - userId: String
+                - password: String
+                - rememberMe: boolean
+                - accessToken: String
+                - refreshToken: String
+                - user: UserDto
+            }
+
+            class UserDto {
+                - userId: String
+                - name: String
+                - email: String
+                - phoneNumber: String
+                - role: String
+                - lastLoginAt: LocalDateTime
+            }
+
+            class UserProfileDto {
+                - userId: String
+                - name: String
+                - email: String
+                - phoneNumber: String
+                - birthDate: LocalDate
+                - gender: Gender
+                - currentAddress: AddressDto
+                - userWorkplaceAddress: AddressDto
+                - spouseWorkplaceAddress: AddressDto
+                - investmentPropensity: InvestmentPropensity
+                - createdAt: LocalDateTime
+                - updatedAt: LocalDateTime
+                + toDomain(): UserProfile
+            }
+
+            class UserProfileUpdateDto {
+                - currentAddress: AddressDto
+                - userWorkplaceAddress: AddressDto
+                - spouseWorkplaceAddress: AddressDto
+                - investmentPropensity: InvestmentPropensity
+            }
+
+            class AddressDto {
+                - roadAddress: String
+                - jibunAddress: String
+                - postalCode: String
+                - latitude: Double
+                - longitude: Double
+                + toDomain(): Address
+            }
+        }
+    }
+
+    ' Config Layer
+    package "config" {
+        class SecurityConfig {
+            - jwtTokenProvider: JwtTokenProvider
+            + securityFilterChain(http: HttpSecurity): SecurityFilterChain
+            + passwordEncoder(): PasswordEncoder
+            + authenticationManager(authenticationConfiguration: AuthenticationConfiguration): AuthenticationManager
+        }
+
+        class JwtAuthenticationFilter {
+            - jwtTokenProvider: JwtTokenProvider
+            - redisTemplate: RedisTemplate
+            + doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain): void
+            - resolveToken(request: HttpServletRequest): String
+            - isTokenBlacklisted(token: String): boolean
+        }
+
+        class RedisConfig {
+            + redisConnectionFactory(): RedisConnectionFactory
+            + redisTemplate(): RedisTemplate<String, Object>
+        }
+
+        class SwaggerConfig {
+            + openAPI(): OpenAPI
+        }
+    }
+}
+
+package "com.dwj.homestarter.common" {
+    package "dto" {
+        class ApiResponse<T> {
+            - success: boolean
+            - message: String
+            - data: T
+            + success(data: T, message: String): ApiResponse<T>
+            + error(message: String): ApiResponse<T>
+        }
+    }
+
+    package "exception" {
+        class BusinessException extends RuntimeException {
+            - errorCode: String
+            + BusinessException(message: String, errorCode: String)
+        }
+
+        class UnauthorizedException extends RuntimeException {
+            - errorCode: String
+            + UnauthorizedException(message: String, errorCode: String)
+        }
+
+        class NotFoundException extends RuntimeException {
+            - errorCode: String
+            + NotFoundException(message: String, errorCode: String)
+        }
+
+        class ValidationException extends RuntimeException {
+            - errorCode: String
+            + ValidationException(message: String, errorCode: String)
+        }
+
+        class GlobalExceptionHandler {
+            + handleBusinessException(ex: BusinessException): ResponseEntity<ApiResponse>
+            + handleUnauthorizedException(ex: UnauthorizedException): ResponseEntity<ApiResponse>
+            + handleNotFoundException(ex: NotFoundException): ResponseEntity<ApiResponse>
+            + handleValidationException(ex: ValidationException): ResponseEntity<ApiResponse>
+            + handleException(ex: Exception): ResponseEntity<ApiResponse>
+        }
+    }
+}
+
+' Relationships
+UserController --> UserService
+UserController --> JwtTokenProvider
+UserServiceImpl ..|> UserService
+UserServiceImpl --> UserRepository
+UserServiceImpl --> UserProfileRepository
+UserServiceImpl --> JwtTokenProvider
+UserServiceImpl --> PasswordEncoder
+UserServiceImpl --> RedisTemplate
+
+UserRepository --> UserEntity
+UserProfileRepository --> UserProfileEntity
+UserProfileEntity *-- AddressEmbeddable
+UserProfileEntity *-- Gender
+UserProfileEntity *-- InvestmentPropensity
+
+UserEntity --> User
+UserProfileEntity --> UserProfile
+UserProfile *-- Address
+
+UserController ..> UserRegisterRequest
+UserController ..> UserLoginRequest
+UserController ..> UserProfileUpdateRequest
+UserController ..> UserRegisterResponse
+UserController ..> UserLoginResponse
+UserController ..> UserProfileResponse
+UserController ..> ApiResponse
+
+UserRegisterRequest ..> UserRegisterDto
+UserLoginRequest ..> UserLoginDto
+UserProfileUpdateRequest ..> UserProfileUpdateDto
+UserRegisterDto ..> User
+UserProfileDto ..> UserProfile
+
+JwtAuthenticationFilter --> JwtTokenProvider
+JwtAuthenticationFilter --> RedisTemplate
+
+@enduml

@@ -1,0 +1,154 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 -->
+  <rect width="1200" height="800" fill="#ffffff"/>
+
+  <!-- 제목 -->
+  <text x="600" y="40" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#333">
+    솔루션 우선순위 평가 매트릭스
+  </text>
+
+  <!-- 축 영역 정의 -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- X축 (실현가능성) -->
+  <line x1="150" y1="650" x2="1050" y2="650" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="600" y="690" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#333">
+    실현가능성 (Feasibility)
+  </text>
+  <text x="150" y="675" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#666">낮음</text>
+  <text x="1050" y="675" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#666">높음</text>
+
+  <!-- Y축 (비즈니스 영향도) -->
+  <line x1="150" y1="650" x2="150" y2="100" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="70" y="380" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#333" transform="rotate(-90 70 380)">
+    비즈니스 영향도 (Business Value)
+  </text>
+  <text x="130" y="655" font-family="Arial, sans-serif" font-size="12" text-anchor="end" fill="#666">낮음</text>
+  <text x="130" y="110" font-family="Arial, sans-serif" font-size="12" text-anchor="end" fill="#666">높음</text>
+
+  <!-- 4분면 배경 -->
+  <!-- Unwise (좌하단) -->
+  <rect x="150" y="375" width="450" height="275" fill="#ffe6e6" opacity="0.3"/>
+  <text x="375" y="520" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#cc0000" opacity="0.5">
+    Unwise
+  </text>
+
+  <!-- Utilities (우하단) -->
+  <rect x="600" y="375" width="450" height="275" fill="#e6f7ff" opacity="0.3"/>
+  <text x="825" y="520" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#0066cc" opacity="0.5">
+    Utilities
+  </text>
+
+  <!-- Big Bets (좌상단) -->
+  <rect x="150" y="100" width="450" height="275" fill="#fff9e6" opacity="0.3"/>
+  <text x="375" y="245" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#cc8800" opacity="0.5">
+    Big Bets
+  </text>
+
+  <!-- No Brainers (우상단) -->
+  <rect x="600" y="100" width="450" height="275" fill="#e6ffe6" opacity="0.3"/>
+  <text x="825" y="245" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#00cc00" opacity="0.5">
+    No Brainers
+  </text>
+
+  <!-- 중심선 -->
+  <line x1="600" y1="100" x2="600" y2="650" stroke="#ccc" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="150" y1="375" x2="1050" y2="375" stroke="#ccc" stroke-width="1" stroke-dasharray="5,5"/>
+
+  <!-- 데이터 포인트 (비즈니스가치: 0-6점을 100-375로, 실현가능성: 0-7점을 150-1050로 매핑) -->
+  <!-- 비즈니스가치 변환: y = 650 - (value/6 * 550) -->
+  <!-- 실현가능성 변환: x = 150 + (value/7 * 900) -->
+
+  <!-- Big Bets 영역 -->
+  <!-- #1: AI 기반 종합 검증 시스템 (6B, 0F) -->
+  <circle cx="150" cy="100" r="12" fill="#ff6b6b" opacity="0.8"/>
+  <text x="150" y="105" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">1</text>
+
+  <!-- #2: AI 기반 라이프스타일 맞춤 큐레이션 (6B, 0F) -->
+  <circle cx="150" cy="125" r="12" fill="#ff6b6b" opacity="0.8"/>
+  <text x="150" y="130" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">2</text>
+
+  <!-- #5: 실거주자 경험 공유 커뮤니티 (4B, 2F) -->
+  <circle cx="408" cy="283" r="12" fill="#ff6b6b" opacity="0.8"/>
+  <text x="408" y="288" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">5</text>
+
+  <!-- Utilities 영역 -->
+  <!-- #3: 스마트 체크리스트 시스템 (1B, 7F) -->
+  <circle cx="1050" cy="558" r="12" fill="#4dabf7" opacity="0.8"/>
+  <text x="1050" y="563" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">3</text>
+
+  <!-- #4: 주거 비용 계산 및 최적화 (1B, 5F) -->
+  <circle cx="793" cy="558" r="12" fill="#4dabf7" opacity="0.8"/>
+  <text x="793" y="563" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">4</text>
+
+  <!-- #6: 찜한 매물 비교 대시보드 (2B, 5F) -->
+  <circle cx="793" cy="467" r="12" fill="#4dabf7" opacity="0.8"/>
+  <text x="793" y="472" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">6</text>
+
+  <!-- #7: 스마트 매물 알림 시스템 (3B, 3F) -->
+  <circle cx="536" cy="375" r="12" fill="#4dabf7" opacity="0.8"/>
+  <text x="536" y="380" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">7</text>
+
+  <!-- Unwise 영역 (일부만 표시) -->
+  <!-- #8: 지역 정보 시각화 지도 (1B, 3F) -->
+  <circle cx="536" cy="558" r="8" fill="#adb5bd" opacity="0.6"/>
+  <text x="536" y="562" font-family="Arial, sans-serif" font-size="9" text-anchor="middle" fill="white">8</text>
+
+  <!-- #9: 전문가 기반 1:1 맞춤 상담 서비스 (2B, 0F) -->
+  <circle cx="150" cy="467" r="8" fill="#adb5bd" opacity="0.6"/>
+  <text x="150" y="471" font-family="Arial, sans-serif" font-size="9" text-anchor="middle" fill="white">9</text>
+
+  <!-- #10: 계약 안전 검증 도구 (1B, 2F) -->
+  <circle cx="408" cy="558" r="8" fill="#adb5bd" opacity="0.6"/>
+  <text x="408" y="562" font-family="Arial, sans-serif" font-size="9" text-anchor="middle" fill="white">10</text>
+
+  <!-- 범례 -->
+  <text x="150" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#333">범례:</text>
+
+  <!-- Big Bets -->
+  <circle cx="170" cy="755" r="8" fill="#ff6b6b" opacity="0.8"/>
+  <text x="185" y="760" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    #1: AI 기반 종합 검증 시스템
+  </text>
+
+  <circle cx="420" cy="755" r="8" fill="#ff6b6b" opacity="0.8"/>
+  <text x="435" y="760" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    #2: AI 기반 라이프스타일 맞춤 큐레이션
+  </text>
+
+  <circle cx="170" cy="775" r="8" fill="#ff6b6b" opacity="0.8"/>
+  <text x="185" y="780" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    #5: 실거주자 경험 공유 커뮤니티
+  </text>
+
+  <!-- Utilities -->
+  <circle cx="420" cy="775" r="8" fill="#4dabf7" opacity="0.8"/>
+  <text x="435" y="780" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    #3: 스마트 체크리스트 시스템
+  </text>
+
+  <circle cx="720" cy="755" r="8" fill="#4dabf7" opacity="0.8"/>
+  <text x="735" y="760" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    #4: 주거 비용 계산 및 최적화
+  </text>
+
+  <circle cx="720" cy="775" r="8" fill="#4dabf7" opacity="0.8"/>
+  <text x="735" y="780" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    #6: 찜한 매물 비교 대시보드
+  </text>
+
+  <circle cx="950" cy="755" r="8" fill="#4dabf7" opacity="0.8"/>
+  <text x="965" y="760" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    #7: 스마트 매물 알림 시스템
+  </text>
+
+  <!-- 기타 (Unwise) -->
+  <circle cx="950" cy="775" r="6" fill="#adb5bd" opacity="0.6"/>
+  <text x="960" y="779" font-family="Arial, sans-serif" font-size="11" fill="#666">
+    #8-20: 기타 솔루션
+  </text>
+</svg>

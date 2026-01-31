@@ -1,0 +1,294 @@
+@startuml roadmap-AI워커처리
+!theme mono
+
+title Roadmap Service - AI Worker 비동기 처리 내부 시퀀스
+
+participant "AI Worker" as Worker
+participant "TaskRepository" as TaskRepo
+participant "UserClient<<E>>" as UserClient
+participant "AssetClient<<E>>" as AssetClient
+participant "HousingClient<<E>>" as HousingClient
+participant "CalculatorClient<<E>>" as CalcClient
+participant "EventRepository" as EventRepo
+participant "LLMClient<<E>>" as LLM
+participant "CircuitBreaker" as CB
+participant "RoadmapRepository" as RoadmapRepo
+participant "SSEService" as SSE
+database "Roadmap DB" as DB
+queue "Message Queue" as MQ
+
+== Worker가 작업 메시지 수신 ==
+
+MQ ->> Worker: CONSUME 작업 메시지
+activate Worker
+note right of Worker
+  메시지:
+  {
+    taskId: "uuid",
+    userId: "uuid",
+    finalHousingId: "uuid"
+  }
+end note
+
+Worker -> TaskRepo: 상태 업데이트 (PROCESSING)
+activate TaskRepo
+TaskRepo -> DB: UPDATE roadmap_tasks\nSET status = 'PROCESSING',\n    progress = 10,\n    updated_at = NOW()
+DB --> TaskRepo: 업데이트 완료
+TaskRepo --> Worker: 완료
+deactivate TaskRepo
+
+Worker -> SSE: 진행 상황 전송 (10%)
+activate SSE
+SSE -> SSE: SSE Emitter로 메시지 전송
+note right of SSE
+  {
+    progress: 10,
+    message: "데이터 수집 시작",
+    status: "PROCESSING"
+  }
+end note
+SSE --> Worker: 전송 완료
+deactivate SSE
+
+== 병렬 데이터 수집 ==
+
+par User 데이터 수집
+    Worker -> UserClient: GET /users/profile?userId={userId}
+    activate UserClient
+    UserClient --> Worker: UserProfile\n(생년월일, 성별, 거주지, 투자성향)
+    deactivate UserClient
+and Asset 데이터 수집
+    Worker -> AssetClient: GET /assets/user/{userId}/summary
+    activate AssetClient
+    AssetClient --> Worker: AssetSummary\n(본인/배우자 자산, 소득, 지출)
+    deactivate AssetClient
+and Housing 데이터 수집
+    Worker -> HousingClient: GET /housings/{finalHousingId}
+    activate HousingClient
+    HousingClient --> Worker: FinalHousing\n(주택정보, 입주희망년월)
+    deactivate HousingClient
+and Calculator 데이터 수집
+    Worker -> CalcClient: GET /calculator/results?housingId={finalHousingId}
+    activate CalcClient
+    CalcClient --> Worker: CalculationResult\n(입주 후 지출 계산)
+    deactivate CalcClient
+end
+
+Worker -> EventRepo: 생애주기 이벤트 조회
+activate EventRepo
+EventRepo -> DB: SELECT * FROM lifecycle_events\nWHERE user_id = ?\nORDER BY event_date
+DB --> EventRepo: 이벤트 목록
+EventRepo --> Worker: List<LifecycleEvent>
+deactivate EventRepo
+
+Worker -> TaskRepo: 진행 상황 업데이트 (30%)
+activate TaskRepo
+TaskRepo -> DB: UPDATE progress = 30
+DB --> TaskRepo: 완료
+TaskRepo --> Worker: 완료
+deactivate TaskRepo
+
+Worker -> SSE: 진행 상황 전송 (30%)
+activate SSE
+SSE --> Worker: {progress: 30, message: "데이터 수집 완료"}
+deactivate SSE
+
+== AI 분석 및 로드맵 생성 ==
+
+Worker -> Worker: LLM 입력 데이터 구조화
+note right of Worker
+  프롬프트 구성:
+
+  1. 사용자 프로필:
+     - 나이, 성별, 거주지
+     - 투자성향 (안정형/공격형)
+
+  2. 현재 재무 상태:
+     - 순자산: 75,000,000원
+     - 월 가용자금: 3,000,000원
+
+  3. 최종목표 주택:
+     - 가격: 500,000,000원
+     - 입주희망: 2030년 6월
+
+  4. 생애주기 이벤트:
+     - 결혼 (2026년)
+     - 출산 (2028년)
+
+  5. 요청사항:
+     - 단계별 주거 로드맵 설계
+     - 재무 목표 및 실행 전략
+end note
+
+Worker -> TaskRepo: 진행 상황 업데이트 (40%)
+activate TaskRepo
+TaskRepo -> DB: UPDATE progress = 40
+DB --> TaskRepo: 완료
+TaskRepo --> Worker: 완료
+deactivate TaskRepo
+
+Worker -> SSE: 진행 상황 전송 (40%)
+activate SSE
+SSE --> Worker: {progress: 40, message: "AI 분석 시작"}
+deactivate SSE
+
+Worker -> CB: LLM API 호출 (Circuit Breaker 적용)
+activate CB
+
+alt Circuit Breaker Closed (정상)
+    CB -> LLM: POST /chat/completions
+    activate LLM
+    note right of LLM
+      LLM API 요청:
+      - model: gpt-4 또는 claude-3
+      - temperature: 0.7
+      - max_tokens: 4000
+      - 프롬프트: 구조화된 입력
+    end note
+
+    Worker -> TaskRepo: 진행 상황 업데이트 (60%)
+    activate TaskRepo
+    TaskRepo -> DB: UPDATE progress = 60
+    DB --> TaskRepo: 완료
+    TaskRepo --> Worker: 완료
+    deactivate TaskRepo
+
+    Worker -> SSE: 진행 상황 전송 (60%)
+    activate SSE
+    SSE --> Worker: {progress: 60, message: "AI 분석 중..."}
+    deactivate SSE
+
+    LLM --> CB: AI 로드맵 결과
+    deactivate LLM
+    note right of CB
+      AI 응답 형식:
+      {
+        stages: [
+          {
+            stageNumber: 1,
+            stageName: "전세 시작",
+            targetDate: "2025-06",
+            housingType: "전세",
+            targetPrice: 200000000,
+            savingsGoal: 150000000,
+            monthlyTarget: 2500000,
+            reason: "..."
+          },
+          ...
+        ],
+        executionGuide: "..."
+      }
+    end note
+
+    CB --> Worker: 로드맵 데이터
+
+    Worker -> TaskRepo: 진행 상황 업데이트 (80%)
+    activate TaskRepo
+    TaskRepo -> DB: UPDATE progress = 80
+    DB --> TaskRepo: 완료
+    TaskRepo --> Worker: 완료
+    deactivate TaskRepo
+
+    Worker -> SSE: 진행 상황 전송 (80%)
+    activate SSE
+    SSE --> Worker: {progress: 80, message: "로드맵 검증 중"}
+    deactivate SSE
+
+else Circuit Breaker Open (장애)
+    CB --> Worker: ServiceUnavailableException
+
+    Worker -> Worker: 재시도 로직 (최대 3회)
+    note right of Worker
+      재시도 전략:
+      - 1차: 5초 후
+      - 2차: 15초 후
+      - 3차: 30초 후
+      모두 실패 시 작업 실패 처리
+    end note
+
+    alt 재시도 성공
+        Worker -> CB: 재시도 성공
+        CB --> Worker: 로드맵 데이터
+    else 재시도 실패
+        Worker -> TaskRepo: 상태 업데이트 (FAILED)
+        activate TaskRepo
+        TaskRepo -> DB: UPDATE roadmap_tasks\nSET status = 'FAILED',\n    error_message = 'LLM API 장애'
+        DB --> TaskRepo: 완료
+        TaskRepo --> Worker: 완료
+        deactivate TaskRepo
+
+        Worker -> SSE: 실패 전송
+        activate SSE
+        SSE --> Worker: {status: "FAILED", error: "LLM API 장애"}
+        deactivate SSE
+
+        Worker --> MQ: 작업 종료
+    end
+end
+deactivate CB
+
+== 결과 검증 및 저장 ==
+
+Worker -> Worker: 결과 검증
+note right of Worker
+  검증 항목:
+  1. 재무 논리 검증:
+     - 월 저축액 <= 월 가용자금
+     - 목표 금액 현실성 확인
+
+  2. 시기 논리 검증:
+     - 단계 간 충분한 기간
+     - 생애주기 이벤트 충돌 여부
+
+  3. 데이터 무결성:
+     - 필수 필드 존재
+     - 날짜 형식 검증
+end note
+
+alt 검증 실패
+    Worker -> TaskRepo: 상태 업데이트 (FAILED)
+    activate TaskRepo
+    TaskRepo -> DB: UPDATE status = 'FAILED',\nerror_message = '검증 실패'
+    DB --> TaskRepo: 완료
+    TaskRepo --> Worker: 완료
+    deactivate TaskRepo
+
+    Worker -> SSE: 실패 전송
+    activate SSE
+    SSE --> Worker: {status: "FAILED", error: "검증 실패"}
+    deactivate SSE
+else 검증 성공
+    Worker -> RoadmapRepo: 로드맵 저장
+    activate RoadmapRepo
+
+    RoadmapRepo -> DB: INSERT INTO roadmaps\n(user_id, task_id, final_housing_id,\n generated_at)
+    DB --> RoadmapRepo: roadmapId
+
+    loop 각 단계별
+        RoadmapRepo -> DB: INSERT INTO roadmap_stages\n(roadmap_id, stage_number,\n stage_name, target_date,\n housing_type, target_price,\n savings_goal, monthly_target,\n reason)
+        DB --> RoadmapRepo: 저장 완료
+    end
+
+    RoadmapRepo -> DB: INSERT INTO execution_guide\n(roadmap_id, content)
+    DB --> RoadmapRepo: 저장 완료
+
+    RoadmapRepo --> Worker: roadmapId
+    deactivate RoadmapRepo
+
+    Worker -> TaskRepo: 상태 업데이트 (COMPLETED)
+    activate TaskRepo
+    TaskRepo -> DB: UPDATE roadmap_tasks\nSET status = 'COMPLETED',\n    progress = 100,\n    roadmap_id = ?,\n    completed_at = NOW()
+    DB --> TaskRepo: 완료
+    TaskRepo --> Worker: 완료
+    deactivate TaskRepo
+
+    Worker -> SSE: 완료 전송
+    activate SSE
+    SSE --> Worker: {progress: 100, status: "COMPLETED", roadmapId}
+    deactivate SSE
+
+    Worker --> MQ: 작업 완료
+    deactivate Worker
+end
+
+@enduml

@@ -1,0 +1,134 @@
+@startuml asset-자산항목삭제
+!theme mono
+
+title Asset Service - 자산 항목 삭제 내부 시퀀스
+
+participant "AssetController" as Controller
+participant "AssetService" as Service
+participant "AssetRepository" as Repository
+participant "EventPublisher" as EventPublisher
+database "Asset DB" as DB
+queue "Message Queue" as MQ
+
+== 자산 항목 삭제 API ==
+
+-> Controller: DELETE /assets/items/{itemId}
+activate Controller
+
+Controller -> Controller: JWT에서 userId 추출
+
+Controller -> Service: deleteAssetItem(itemId, userId)
+activate Service
+
+Service -> Repository: findById(itemId)
+activate Repository
+Repository -> DB: SELECT * FROM asset_items\nWHERE id = ?
+DB --> Repository: AssetItem 또는 null
+Repository --> Service: AssetItem 또는 null
+deactivate Repository
+
+alt 항목 없음
+    Service --> Controller: EntityNotFoundException
+    Controller --> : 404 Not Found\n"항목을 찾을 수 없습니다"
+else 항목 존재
+    Service -> Service: 소유자 검증\n(userId 일치 여부)
+
+    alt 소유자 불일치
+        Service --> Controller: UnauthorizedException
+        Controller --> : 403 Forbidden\n"삭제 권한이 없습니다"
+    else 소유자 일치
+        Service -> Service: 삭제 전 항목 정보 저장\n(이벤트용)
+        note right of Service
+          이벤트 발행을 위해
+          삭제 전 정보 보관:
+          - ownerType
+          - itemType
+          - deletedAmount
+        end note
+
+        Service -> Repository: delete(itemId, userId)
+        activate Repository
+        Repository -> DB: DELETE FROM asset_items\nWHERE id = ?\nAND user_id = ?
+        note right of DB
+          Soft Delete 대안:
+          UPDATE asset_items
+          SET deleted_at = NOW()
+          WHERE id = ? AND user_id = ?
+        end note
+        DB --> Repository: 삭제 완료
+        Repository --> Service: 삭제 완료
+        deactivate Repository
+
+        Service -> Repository: calculateTotal(userId, ownerType, itemType)
+        activate Repository
+        Repository -> DB: SELECT SUM(amount)\nFROM asset_items\nWHERE user_id = ?\nAND owner_type = ?\nAND item_type = ?
+        note right of DB
+          삭제 후 카테고리별 총액 재계산
+        end note
+        DB --> Repository: 총액
+        Repository --> Service: totalAmount
+        deactivate Repository
+
+        Service -> Service: 재무 요약 정보 재계산
+        note right of Service
+          - 순자산 재계산
+          - 월 가용자금 재계산
+        end note
+
+        Service -> EventPublisher: publishAssetUpdated(event)
+        activate EventPublisher
+        note right of EventPublisher
+          Event: AssetUpdated
+          {
+            eventId: UUID.randomUUID(),
+            eventType: "ASSET_UPDATED",
+            timestamp: LocalDateTime.now(),
+            userId: userId,
+            changeType: "ITEM_DELETED",
+            ownerType: ownerType,
+            itemType: itemType,
+            itemId: itemId,
+            deletedAmount: 15000000,
+            summary: {
+              totalNetAssets: 계산값,
+              totalMonthlyIncome: 계산값,
+              totalMonthlyExpense: 계산값,
+              monthlyAvailableFunds: 계산값
+            }
+          }
+        end note
+
+        EventPublisher -> MQ: Publish AssetUpdated Event
+        activate MQ
+        note right of MQ
+          구독자:
+          - Calculator 서비스
+            (재계산 필요 플래그 설정)
+          - Roadmap 서비스
+            (재무 상태 변경 감지)
+        end note
+        MQ --> EventPublisher: 이벤트 발행 성공
+        deactivate MQ
+
+        EventPublisher --> Service: 발행 완료
+        deactivate EventPublisher
+
+        Service --> Controller: DeleteResponse
+        deactivate Service
+        note right of Controller
+          {
+            message: "삭제되었습니다",
+            totalAssets: 55000000,
+            summary: {
+              totalNetAssets: 75000000,
+              monthlyAvailableFunds: 3000000
+            }
+          }
+        end note
+
+        Controller --> : 200 OK
+        deactivate Controller
+    end
+end
+
+@enduml

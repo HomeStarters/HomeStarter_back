@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생애주기 이벤트 관리</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: var(--spacing-xl);
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -32px;
+            top: var(--spacing-md);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid var(--primary);
+            z-index: 1;
+        }
+
+        .event-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            transition: all 0.2s;
+        }
+
+        .event-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary);
+        }
+
+        .event-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .event-title-group {
+            flex: 1;
+        }
+
+        .event-name {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-2xs);
+        }
+
+        .event-date {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .event-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon:hover {
+            background: var(--background);
+            color: var(--primary);
+        }
+
+        .event-type-badge {
+            display: inline-block;
+            padding: var(--spacing-2xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .badge-결혼 { background: #FFE5E5; color: #D63031; }
+        .badge-출산 { background: #E8F5E9; color: #27AE60; }
+        .badge-자녀교육 { background: #E3F2FD; color: #2980B9; }
+        .badge-은퇴 { background: #F3E5F5; color: #8E44AD; }
+        .badge-기타 { background: #ECEFF1; color: #546E7A; }
+
+        .event-criteria {
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            line-height: 1.6;
+            background: var(--background);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-3xl) var(--spacing-md);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .empty-state h3 {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state p {
+            font-size: var(--font-size-md);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* FAB */
+        .fab {
+            position: fixed;
+            bottom: var(--spacing-md);
+            right: var(--spacing-md);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.2s;
+            z-index: 90;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            box-shadow: var(--shadow-xl);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bottom-sheet.active {
+            transform: translateY(0);
+        }
+
+        .bottom-sheet-header {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .bottom-sheet-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .bottom-sheet-body {
+            padding: var(--spacing-md);
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .bottom-sheet-footer {
+            padding: var(--spacing-md);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .bottom-sheet-footer .btn {
+            flex: 1;
+        }
+
+        .backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .backdrop.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .required {
+            color: var(--error);
+        }
+
+        /* Event Type Selector */
+        .event-type-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-sm);
+        }
+
+        .event-type-btn {
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: white;
+            cursor: pointer;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .event-type-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .date-picker-trigger {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: white;
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .date-picker-trigger:hover {
+            border-color: var(--primary);
+        }
+
+        .date-picker-trigger.placeholder {
+            color: var(--text-tertiary);
+        }
+
+        textarea.input {
+            min-height: 100px;
+            resize: vertical;
+            font-family: var(--font-family);
+            line-height: 1.5;
+        }
+
+        .char-counter {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+            text-align: right;
+            margin-top: var(--spacing-2xs);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-md);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 24px;
+        }
+
+        .modal-body {
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+        }
+
+        .date-picker-content {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .date-select {
+            flex: 1;
+        }
+
+        .date-select label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .date-select select {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">생애주기 이벤트 관리</h1>
+        <div class="header-actions"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <div class="timeline" id="timeline">
+                <!-- Timeline items will be rendered here -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-state-icon">📅</div>
+                <h3>등록된 이벤트가 없습니다</h3>
+                <p>첫 생애주기 이벤트를 등록하고<br>맞춤 주거 계획을 시작하세요</p>
+                <button type="button" class="btn btn-primary" id="emptyAddBtn">
+                    첫 이벤트 등록하기
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- FAB -->
+    <button class="fab" id="fabAddEvent" aria-label="이벤트 추가">
+        +
+    </button>
+
+    <!-- Backdrop -->
+    <div class="backdrop" id="backdrop"></div>
+
+    <!-- Bottom Sheet -->
+    <div class="bottom-sheet" id="eventSheet">
+        <div class="bottom-sheet-header">
+            <h2 class="bottom-sheet-title" id="sheetTitle">이벤트 추가</h2>
+            <button class="modal-close" id="closeSheet" aria-label="닫기">&times;</button>
+        </div>
+        <div class="bottom-sheet-body">
+            <div class="form-group">
+                <label for="eventName">이벤트 이름 <span class="required">*</span></label>
+                <input
+                    type="text"
+                    id="eventName"
+                    class="input"
+                    placeholder="예: 결혼, 첫째 출산"
+                    maxlength="50">
+            </div>
+
+            <div class="form-group">
+                <label>이벤트 유형 <span class="required">*</span></label>
+                <div class="event-type-grid">
+                    <button type="button" class="event-type-btn" data-type="결혼">결혼</button>
+                    <button type="button" class="event-type-btn" data-type="출산">출산</button>
+                    <button type="button" class="event-type-btn" data-type="자녀교육">자녀교육</button>
+                    <button type="button" class="event-type-btn" data-type="은퇴">은퇴</button>
+                    <button type="button" class="event-type-btn" data-type="기타">기타</button>
+                </div>
+                <input type="hidden" id="eventType">
+            </div>
+
+            <div class="form-group">
+                <label for="eventDate">이벤트 예정일 <span class="required">*</span></label>
+                <button
+                    type="button"
+                    class="date-picker-trigger placeholder"
+                    id="eventDateTrigger"
+                    aria-label="이벤트 예정일 선택">
+                    YYYY년 MM월
+                </button>
+                <input type="hidden" id="eventDate">
+            </div>
+
+            <div class="form-group">
+                <label for="housingCriteria">주택선택 고려기준</label>
+                <textarea
+                    id="housingCriteria"
+                    class="input"
+                    placeholder="예: 신혼집, 출퇴근 편리, 소형"
+                    maxlength="200"></textarea>
+                <div class="char-counter" id="criteriaCounter">0/200</div>
+            </div>
+        </div>
+        <div class="bottom-sheet-footer">
+            <button type="button" class="btn btn-secondary" id="cancelEvent">취소</button>
+            <button type="button" class="btn btn-primary" id="saveEvent" disabled>저장</button>
+        </div>
+    </div>
+
+    <!-- Date Picker Modal -->
+    <div class="modal" id="datePickerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">이벤트 예정일 선택</h2>
+                <button class="modal-close" id="closeDatePicker" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="date-picker-content">
+                    <div class="date-select">
+                        <label for="yearSelect">년도</label>
+                        <select id="yearSelect" aria-label="년도 선택"></select>
+                    </div>
+                    <div class="date-select">
+                        <label for="monthSelect">월</label>
+                        <select id="monthSelect" aria-label="월 선택">
+                            <option value="01">1월</option>
+                            <option value="02">2월</option>
+                            <option value="03">3월</option>
+                            <option value="04">4월</option>
+                            <option value="05">5월</option>
+                            <option value="06">6월</option>
+                            <option value="07">7월</option>
+                            <option value="08">8월</option>
+                            <option value="09">9월</option>
+                            <option value="10">10월</option>
+                            <option value="11">11월</option>
+                            <option value="12">12월</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary" id="confirmDate" style="width: 100%;">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // State
+        let events = [];
+        let editingIndex = -1;
+
+        // Elements
+        const timeline = document.getElementById('timeline');
+        const emptyState = document.getElementById('emptyState');
+        const fabAddEvent = document.getElementById('fabAddEvent');
+        const emptyAddBtn = document.getElementById('emptyAddBtn');
+        const backdrop = document.getElementById('backdrop');
+        const eventSheet = document.getElementById('eventSheet');
+        const closeSheet = document.getElementById('closeSheet');
+        const cancelEvent = document.getElementById('cancelEvent');
+        const saveEvent = document.getElementById('saveEvent');
+        const sheetTitle = document.getElementById('sheetTitle');
+
+        const eventNameInput = document.getElementById('eventName');
+        const eventTypeInput = document.getElementById('eventType');
+        const eventTypeButtons = document.querySelectorAll('.event-type-btn');
+        const eventDateTrigger = document.getElementById('eventDateTrigger');
+        const eventDateInput = document.getElementById('eventDate');
+        const housingCriteriaInput = document.getElementById('housingCriteria');
+        const criteriaCounter = document.getElementById('criteriaCounter');
+
+        const datePickerModal = document.getElementById('datePickerModal');
+        const closeDatePicker = document.getElementById('closeDatePicker');
+        const confirmDate = document.getElementById('confirmDate');
+        const yearSelect = document.getElementById('yearSelect');
+
+        // Initialize year options
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year <= currentYear + 50; year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year + '년';
+            yearSelect.appendChild(option);
+        }
+
+        // Load data
+        function loadData() {
+            events = Storage.getItem('lifecycle_events') || [];
+            renderTimeline();
+        }
+
+        // Render timeline
+        function renderTimeline() {
+            if (events.length === 0) {
+                timeline.style.display = 'none';
+                emptyState.style.display = 'block';
+                fabAddEvent.style.display = 'none';
+                return;
+            }
+
+            timeline.style.display = 'block';
+            emptyState.style.display = 'none';
+            fabAddEvent.style.display = 'flex';
+
+            // Sort by date
+            const sortedEvents = [...events].sort((a, b) => a.date.localeCompare(b.date));
+
+            timeline.innerHTML = sortedEvents.map((event, index) => {
+                const originalIndex = events.findIndex(e => e.id === event.id);
+                const [year, month] = event.date.split('-');
+
+                return `
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="event-card">
+                            <div class="event-header">
+                                <div class="event-title-group">
+                                    <h3 class="event-name">${event.name}</h3>
+                                    <div class="event-date">${year}년 ${parseInt(month)}월</div>
+                                </div>
+                                <div class="event-actions">
+                                    <button class="btn-icon" onclick="editEvent(${originalIndex})" aria-label="수정">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                            <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                    <button class="btn-icon" onclick="deleteEvent(${originalIndex})" aria-label="삭제">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                            <path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <span class="event-type-badge badge-${event.type}">${event.type}</span>
+                            ${event.criteria ? `<div class="event-criteria">${event.criteria}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Open sheet
+        function openSheet(index = -1) {
+            editingIndex = index;
+
+            if (index === -1) {
+                sheetTitle.textContent = '이벤트 추가';
+                eventNameInput.value = '';
+                eventTypeInput.value = '';
+                eventDateInput.value = '';
+                eventDateTrigger.textContent = 'YYYY년 MM월';
+                eventDateTrigger.classList.add('placeholder');
+                housingCriteriaInput.value = '';
+                criteriaCounter.textContent = '0/200';
+
+                eventTypeButtons.forEach(btn => btn.classList.remove('active'));
+            } else {
+                sheetTitle.textContent = '이벤트 수정';
+                const event = events[index];
+
+                eventNameInput.value = event.name;
+                eventTypeInput.value = event.type;
+                eventDateInput.value = event.date;
+
+                const [year, month] = event.date.split('-');
+                eventDateTrigger.textContent = `${year}년 ${parseInt(month)}월`;
+                eventDateTrigger.classList.remove('placeholder');
+
+                housingCriteriaInput.value = event.criteria || '';
+                criteriaCounter.textContent = `${(event.criteria || '').length}/200`;
+
+                eventTypeButtons.forEach(btn => {
+                    if (btn.dataset.type === event.type) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+
+            backdrop.classList.add('active');
+            eventSheet.classList.add('active');
+            validateForm();
+        }
+
+        fabAddEvent.addEventListener('click', () => openSheet());
+        emptyAddBtn.addEventListener('click', () => openSheet());
+
+        function closeSheetFn() {
+            backdrop.classList.remove('active');
+            eventSheet.classList.remove('active');
+        }
+
+        closeSheet.addEventListener('click', closeSheetFn);
+        cancelEvent.addEventListener('click', closeSheetFn);
+        backdrop.addEventListener('click', closeSheetFn);
+
+        // Event type selection
+        eventTypeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                eventTypeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                eventTypeInput.value = btn.dataset.type;
+                validateForm();
+            });
+        });
+
+        // Date picker
+        eventDateTrigger.addEventListener('click', () => {
+            datePickerModal.classList.add('active');
+        });
+
+        closeDatePicker.addEventListener('click', () => {
+            datePickerModal.classList.remove('active');
+        });
+
+        confirmDate.addEventListener('click', () => {
+            const year = yearSelect.value;
+            const month = document.getElementById('monthSelect').value;
+            const dateValue = `${year}-${month}`;
+            const displayValue = `${year}년 ${parseInt(month)}월`;
+
+            eventDateInput.value = dateValue;
+            eventDateTrigger.textContent = displayValue;
+            eventDateTrigger.classList.remove('placeholder');
+            datePickerModal.classList.remove('active');
+            validateForm();
+        });
+
+        datePickerModal.addEventListener('click', (e) => {
+            if (e.target === datePickerModal) {
+                datePickerModal.classList.remove('active');
+            }
+        });
+
+        // Criteria counter
+        housingCriteriaInput.addEventListener('input', () => {
+            const length = housingCriteriaInput.value.length;
+            criteriaCounter.textContent = `${length}/200`;
+        });
+
+        // Validate form
+        function validateForm() {
+            const isValid = eventNameInput.value.trim() &&
+                           eventTypeInput.value &&
+                           eventDateInput.value;
+            saveEvent.disabled = !isValid;
+        }
+
+        eventNameInput.addEventListener('input', validateForm);
+
+        // Save event
+        saveEvent.addEventListener('click', () => {
+            const event = {
+                id: editingIndex === -1 ? Date.now() : events[editingIndex].id,
+                name: eventNameInput.value.trim(),
+                type: eventTypeInput.value,
+                date: eventDateInput.value,
+                criteria: housingCriteriaInput.value.trim()
+            };
+
+            if (editingIndex === -1) {
+                events.push(event);
+            } else {
+                events[editingIndex] = event;
+            }
+
+            Storage.setItem('lifecycle_events', events);
+            renderTimeline();
+            closeSheetFn();
+            UI.showToast(editingIndex === -1 ? '이벤트가 추가되었습니다' : '이벤트가 수정되었습니다', 'success');
+        });
+
+        // Global functions
+        window.editEvent = function(index) {
+            openSheet(index);
+        };
+
+        window.deleteEvent = function(index) {
+            UI.showConfirm('이 이벤트를 삭제하시겠습니까?', () => {
+                events.splice(index, 1);
+                Storage.setItem('lifecycle_events', events);
+                renderTimeline();
+                UI.showToast('이벤트가 삭제되었습니다', 'success');
+            });
+        };
+
+        // Initial load
+        loadData();
+    </script>
+</body>
+</html>

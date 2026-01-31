@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로필 편집</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        .profile-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .profile-header {
+            text-align: center;
+            padding: var(--spacing-lg) 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .profile-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: var(--font-weight-bold);
+            margin: 0 auto var(--spacing-md);
+        }
+
+        .avatar-edit-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .avatar-edit-btn:hover {
+            background: var(--bg-secondary);
+        }
+
+        .section-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .label {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-secondary);
+        }
+
+        .input, .select {
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            transition: var(--transition-fast);
+        }
+
+        .input:focus, .select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .input:disabled, .select:disabled {
+            background: var(--bg-primary);
+            color: var(--text-disabled);
+            cursor: not-allowed;
+        }
+
+        .help-text {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .action-buttons {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            gap: var(--spacing-sm);
+            z-index: 100;
+        }
+
+        @media (min-width: 768px) {
+            .action-buttons {
+                max-width: 600px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">프로필 편집</h1>
+        <div style="width: 24px;"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Profile Avatar -->
+            <div class="profile-section">
+                <div class="profile-header">
+                    <div class="profile-avatar-large" id="profileAvatar">김</div>
+                    <button class="avatar-edit-btn" onclick="UI.showToast('아바타 편집 기능은 프로토타입에서 제공하지 않습니다', 'info')">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M11 2l3 3-8 8H3v-3l8-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        아바타 변경
+                    </button>
+                </div>
+
+                <form id="profileForm" class="form">
+                    <h2 class="section-title">기본 정보</h2>
+
+                    <div class="form-group">
+                        <label class="label" for="name">이름 *</label>
+                        <input type="text" id="name" class="input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="email">이메일 *</label>
+                        <input type="email" id="email" class="input" required>
+                        <span class="help-text">로그인 시 사용되는 이메일입니다</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="phone">휴대폰 번호</label>
+                        <input type="tel" id="phone" class="input" placeholder="010-1234-5678">
+                    </div>
+
+                    <h2 class="section-title">가족 정보</h2>
+
+                    <div class="form-group">
+                        <label class="label" for="maritalStatus">결혼 여부 *</label>
+                        <select id="maritalStatus" class="select" required>
+                            <option value="">선택하세요</option>
+                            <option value="single">미혼</option>
+                            <option value="married">기혼</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="children">자녀 수</label>
+                        <select id="children" class="select">
+                            <option value="0">없음</option>
+                            <option value="1">1명</option>
+                            <option value="2">2명</option>
+                            <option value="3">3명</option>
+                            <option value="4">4명 이상</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="housingType">현재 거주 형태 *</label>
+                        <select id="housingType" class="select" required>
+                            <option value="">선택하세요</option>
+                            <option value="own">자가</option>
+                            <option value="jeonse">전세</option>
+                            <option value="monthly">월세</option>
+                            <option value="family">가족 거주</option>
+                            <option value="other">기타</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="income">연소득 구간 *</label>
+                        <select id="income" class="select" required>
+                            <option value="">선택하세요</option>
+                            <option value="under3000">3000만원 미만</option>
+                            <option value="3000-5000">3000만원 이상 ~ 5000만원 미만</option>
+                            <option value="5000-7000">5000만원 이상 ~ 7000만원 미만</option>
+                            <option value="7000-1억">7000만원 이상 ~ 1억 미만</option>
+                            <option value="over1억">1억 이상</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button class="btn btn-secondary flex-1" onclick="history.back()">취소</button>
+        <button class="btn btn-primary flex-1" onclick="saveProfile()">저장</button>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // Load user data
+        function loadUserData() {
+            const user = Storage.getUser();
+            if (user) {
+                document.getElementById('name').value = user.name || '';
+                document.getElementById('email').value = user.email || '';
+                document.getElementById('phone').value = user.phone || '';
+                document.getElementById('maritalStatus').value = user.maritalStatus || '';
+                document.getElementById('children').value = user.children || '0';
+                document.getElementById('housingType').value = user.housingType || '';
+                document.getElementById('income').value = user.income || '';
+
+                // Update avatar
+                const avatar = document.getElementById('profileAvatar');
+                avatar.textContent = user.name ? user.name.charAt(0) : '?';
+            }
+        }
+
+        // Save profile
+        window.saveProfile = function() {
+            const form = document.getElementById('profileForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const userData = {
+                name: document.getElementById('name').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                maritalStatus: document.getElementById('maritalStatus').value,
+                children: document.getElementById('children').value,
+                housingType: document.getElementById('housingType').value,
+                income: document.getElementById('income').value
+            };
+
+            // Save to storage
+            Storage.setUser(userData);
+
+            UI.showToast('프로필이 저장되었습니다', 'success');
+
+            setTimeout(() => {
+                history.back();
+            }, 1000);
+        };
+
+        // Initialize
+        loadUserData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+@startuml 02-장기주거로드맵
+!theme mono
+
+title UF02: 장기 주거 로드맵 설계
+
+actor "사용자\n(사회초년생/신혼부부)" as User
+participant "로드맵 시스템" as System
+participant "경제지표 API" as EconAPI
+participant "부동산 예측 API" as PredictAPI
+participant "알림 서비스" as NotificationSVC
+database "로드맵 저장소" as DB
+
+== 이벤트: 현재 상황 입력 ==
+
+User -> System : **커맨드**: 현재 상황 입력하기\n데이터: 나이, 소득, 자산, 부채, 가족구성
+activate System
+System -> System : **이벤트**: 현재 상황 입력됨\n데이터: 재무상태, 가족정보
+note right
+  **입력 데이터**
+  • 나이, 직업, 월소득
+  • 현재 자산 (저축, 투자 등)
+  • 부채 현황
+  • 가족 구성원 수
+end note
+
+== 이벤트: 미래 목표 설정 ==
+
+User -> System : **커맨드**: 목표 설정하기\n데이터: 목표연도, 목표주거형태, 희망지역
+System -> System : **이벤트**: 미래 목표 설정됨\n데이터: 목표정보
+note right
+  **목표 설정 항목**
+  • 단기 (1-3년): 전세 이사
+  • 중기 (5-7년): 소형 아파트 구매
+  • 장기 (10-20년): 확장/업그레이드
+end note
+
+alt 생애주기 이벤트 추가
+    User -> System : **커맨드**: 생애주기 이벤트 추가하기\n데이터: 결혼, 출산, 자녀교육 등
+    System -> System : **이벤트**: 생애주기 이벤트 추가됨\n데이터: 이벤트일정, 예상비용
+    note right
+      **주요 생애주기 이벤트**
+      • 결혼 (추가 자금 필요)
+      • 출산/육아 (공간 확장 필요)
+      • 자녀 교육 (학군 고려)
+      • 은퇴 (주거비 절감)
+    end note
+end
+
+== 이벤트: 로드맵 생성 요청 ==
+
+User -> System : **커맨드**: 로드맵 생성 요청하기
+
+System -> EconAPI : 경제지표 조회\n(물가상승률, 금리전망)
+activate EconAPI
+EconAPI --> System : 경제 예측 데이터
+deactivate EconAPI
+
+System -> PredictAPI : 부동산 시세 전망 조회
+activate PredictAPI
+PredictAPI --> System : 지역별 시세 예측
+deactivate PredictAPI
+
+== 이벤트: 단계별 계획 생성 ==
+
+System -> System : **이벤트**: 단계별 계획 생성됨\n데이터: 연도별목표, 필요자금, 예상자산
+note right
+  **Policy/Rule**
+  - 연간 소득 증가율: 기본 3%
+  - 부동산 가격 상승률: 과거 10년 평균
+  - 각 단계별 최소 2년 간격 권장
+end note
+
+System -> System : **이벤트**: 재무 시뮬레이션 완료됨\n데이터: 저축계획, 투자수익률, 자산증감
+note right
+  **시뮬레이션 항목**
+  • 월별 저축 가능 금액
+  • 예상 투자 수익률 (연 4-6%)
+  • 단계별 필요 자금
+  • 자산 축적 곡선
+  • 부채 상환 일정
+end note
+
+== 이벤트: 로드맵 검증 ==
+
+System -> System : **이벤트**: 로드맵 검증됨\n데이터: 실현가능성점수
+note right
+  **Policy/Rule**
+  - 실현가능성 70% 이상: 긍정적
+  - 50-70%: 일부 조정 필요
+  - 50% 미만: 목표 재설정 권장
+end note
+
+alt 실현가능성 50% 미만
+    System -> User : ⚠️ 경고: 목표 달성 어려움
+    note right
+      **조정 제안**
+      • 목표 시기 연장
+      • 목표 금액 하향 조정
+      • 저축률 증가 검토
+    end note
+    User -> System : **커맨드**: 로드맵 수정하기\n데이터: 조정사항
+    System -> System : 재계산 및 검증
+end
+
+System --> User : 로드맵 제공\n(단계별 계획, 실행 가이드)
+
+== 이벤트: 로드맵 저장 ==
+
+User -> System : **커맨드**: 로드맵 저장 확인
+System -> DB : 로드맵 데이터 저장
+activate DB
+System -> System : **이벤트**: 로드맵 저장됨\n데이터: 로드맵ID, 생성일시
+DB --> System : 저장 완료
+deactivate DB
+
+== 이벤트: 알림 설정 ==
+
+User -> System : **커맨드**: 알림 설정하기\n데이터: 알림주기, 체크포인트
+System -> NotificationSVC : 알림 스케줄 등록
+activate NotificationSVC
+System -> System : **이벤트**: 알림 설정됨\n데이터: 알림조건, 스케줄
+NotificationSVC --> System : 등록 완료
+deactivate NotificationSVC
+deactivate System
+
+note right
+  **알림 유형**
+  • 체크포인트 도달 시
+  • 저축 목표 달성률 확인 (월간)
+  • 경제 지표 변동 시 (분기)
+  • 로드맵 갱신 권장 (연간)
+end note
+
+System --> User : 로드맵 설정 완료
+
+note over User, DB
+  **주요 데이터 흐름**
+  • 입력: 재무상태, 목표정보, 생애주기 이벤트
+  • 외부 연동: 경제지표, 부동산 시세 예측
+  • 출력: 단계별 계획, 재무 시뮬레이션, 실현가능성
+  • 저장: 로드맵, 알림 설정
+
+  **다음 플로우 연결**
+  • UF01로 전달: 단계별 예산 범위
+  • UF03로 전달: 목표금액, 희망지역, 시기
+  • UF01에서 참조: 현재 재무 상태 업데이트
+end note
+
+@enduml

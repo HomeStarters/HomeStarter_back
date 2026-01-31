@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계산 결과 목록</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: var(--spacing-sm);
+            overflow-x: auto;
+            padding-bottom: var(--spacing-xs);
+        }
+
+        .filter-chip {
+            flex-shrink: 0;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .filter-chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Result Cards */
+        .results-grid {
+            display: grid;
+            gap: var(--spacing-md);
+        }
+
+        .result-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .result-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .result-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .result-date {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .result-menu-btn {
+            padding: var(--spacing-xs);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+        }
+
+        .result-menu-btn:hover {
+            background: var(--bg-primary);
+        }
+
+        .result-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .result-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .result-info-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .result-info-value {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .result-metrics {
+            display: flex;
+            gap: var(--spacing-md);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border);
+        }
+
+        .metric {
+            flex: 1;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .metric-value {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+        }
+
+        .metric-value.success {
+            color: var(--success);
+        }
+
+        .metric-value.warning {
+            color: var(--warning);
+        }
+
+        .metric-value.danger {
+            color: var(--danger);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xxl) var(--spacing-md);
+            background: white;
+            border-radius: var(--radius-lg);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .empty-state-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state-desc {
+            font-size: var(--font-size-md);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* Action Button */
+        .action-buttons {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        @media (min-width: 768px) {
+            .result-info {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .action-buttons {
+                max-width: 800px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">계산 결과 목록</h1>
+        <div style="width: 24px;"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-chips">
+                    <button class="filter-chip active" data-filter="all">전체</button>
+                    <button class="filter-chip" data-filter="recent">최근 7일</button>
+                    <button class="filter-chip" data-filter="this-month">이번 달</button>
+                </div>
+            </div>
+
+            <!-- Results Grid -->
+            <div class="results-grid" id="resultsGrid">
+                <!-- Empty State (will be shown if no results) -->
+                <div class="empty-state">
+                    <div class="empty-state-icon">📊</div>
+                    <h2 class="empty-state-title">계산 결과가 없습니다</h2>
+                    <p class="empty-state-desc">지출 계산을 해보시겠어요?</p>
+                    <a href="15-입주후지출계산.html" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                            <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2"/>
+                            <path d="M10 6v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        지출 계산하기
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a href="15-입주후지출계산.html" class="btn btn-primary w-full">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <path d="M10 5V15M5 10H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            새 계산하기
+        </a>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // State
+        let calculations = [];
+        let currentFilter = 'all';
+
+        // Elements
+        const resultsGrid = document.getElementById('resultsGrid');
+        const filterChips = document.querySelectorAll('.filter-chip');
+
+        // Load calculations
+        function loadCalculations() {
+            calculations = Storage.getItem('calculations') || [];
+
+            // If no data, create sample data for demo
+            if (calculations.length === 0) {
+                calculations = [
+                    {
+                        id: 'calc_' + Date.now() + '_1',
+                        date: new Date().toISOString(),
+                        housingName: '강남구 역삼동 아파트 84㎡',
+                        loanName: '신혼희망타운 특별공급',
+                        price: 100000,
+                        loanAmount: 70000,
+                        monthlyPayment: 350,
+                        managementFee: 30,
+                        totalMonthly: 380,
+                        ltv: 70,
+                        dti: 35,
+                        dsr: 40
+                    },
+                    {
+                        id: 'calc_' + Date.now() + '_2',
+                        date: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+                        housingName: '서초구 반포동 아파트 114㎡',
+                        loanName: '디딤돌 대출',
+                        price: 150000,
+                        loanAmount: 90000,
+                        monthlyPayment: 450,
+                        managementFee: 40,
+                        totalMonthly: 490,
+                        ltv: 60,
+                        dti: 42,
+                        dsr: 45
+                    }
+                ];
+                Storage.setItem('calculations', calculations);
+            }
+
+            renderCalculations();
+        }
+
+        // Render calculations
+        function renderCalculations() {
+            const filtered = filterCalculations();
+
+            if (filtered.length === 0) {
+                resultsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <h2 class="empty-state-title">계산 결과가 없습니다</h2>
+                        <p class="empty-state-desc">지출 계산을 해보시겠어요?</p>
+                        <a href="15-입주후지출계산.html" class="btn btn-primary">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2"/>
+                                <path d="M10 6v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            지출 계산하기
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsGrid.innerHTML = filtered.map(calc => `
+                <div class="result-card" onclick="viewDetail('${calc.id}')">
+                    <div class="result-header">
+                        <div>
+                            <h3 class="result-title">${calc.housingName}</h3>
+                            <div class="result-date">${Format.date(calc.date)}</div>
+                        </div>
+                        <button class="result-menu-btn" onclick="deleteCalculation('${calc.id}', event)" aria-label="삭제">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M3 5h14M8 5V3h4v2m-2 5v5m-4-5v5m8-10l-1 12H7L6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="result-info">
+                        <div class="result-info-item">
+                            <div class="result-info-label">대출상품</div>
+                            <div class="result-info-value">${calc.loanName}</div>
+                        </div>
+                        <div class="result-info-item">
+                            <div class="result-info-label">매매가</div>
+                            <div class="result-info-value">${Format.currency(calc.price)}만원</div>
+                        </div>
+                        <div class="result-info-item">
+                            <div class="result-info-label">대출액</div>
+                            <div class="result-info-value">${Format.currency(calc.loanAmount)}만원</div>
+                        </div>
+                        <div class="result-info-item">
+                            <div class="result-info-label">월 총 지출</div>
+                            <div class="result-info-value">${Format.currency(calc.totalMonthly)}만원</div>
+                        </div>
+                    </div>
+
+                    <div class="result-metrics">
+                        <div class="metric">
+                            <div class="metric-label">LTV</div>
+                            <div class="metric-value ${getMetricClass(calc.ltv, 70)}">${calc.ltv}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">DTI</div>
+                            <div class="metric-value ${getMetricClass(calc.dti, 40)}">${calc.dti}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">DSR</div>
+                            <div class="metric-value ${getMetricClass(calc.dsr, 40)}">${calc.dsr}%</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter calculations
+        function filterCalculations() {
+            const now = Date.now();
+            const oneDay = 86400000;
+
+            switch (currentFilter) {
+                case 'recent':
+                    return calculations.filter(c => now - new Date(c.date).getTime() < oneDay * 7);
+                case 'this-month':
+                    const thisMonth = new Date().getMonth();
+                    return calculations.filter(c => new Date(c.date).getMonth() === thisMonth);
+                default:
+                    return calculations;
+            }
+        }
+
+        // Get metric class based on value
+        function getMetricClass(value, threshold) {
+            if (value <= threshold * 0.7) return 'success';
+            if (value <= threshold * 0.9) return 'warning';
+            return 'danger';
+        }
+
+        // View detail
+        window.viewDetail = function(id) {
+            const calc = calculations.find(c => c.id === id);
+            if (calc) {
+                Storage.setItem('selected_calculation', calc);
+                window.location.href = '15-입주후지출계산.html';
+            }
+        };
+
+        // Delete calculation
+        window.deleteCalculation = function(id, event) {
+            event.stopPropagation();
+
+            if (!confirm('이 계산 결과를 삭제하시겠습니까?')) return;
+
+            calculations = calculations.filter(c => c.id !== id);
+            Storage.setItem('calculations', calculations);
+            UI.showToast('계산 결과가 삭제되었습니다', 'success');
+            renderCalculations();
+        };
+
+        // Filter chip click
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                currentFilter = chip.dataset.filter;
+
+                // Update active state
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+
+                renderCalculations();
+            });
+        });
+
+        // Initialize
+        loadCalculations();
+    </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+@startuml
+!theme mono
+
+title 데이터변경-이벤트전파 플로우 (Publisher-Subscriber 패턴)
+
+actor "사용자" as User
+participant "Frontend" as FE
+participant "API Gateway" as GW
+participant "Asset\nService" as AssetSvc
+participant "Housing\nService" as HousingSvc
+participant "Message Queue\n(RabbitMQ)" as MQ
+participant "Calculator\nService" as CalcSvc
+participant "Redis\nCache" as Cache
+database "Asset\nDB" as AssetDB
+database "Housing\nDB" as HousingDB
+
+== 시나리오 1: 자산정보 수정 → 캐시 무효화 ==
+User -> FE: 자산정보 관리 화면에서 수정
+FE -> GW: PUT /assets/{id}\n자산항목 수정 (금액 변경)
+GW -> AssetSvc: JWT 검증 후 요청 전달
+
+AssetSvc -> AssetDB: UPDATE 자산정보\nSET amount = {newAmount}
+AssetDB --> AssetSvc: 수정 완료
+
+note right of AssetSvc
+    데이터 변경 감지 후
+    이벤트 발행 (Publisher)
+end note
+
+AssetSvc -> AssetSvc: AssetUpdated 이벤트 생성\n- userId\n- assetId\n- updateType: "AMOUNT_CHANGED"\n- timestamp
+
+AssetSvc -> MQ: PUBLISH AssetUpdated\n(exchange: "asset.events", routing: "asset.updated")
+MQ --> AssetSvc: 발행 완료
+
+AssetSvc --> GW: 200 OK\n수정된 자산정보
+GW --> FE: 수정된 자산정보
+FE --> User: "자산정보가 업데이트되었습니다"\n변경 이력 표시
+
+== 이벤트 구독 및 처리 (Subscriber) ==
+MQ ->> CalcSvc: CONSUME AssetUpdated\n(queue: "calculator.asset.events")
+
+note right of CalcSvc
+    Calculator 서비스가
+    Asset 변경 이벤트 구독
+end note
+
+CalcSvc -> CalcSvc: 이벤트 처리\n- userId 추출\n- 영향받는 계산 결과 식별
+
+CalcSvc -> Cache: DEL calc:{userId}:*\n해당 사용자의 모든 캐시 무효화
+Cache --> CalcSvc: 삭제된 캐시 키 수
+
+CalcSvc -> CalcSvc: 로그 기록\n"User {userId} 캐시 무효화 완료 (Asset 변경)"
+
+note right of CalcSvc
+    다음 계산 시
+    캐시 미스 → 재계산 수행
+    최신 자산정보 반영
+end note
+
+== 시나리오 2: 주택정보 수정 → 캐시 무효화 ==
+User -> FE: 주택 상세에서 수정 (가격 변경)
+FE -> GW: PUT /housing/{id}\n주택정보 수정
+GW -> HousingSvc: JWT 검증 후 요청 전달
+
+HousingSvc -> HousingDB: UPDATE 주택정보\nSET price = {newPrice}
+HousingDB --> HousingSvc: 수정 완료
+
+HousingSvc -> HousingSvc: HousingUpdated 이벤트 생성\n- userId\n- housingId\n- updateType: "PRICE_CHANGED"\n- timestamp
+
+HousingSvc -> MQ: PUBLISH HousingUpdated\n(exchange: "housing.events", routing: "housing.updated")
+MQ --> HousingSvc: 발행 완료
+
+HousingSvc --> GW: 200 OK\n수정된 주택정보
+GW --> FE: 수정된 주택정보
+FE --> User: "주택정보가 업데이트되었습니다"\n재계산 필요 표시
+
+== 이벤트 구독 및 처리 ==
+MQ ->> CalcSvc: CONSUME HousingUpdated\n(queue: "calculator.housing.events")
+
+CalcSvc -> CalcSvc: 이벤트 처리\n- housingId 추출\n- 영향받는 계산 결과 식별
+
+CalcSvc -> Cache: DEL calc:*:{housingId}:*\n해당 주택의 모든 캐시 무효화
+Cache --> CalcSvc: 삭제된 캐시 키 수
+
+CalcSvc -> CalcSvc: 로그 기록\n"Housing {housingId} 캐시 무효화 완료"
+
+== 시나리오 3: 사용자가 재계산 요청 ==
+User -> FE: 주택 상세에서 "다시 계산하기" 클릭
+FE -> GW: POST /calculator/expenses\n(housingId, loanId)
+GW -> CalcSvc: 계산 요청
+
+CalcSvc -> CalcSvc: 캐시 키 생성\ncalc:{userId}:{housingId}:{loanId}:{assetHash}
+CalcSvc -> Cache: GET 캐시 조회
+
+Cache --> CalcSvc: 캐시 없음 (이미 무효화됨)
+
+note right of CalcSvc
+    캐시 미스 → 재계산 수행
+    최신 데이터 반영:
+    - 변경된 자산정보
+    - 변경된 주택정보
+end note
+
+CalcSvc -> CalcSvc: 최신 데이터로 재계산 수행\n(입주후지출-계산 플로우 참조)
+
+CalcSvc --> GW: 새로운 계산 결과
+GW --> FE: 계산 결과
+FE --> User: 업데이트된 재무 분석 결과 표시
+
+== 이벤트 전파 타이밍 ==
+note over AssetSvc, CalcSvc
+    **이벤트 전파 시간**: < 1초
+    **캐시 무효화 보장**: 실시간
+    **데이터 일관성**: 최종적 일관성 (Eventual Consistency)
+
+    **메시지 큐 구성**:
+    - Exchange Type: Topic
+    - Asset Events: asset.updated, asset.deleted
+    - Housing Events: housing.updated, housing.deleted
+    - Durable Queue: 메시지 손실 방지
+    - Auto-Ack: false (수동 확인)
+end note
+
+== 오류 처리 ==
+alt 메시지 큐 장애
+    AssetSvc -> MQ: PUBLISH 실패
+    AssetSvc -> AssetSvc: 재시도 3회\n(Exponential Backoff)
+    alt 재시도 성공
+        MQ --> AssetSvc: 발행 완료
+    else 재시도 실패
+        AssetSvc -> AssetSvc: Dead Letter Queue로 이동\n로그 기록
+        note right of AssetSvc
+            관리자 알림 필요
+            수동 캐시 무효화 또는
+            재발행 필요
+        end note
+    end
+end
+
+alt 구독자 처리 실패
+    CalcSvc -> Cache: DEL 실패
+    CalcSvc -> CalcSvc: 재시도 3회
+    alt 재시도 성공
+        CalcSvc -> CalcSvc: ACK 메시지
+    else 재시도 실패
+        CalcSvc -> CalcSvc: NACK 메시지\n→ 재큐잉
+        CalcSvc -> CalcSvc: 오류 로그 기록
+    end
+end
+
+@enduml

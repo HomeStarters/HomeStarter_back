@@ -1,0 +1,404 @@
+-- ============================================
+-- Asset Service Database Schema
+-- PostgreSQL 15.x
+-- ============================================
+-- Description: 자산 서비스 데이터베이스 스키마
+-- Author: 길동 (아키텍트)
+-- Date: 2025-12-29
+-- ============================================
+
+-- 스키마 생성
+CREATE SCHEMA IF NOT EXISTS asset_service;
+
+-- 스키마 설정
+SET search_path TO asset_service;
+
+-- ============================================
+-- 1. assets (자산 정보)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE assets (
+    asset_id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    owner_type VARCHAR(20) NOT NULL,
+    total_assets DECIMAL(15,0),
+    total_liabilities DECIMAL(15,0),
+    net_assets DECIMAL(15,0),
+    monthly_income DECIMAL(12,0),
+    monthly_expenses DECIMAL(12,0),
+    monthly_available_funds DECIMAL(12,0),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_assets_user_id ON assets(user_id);
+CREATE UNIQUE INDEX idx_assets_user_owner ON assets(user_id, owner_type);
+
+-- 제약조건 추가
+ALTER TABLE assets
+ADD CONSTRAINT chk_assets_owner_type
+CHECK (owner_type IN ('SELF', 'SPOUSE'));
+
+ALTER TABLE assets
+ADD CONSTRAINT chk_assets_total_assets
+CHECK (total_assets >= 0);
+
+ALTER TABLE assets
+ADD CONSTRAINT chk_assets_total_liabilities
+CHECK (total_liabilities >= 0);
+
+-- 테이블 주석
+COMMENT ON TABLE assets IS '자산 정보 테이블';
+COMMENT ON COLUMN assets.asset_id IS '자산 ID (기본키)';
+COMMENT ON COLUMN assets.user_id IS '사용자 ID';
+COMMENT ON COLUMN assets.owner_type IS '소유자 유형 (SELF: 본인, SPOUSE: 배우자)';
+COMMENT ON COLUMN assets.total_assets IS '총 자산 (원)';
+COMMENT ON COLUMN assets.total_liabilities IS '총 부채 (원)';
+COMMENT ON COLUMN assets.net_assets IS '순자산 (원)';
+COMMENT ON COLUMN assets.monthly_income IS '월 소득 (원)';
+COMMENT ON COLUMN assets.monthly_expenses IS '월 지출 (원)';
+COMMENT ON COLUMN assets.monthly_available_funds IS '월 가용자금 (원)';
+COMMENT ON COLUMN assets.created_at IS '생성 시각';
+COMMENT ON COLUMN assets.updated_at IS '수정 시각';
+
+-- ============================================
+-- 2. asset_items (자산 항목)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE asset_items (
+    asset_item_id BIGSERIAL PRIMARY KEY,
+    asset_id BIGINT NOT NULL,
+    asset_name VARCHAR(200) NOT NULL,
+    amount DECIMAL(15,0) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_asset_items_asset ON asset_items(asset_id);
+
+-- 외래키 제약조건
+ALTER TABLE asset_items
+ADD CONSTRAINT fk_asset_items_asset
+FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+ON DELETE CASCADE;
+
+-- 제약조건 추가
+ALTER TABLE asset_items
+ADD CONSTRAINT chk_asset_items_amount
+CHECK (amount >= 0);
+
+-- 테이블 주석
+COMMENT ON TABLE asset_items IS '자산 항목 테이블';
+COMMENT ON COLUMN asset_items.asset_item_id IS '자산항목 ID (기본키)';
+COMMENT ON COLUMN asset_items.asset_id IS '자산 ID (외래키)';
+COMMENT ON COLUMN asset_items.asset_name IS '자산명 (예: 예금, 주식, 부동산 등)';
+COMMENT ON COLUMN asset_items.amount IS '금액 (원)';
+COMMENT ON COLUMN asset_items.created_at IS '생성 시각';
+
+-- ============================================
+-- 3. loan_items (대출 항목)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE loan_items (
+    loan_item_id BIGSERIAL PRIMARY KEY,
+    asset_id BIGINT NOT NULL,
+    loan_name VARCHAR(200) NOT NULL,
+    amount DECIMAL(15,0) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_loan_items_asset ON loan_items(asset_id);
+
+-- 외래키 제약조건
+ALTER TABLE loan_items
+ADD CONSTRAINT fk_loan_items_asset
+FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+ON DELETE CASCADE;
+
+-- 제약조건 추가
+ALTER TABLE loan_items
+ADD CONSTRAINT chk_loan_items_amount
+CHECK (amount >= 0);
+
+-- 테이블 주석
+COMMENT ON TABLE loan_items IS '대출 항목 테이블';
+COMMENT ON COLUMN loan_items.loan_item_id IS '대출항목 ID (기본키)';
+COMMENT ON COLUMN loan_items.asset_id IS '자산 ID (외래키)';
+COMMENT ON COLUMN loan_items.loan_name IS '대출명 (예: 주택담보대출, 신용대출 등)';
+COMMENT ON COLUMN loan_items.amount IS '대출금액 (원)';
+COMMENT ON COLUMN loan_items.created_at IS '생성 시각';
+
+-- ============================================
+-- 4. income_items (소득 항목)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE income_items (
+    income_item_id BIGSERIAL PRIMARY KEY,
+    asset_id BIGINT NOT NULL,
+    income_name VARCHAR(200) NOT NULL,
+    amount DECIMAL(12,0) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_income_items_asset ON income_items(asset_id);
+
+-- 외래키 제약조건
+ALTER TABLE income_items
+ADD CONSTRAINT fk_income_items_asset
+FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+ON DELETE CASCADE;
+
+-- 제약조건 추가
+ALTER TABLE income_items
+ADD CONSTRAINT chk_income_items_amount
+CHECK (amount >= 0);
+
+-- 테이블 주석
+COMMENT ON TABLE income_items IS '소득 항목 테이블';
+COMMENT ON COLUMN income_items.income_item_id IS '소득항목 ID (기본키)';
+COMMENT ON COLUMN income_items.asset_id IS '자산 ID (외래키)';
+COMMENT ON COLUMN income_items.income_name IS '소득명 (예: 급여, 사업소득 등)';
+COMMENT ON COLUMN income_items.amount IS '월 소득금액 (원)';
+COMMENT ON COLUMN income_items.created_at IS '생성 시각';
+
+-- ============================================
+-- 5. expense_items (지출 항목)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE expense_items (
+    expense_item_id BIGSERIAL PRIMARY KEY,
+    asset_id BIGINT NOT NULL,
+    expense_name VARCHAR(200) NOT NULL,
+    amount DECIMAL(12,0) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_expense_items_asset ON expense_items(asset_id);
+
+-- 외래키 제약조건
+ALTER TABLE expense_items
+ADD CONSTRAINT fk_expense_items_asset
+FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
+ON DELETE CASCADE;
+
+-- 제약조건 추가
+ALTER TABLE expense_items
+ADD CONSTRAINT chk_expense_items_amount
+CHECK (amount >= 0);
+
+-- 테이블 주석
+COMMENT ON TABLE expense_items IS '지출 항목 테이블';
+COMMENT ON COLUMN expense_items.expense_item_id IS '지출항목 ID (기본키)';
+COMMENT ON COLUMN expense_items.asset_id IS '자산 ID (외래키)';
+COMMENT ON COLUMN expense_items.expense_name IS '지출명 (예: 생활비, 대출상환 등)';
+COMMENT ON COLUMN expense_items.amount IS '월 지출금액 (원)';
+COMMENT ON COLUMN expense_items.created_at IS '생성 시각';
+
+-- ============================================
+-- 6. 트리거: updated_at 자동 업데이트
+-- ============================================
+
+-- 트리거 함수 생성
+CREATE OR REPLACE FUNCTION update_asset_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- assets 테이블 트리거
+CREATE TRIGGER trigger_assets_updated_at
+BEFORE UPDATE ON assets
+FOR EACH ROW
+EXECUTE FUNCTION update_asset_updated_at();
+
+-- ============================================
+-- 7. 샘플 데이터 (테스트용, 선택적)
+-- ============================================
+
+-- 샘플 자산 1 (본인)
+INSERT INTO assets (
+    user_id, owner_type, total_assets, total_liabilities, net_assets,
+    monthly_income, monthly_expenses, monthly_available_funds
+) VALUES (
+    'testuser1',
+    'SELF',
+    500000000,
+    200000000,
+    300000000,
+    5000000,
+    3000000,
+    2000000
+);
+
+-- 자산 항목 1-1 (예금)
+INSERT INTO asset_items (
+    asset_id, asset_name, amount
+) VALUES (
+    1, '예금', 100000000
+);
+
+-- 자산 항목 1-2 (주식)
+INSERT INTO asset_items (
+    asset_id, asset_name, amount
+) VALUES (
+    1, '주식', 150000000
+);
+
+-- 자산 항목 1-3 (부동산)
+INSERT INTO asset_items (
+    asset_id, asset_name, amount
+) VALUES (
+    1, '부동산', 250000000
+);
+
+-- 대출 항목 1-1 (주택담보대출)
+INSERT INTO loan_items (
+    asset_id, loan_name, amount
+) VALUES (
+    1, '주택담보대출', 150000000
+);
+
+-- 대출 항목 1-2 (신용대출)
+INSERT INTO loan_items (
+    asset_id, loan_name, amount
+) VALUES (
+    1, '신용대출', 50000000
+);
+
+-- 소득 항목 1-1 (급여)
+INSERT INTO income_items (
+    asset_id, income_name, amount
+) VALUES (
+    1, '급여', 5000000
+);
+
+-- 지출 항목 1-1 (생활비)
+INSERT INTO expense_items (
+    asset_id, expense_name, amount
+) VALUES (
+    1, '생활비', 2000000
+);
+
+-- 지출 항목 1-2 (대출상환)
+INSERT INTO expense_items (
+    asset_id, expense_name, amount
+) VALUES (
+    1, '대출상환', 1000000
+);
+
+-- 샘플 자산 2 (배우자)
+INSERT INTO assets (
+    user_id, owner_type, total_assets, total_liabilities, net_assets,
+    monthly_income, monthly_expenses, monthly_available_funds
+) VALUES (
+    'testuser1',
+    'SPOUSE',
+    300000000,
+    100000000,
+    200000000,
+    4000000,
+    2500000,
+    1500000
+);
+
+-- 자산 항목 2-1 (예금)
+INSERT INTO asset_items (
+    asset_id, asset_name, amount
+) VALUES (
+    2, '예금', 80000000
+);
+
+-- 자산 항목 2-2 (적금)
+INSERT INTO asset_items (
+    asset_id, asset_name, amount
+) VALUES (
+    2, '적금', 50000000
+);
+
+-- 자산 항목 2-3 (펀드)
+INSERT INTO asset_items (
+    asset_id, asset_name, amount
+) VALUES (
+    2, '펀드', 170000000
+);
+
+-- 대출 항목 2-1 (신용대출)
+INSERT INTO loan_items (
+    asset_id, loan_name, amount
+) VALUES (
+    2, '신용대출', 100000000
+);
+
+-- 소득 항목 2-1 (급여)
+INSERT INTO income_items (
+    asset_id, income_name, amount
+) VALUES (
+    2, '급여', 4000000
+);
+
+-- 지출 항목 2-1 (생활비)
+INSERT INTO expense_items (
+    asset_id, expense_name, amount
+) VALUES (
+    2, '생활비', 1500000
+);
+
+-- 지출 항목 2-2 (대출상환)
+INSERT INTO expense_items (
+    asset_id, expense_name, amount
+) VALUES (
+    2, '대출상환', 1000000
+);
+
+-- ============================================
+-- 8. 스키마 검증 쿼리
+-- ============================================
+
+-- 테이블 목록 확인
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'asset_service'
+ORDER BY table_name;
+
+-- 인덱스 확인
+SELECT
+    tablename,
+    indexname,
+    indexdef
+FROM pg_indexes
+WHERE schemaname = 'asset_service'
+ORDER BY tablename, indexname;
+
+-- 제약조건 확인
+SELECT
+    conname AS constraint_name,
+    conrelid::regclass AS table_name,
+    contype AS constraint_type,
+    pg_get_constraintdef(oid) AS constraint_definition
+FROM pg_constraint
+WHERE connamespace = 'asset_service'::regnamespace
+ORDER BY conrelid::regclass::text, conname;
+
+-- 테이블 크기 확인
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'asset_service'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- ============================================
+-- 완료
+-- ============================================

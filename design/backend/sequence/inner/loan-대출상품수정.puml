@@ -1,0 +1,183 @@
+@startuml loan-대출상품수정
+!theme mono
+
+title Loan 서비스 - 대출상품 수정 (AFR-LOAN-030 - 관리자)
+
+participant "LoanController" as Controller
+participant "AuthorizationService" as AuthService
+participant "LoanProductService" as Service
+participant "LoanProductRepository" as Repository
+database "Redis Cache<<E>>" as Cache
+database "Loan DB<<E>>" as DB
+
+note over Controller, DB
+시나리오: 관리자가 기존 대출상품을 수정
+- JWT 토큰 검증 (role=ADMIN)
+- 존재 여부 확인
+- 데이터 유효성 검증
+- 트랜잭션 처리
+- 캐시 무효화 (목록 + 상세)
+end note
+
+activate Controller
+
+Controller -> AuthService: JWT 토큰 검증 및 권한 확인
+activate AuthService
+note right
+Authorization 헤더에서
+JWT 토큰 추출 및 검증
+end note
+
+AuthService -> AuthService: 토큰 파싱 및 검증
+note right
+- 토큰 유효성 확인
+- 만료 시간 확인
+- 서명 검증
+- role=ADMIN 확인
+end note
+
+alt 인증/권한 실패
+    AuthService --> Controller: 401/403 오류
+    Controller --> : HTTP 401/403 응답
+else 인증 및 권한 확인 성공
+    AuthService --> Controller: 관리자 정보
+    deactivate AuthService
+
+    Controller -> Service: 대출상품 수정 요청\n(productId, 수정 데이터)
+    activate Service
+
+    Service -> Service: 데이터 유효성 검증
+    note right
+    필수 필드 검증:
+    - 대출이름 (2-100자)
+    - 대출한도 (양수)
+    - LTV/DTI/DSR 한도 (0-100%)
+    - 금리 (0.1% - 20%)
+
+    변경 가능 필드 확인:
+    - 일부 필드는 수정 제한 가능
+    end note
+
+    alt 유효성 검증 실패
+        Service --> Controller: 400 Bad Request
+        Controller --> : HTTP 400 응답
+    else 유효성 검증 성공
+        Service -> Repository: 대출상품 존재 확인\n(productId)
+        activate Repository
+
+        Repository -> DB: 대출상품 조회\nWHERE id = productId
+        activate DB
+        DB --> Repository: 대출상품 정보 또는 null
+        deactivate DB
+
+        alt 상품이 존재하지 않음
+            Repository --> Service: null
+            Service --> Controller: 404 Not Found
+            Controller --> : HTTP 404 응답
+            note right
+            존재하지 않는 상품
+            end note
+        else 상품이 존재함
+            Repository --> Service: 기존 대출상품 정보
+            deactivate Repository
+
+            Service -> Service: 변경사항 비교
+            note right
+            - 기존 값과 새 값 비교
+            - 실제 변경된 필드만 업데이트
+            - 변경 이력 기록 준비
+            end note
+
+            Service -> Repository: 트랜잭션 시작
+            activate Repository
+
+            Repository -> DB: 대출상품 기본정보 수정\nUPDATE loan_products\nWHERE id = productId
+            activate DB
+            note right
+            기본 정보 업데이트:
+            - name, maxAmount, interestRate
+            - ltvLimit, dtiLimit, dsrLimit
+            - description, targetHousing
+            - updatedAt (현재 시간)
+            end note
+            DB --> Repository: 수정 완료
+            deactivate DB
+
+            alt 자격요건 변경됨
+                Repository -> DB: 기존 자격요건 삭제\nDELETE FROM eligibility_criteria\nWHERE product_id = productId
+                activate DB
+                DB --> Repository: 삭제 완료
+                deactivate DB
+
+                Repository -> DB: 새 자격요건 저장\nINSERT INTO eligibility_criteria
+                activate DB
+                note right
+                자격 요건 재등록:
+                - 기존 데이터 삭제 후
+                - 새 데이터 일괄 등록
+                end note
+                DB --> Repository: 저장 완료
+                deactivate DB
+            end
+
+            alt 필요서류 변경됨
+                Repository -> DB: 기존 필요서류 삭제\nDELETE FROM required_documents\nWHERE product_id = productId
+                activate DB
+                DB --> Repository: 삭제 완료
+                deactivate DB
+
+                Repository -> DB: 새 필요서류 저장\nINSERT INTO required_documents
+                activate DB
+                DB --> Repository: 저장 완료
+                deactivate DB
+            end
+
+            Repository -> Repository: 트랜잭션 커밋
+            note right
+            모든 변경사항이
+            성공적으로 저장된 경우에만 커밋
+            end note
+
+            Repository --> Service: 수정된 대출상품 정보
+            deactivate Repository
+
+            Service -> Cache: 캐시 무효화\nkeys: "loans:list:*", "loan:product:{productId}"
+            activate Cache
+            note right
+            목록 캐시 + 상세 캐시 삭제:
+            - 목록에 수정 내용 반영
+            - 상세 페이지 최신 정보 표시
+            end note
+            Cache --> Service: 무효화 완료
+            deactivate Cache
+
+            Service -> Service: 응답 DTO 생성
+            note right
+            Entity → LoanProductResponse
+            - 수정된 필드 포함
+            - 업데이트 시간 포함
+            end note
+
+            Service --> Controller: 수정된 대출상품 정보
+        end
+    end
+end
+
+deactivate Service
+
+Controller -> Controller: HTTP 응답 생성
+note right
+200 OK
+{
+  "id": "LOAN001",
+  "name": "신혼부부 특례대출 (수정됨)",
+  "maxAmount": 350000000,
+  "interestRate": 1.75,
+  "updatedAt": "2025-12-16T11:00:00Z"
+}
+end note
+
+Controller --> : HTTP 응답 반환
+deactivate Controller
+
+@enduml

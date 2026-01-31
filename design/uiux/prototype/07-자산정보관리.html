@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자산정보 관리</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-lg);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: var(--spacing-md);
+            border: none;
+            background: none;
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            font-weight: var(--font-weight-bold);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .summary-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .summary-value {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .summary-value.positive {
+            color: var(--success);
+        }
+
+        .summary-value.negative {
+            color: var(--error);
+        }
+
+        .summary-divider {
+            height: 1px;
+            background: var(--border);
+            margin: var(--spacing-md) 0;
+        }
+
+        .summary-highlight {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .summary-highlight-label {
+            font-size: var(--font-size-md);
+            color: var(--text-secondary);
+        }
+
+        .summary-highlight-value {
+            font-size: var(--font-size-xxl);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+        }
+
+        /* Category Section */
+        .category-section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .category-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .category-total {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+        }
+
+        /* Item List */
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .item-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            transition: all 0.2s;
+        }
+
+        .item-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .item-name {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .item-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-icon-small {
+            padding: var(--spacing-xs);
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        .btn-icon-small:hover {
+            color: var(--primary);
+        }
+
+        .item-amount {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .item-note {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+
+        /* Empty State */
+        .empty-state-small {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-secondary);
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .bottom-sheet.active {
+            transform: translateY(0);
+        }
+
+        .sheet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sheet-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+        }
+
+        .sheet-body {
+            padding: var(--spacing-lg);
+        }
+
+        .sheet-footer {
+            padding: var(--spacing-lg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        /* Update Info */
+        .update-info {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: var(--spacing-md);
+        }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .summary-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">자산정보 관리</h1>
+        <div class="header-actions"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="self" id="selfTab">본인</button>
+                <button class="tab" data-tab="spouse" id="spouseTab">배우자</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="tabContent">
+                <!-- Content will be rendered here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Sheet for Add/Edit -->
+    <div class="bottom-sheet" id="itemSheet">
+        <div class="sheet-header">
+            <h3 class="sheet-title" id="sheetTitle">항목 추가</h3>
+            <button class="btn-icon" onclick="closeSheet()" aria-label="닫기">✕</button>
+        </div>
+        <div class="sheet-body" id="sheetBody">
+            <!-- Form will be rendered here -->
+        </div>
+        <div class="sheet-footer">
+            <button type="button" class="btn btn-secondary flex-1" onclick="closeSheet()">취소</button>
+            <button type="button" class="btn btn-primary flex-1" id="saveBtn">저장</button>
+        </div>
+    </div>
+
+    <!-- Backdrop -->
+    <div class="backdrop" id="backdrop" onclick="closeSheet()"></div>
+
+    <script src="common.js"></script>
+    <script>
+        // State
+        let currentTab = 'self';
+        let selfData = null;
+        let spouseData = null;
+        let currentCategory = null;
+        let editingIndex = -1;
+
+        // Elements
+        const selfTab = document.getElementById('selfTab');
+        const spouseTab = document.getElementById('spouseTab');
+        const tabContent = document.getElementById('tabContent');
+        const itemSheet = document.getElementById('itemSheet');
+        const backdrop = document.getElementById('backdrop');
+        const sheetTitle = document.getElementById('sheetTitle');
+        const sheetBody = document.getElementById('sheetBody');
+        const saveBtn = document.getElementById('saveBtn');
+
+        // Load data
+        function loadData() {
+            selfData = Storage.getItem('self_asset') || {
+                assets: [],
+                loans: [],
+                monthlyIncome: [],
+                monthlyExpense: [],
+                updatedAt: null
+            };
+
+            spouseData = Storage.getItem('spouse_asset') || {
+                assets: [],
+                loans: [],
+                monthlyIncome: [],
+                monthlyExpense: [],
+                updatedAt: null
+            };
+
+            renderContent();
+        }
+
+        // Tab switching
+        selfTab.addEventListener('click', () => switchTab('self'));
+        spouseTab.addEventListener('click', () => switchTab('spouse'));
+
+        function switchTab(tab) {
+            currentTab = tab;
+
+            selfTab.classList.toggle('active', tab === 'self');
+            spouseTab.classList.toggle('active', tab === 'spouse');
+
+            renderContent();
+        }
+
+        // Render content
+        function renderContent() {
+            const data = currentTab === 'self' ? selfData : spouseData;
+            const ownerName = currentTab === 'self' ? '본인' : '배우자';
+
+            // Calculate totals
+            const totalAssets = data.assets.reduce((sum, item) => sum + parseInt(item.amount), 0);
+            const totalLoans = data.loans.reduce((sum, item) => sum + parseInt(item.amount), 0);
+            const totalIncome = data.monthlyIncome.reduce((sum, item) => sum + parseInt(item.amount), 0);
+            const totalExpense = data.monthlyExpense.reduce((sum, item) => sum + parseInt(item.amount), 0);
+            const netAssets = totalAssets - totalLoans;
+            const availableIncome = totalIncome - totalExpense;
+
+            let html = `
+                <!-- Summary Card -->
+                <div class="summary-card">
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">총 자산</div>
+                            <div class="summary-value">${Format.currency(totalAssets)}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">총 대출</div>
+                            <div class="summary-value negative">${Format.currency(totalLoans)}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">월 소득</div>
+                            <div class="summary-value positive">${Format.currency(totalIncome)}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">월 지출</div>
+                            <div class="summary-value negative">${Format.currency(totalExpense)}</div>
+                        </div>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">순자산</div>
+                            <div class="summary-value ${netAssets >= 0 ? 'positive' : 'negative'}">${Format.currency(netAssets)}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">월 가용자금</div>
+                            <div class="summary-value ${availableIncome >= 0 ? 'positive' : 'negative'}">${Format.currency(availableIncome)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assets Section -->
+                ${renderCategory('자산', 'assets', data.assets, totalAssets)}
+
+                <!-- Loans Section -->
+                ${renderCategory('대출', 'loans', data.loans, totalLoans)}
+
+                <!-- Monthly Income Section -->
+                ${renderCategory('월 소득', 'monthlyIncome', data.monthlyIncome, totalIncome)}
+
+                <!-- Monthly Expense Section -->
+                ${renderCategory('월 지출', 'monthlyExpense', data.monthlyExpense, totalExpense)}
+
+                <!-- Update Info -->
+                ${data.updatedAt ? `<div class="update-info">마지막 수정: ${Format.datetime(data.updatedAt)}</div>` : ''}
+            `;
+
+            tabContent.innerHTML = html;
+        }
+
+        // Render category
+        function renderCategory(title, category, items, total) {
+            const categoryLabels = {
+                'assets': '자산',
+                'loans': '대출',
+                'monthlyIncome': '월 소득',
+                'monthlyExpense': '월 지출'
+            };
+
+            return `
+                <div class="category-section">
+                    <div class="category-header">
+                        <h2 class="category-title">${title}</h2>
+                        <button class="btn btn-secondary btn-sm" onclick="openAddSheet('${category}')">+ 추가</button>
+                    </div>
+                    ${items.length > 0 ? `
+                        <div class="item-list">
+                            ${items.map((item, index) => `
+                                <div class="item-card">
+                                    <div class="item-header">
+                                        <div>
+                                            <div class="item-name">${item.name}</div>
+                                            <div class="item-amount">${Format.currency(item.amount)}</div>
+                                        </div>
+                                        <div class="item-actions">
+                                            <button class="btn-icon-small" onclick="openEditSheet('${category}', ${index})" aria-label="수정">
+                                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                    <path d="M14 2L18 6L7 17H3V13L14 2Z" stroke="currentColor" stroke-width="2"/>
+                                                </svg>
+                                            </button>
+                                            <button class="btn-icon-small" onclick="deleteItem('${category}', ${index})" aria-label="삭제">
+                                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                    <path d="M3 5H17M8 5V3H12V5M5 5L6 17H14L15 5" stroke="currentColor" stroke-width="2"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    ${item.note ? `<div class="item-note">${item.note}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="category-header" style="margin-top: var(--spacing-md); margin-bottom: 0;">
+                            <span class="category-title" style="font-size: var(--font-size-md);">합계</span>
+                            <span class="category-total">${Format.currency(total)}</span>
+                        </div>
+                    ` : `
+                        <div class="empty-state-small">
+                            등록된 ${categoryLabels[category] || title}이(가) 없습니다
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        // Open add sheet
+        window.openAddSheet = function(category) {
+            currentCategory = category;
+            editingIndex = -1;
+
+            const categoryLabels = {
+                'assets': '자산',
+                'loans': '대출',
+                'monthlyIncome': '월 소득',
+                'monthlyExpense': '월 지출'
+            };
+
+            sheetTitle.textContent = `${categoryLabels[category]} 추가`;
+            renderForm();
+            showSheet();
+        };
+
+        // Open edit sheet
+        window.openEditSheet = function(category, index) {
+            currentCategory = category;
+            editingIndex = index;
+
+            const categoryLabels = {
+                'assets': '자산',
+                'loans': '대출',
+                'monthlyIncome': '월 소득',
+                'monthlyExpense': '월 지출'
+            };
+
+            sheetTitle.textContent = `${categoryLabels[category]} 수정`;
+            renderForm();
+            showSheet();
+        };
+
+        // Render form
+        function renderForm() {
+            const data = currentTab === 'self' ? selfData : spouseData;
+            const item = editingIndex >= 0 ? data[currentCategory][editingIndex] : { name: '', amount: '', note: '' };
+
+            sheetBody.innerHTML = `
+                <div class="form-group">
+                    <label for="itemName" class="form-label">항목명 <span class="required">*</span></label>
+                    <input type="text" id="itemName" class="form-input" placeholder="항목명을 입력하세요" value="${item.name}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemAmount" class="form-label">금액 <span class="required">*</span></label>
+                    <input type="text" id="itemAmount" class="form-input" placeholder="금액을 입력하세요" value="${item.amount}" required>
+                    <div class="form-help">숫자만 입력하세요 (천 단위 콤마 자동 추가)</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemNote" class="form-label">메모</label>
+                    <textarea id="itemNote" class="form-input" rows="3" placeholder="메모를 입력하세요">${item.note || ''}</textarea>
+                </div>
+            `;
+
+            // Format amount input
+            const amountInput = document.getElementById('itemAmount');
+            Format.applyNumberFormat(amountInput);
+        }
+
+        // Save item
+        saveBtn.addEventListener('click', () => {
+            const name = document.getElementById('itemName').value.trim();
+            const amountStr = document.getElementById('itemAmount').value.replace(/,/g, '');
+            const amount = parseInt(amountStr) || 0;
+            const note = document.getElementById('itemNote').value.trim();
+
+            if (!name) {
+                UI.showToast('항목명을 입력하세요', 'error');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                UI.showToast('금액을 입력하세요', 'error');
+                return;
+            }
+
+            const data = currentTab === 'self' ? selfData : spouseData;
+            const item = { name, amount, note };
+
+            if (editingIndex >= 0) {
+                data[currentCategory][editingIndex] = item;
+            } else {
+                data[currentCategory].push(item);
+            }
+
+            data.updatedAt = new Date().toISOString();
+
+            // Save to storage
+            if (currentTab === 'self') {
+                Storage.setItem('self_asset', data);
+            } else {
+                Storage.setItem('spouse_asset', data);
+            }
+
+            UI.showToast('저장되었습니다', 'success');
+            closeSheet();
+            renderContent();
+        });
+
+        // Delete item
+        window.deleteItem = function(category, index) {
+            UI.showConfirm('이 항목을 삭제하시겠습니까?', () => {
+                const data = currentTab === 'self' ? selfData : spouseData;
+                data[category].splice(index, 1);
+                data.updatedAt = new Date().toISOString();
+
+                // Save to storage
+                if (currentTab === 'self') {
+                    Storage.setItem('self_asset', data);
+                } else {
+                    Storage.setItem('spouse_asset', data);
+                }
+
+                UI.showToast('삭제되었습니다', 'success');
+                renderContent();
+            });
+        };
+
+        // Show/hide sheet
+        function showSheet() {
+            itemSheet.classList.add('active');
+            backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSheet() {
+            itemSheet.classList.remove('active');
+            backdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // 샘플 데이터 초기화
+        function loadAssetSampleData() {
+            // 본인 자산 샘플 데이터
+            const sampleSelfAsset = {
+                assets: [
+                    { name: '예금', amount: 25000000, note: 'KB국민은행' },
+                    { name: '적금', amount: 20000000, note: '신한은행' }
+                ],
+                loans: [
+                    { name: '신용대출', amount: 10000000, note: 'KB국민은행' }
+                ],
+                monthlyIncome: [
+                    { name: '급여', amount: 5500000, note: '세후 월급' }
+                ],
+                monthlyExpense: [
+                    { name: '생활비', amount: 3200000, note: '주거비, 식비 등' }
+                ],
+                updatedAt: new Date().toISOString()
+            };
+
+            // 배우자 자산 샘플 데이터 (비어있는 구조)
+            const sampleSpouseAsset = {
+                assets: [],
+                loans: [],
+                monthlyIncome: [],
+                monthlyExpense: [],
+                updatedAt: null
+            };
+
+            // localStorage에 저장
+            if (!Storage.getItem('self_asset')) {
+                Storage.setItem('self_asset', sampleSelfAsset);
+            }
+            if (!Storage.getItem('spouse_asset')) {
+                Storage.setItem('spouse_asset', sampleSpouseAsset);
+            }
+        }
+
+        // Initialize
+        loadAssetSampleData();
+        loadData();
+    </script>
+</body>
+</html>

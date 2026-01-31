@@ -1,0 +1,177 @@
+@startuml
+!theme mono
+
+title Calculator 서비스 - 입주후지출계산 (내부 시퀀스)
+
+participant "CalculatorController" as Ctrl
+participant "ExpenseCalculator\nService" as Svc
+participant "ExpenseCalculator\nDomain" as Domain
+database "Redis Cache<<E>>" as Cache
+participant "UserService<<E>>" as UserSvc
+participant "AssetService<<E>>" as AssetSvc
+participant "HousingService<<E>>" as HousingSvc
+participant "LoanService<<E>>" as LoanSvc
+database "Calculator DB" as DB
+participant "Calculator\nRepository" as Repo
+
+== 입주 후 지출 계산 요청 (POST /calculator/expenses) ==
+[-> Ctrl: POST /calculator/expenses\n(userId, housingId, loanId)
+activate Ctrl
+
+Ctrl -> Svc: calculateExpenses(userId, housingId, loanId)
+activate Svc
+
+note right of Svc
+    1. 캐시 키 생성
+    2. 캐시 조회
+    3. 캐시 미스시 계산 수행
+end note
+
+Svc -> Svc: 캐시 키 생성\ncalc:{userId}:{housingId}:{loanId}
+
+== Cache-Aside 패턴: 캐시 조회 ==
+Svc -> Cache: GET 캐시 조회
+activate Cache
+
+alt 캐시 히트 (60% 케이스)
+    Cache --> Svc: 캐시된 계산 결과 반환
+    deactivate Cache
+
+    note right of Svc
+        캐시 히트 시 즉시 응답
+        평균 응답시간: 0.1초
+    end note
+
+    Svc --> Ctrl: CalculationResponse\n(계산 결과)
+    deactivate Svc
+    Ctrl --> [: 200 OK\n계산 결과
+    deactivate Ctrl
+
+else 캐시 미스 (40% 케이스)
+    Cache --> Svc: null (캐시 없음)
+    deactivate Cache
+
+    note right of Svc
+        캐시 미스 시
+        다중 서비스 데이터 수집 및
+        재무 계산 수행
+    end note
+
+    == 다중 서비스 데이터 수집 (병렬 호출) ==
+
+    par 병렬 데이터 수집
+        Svc -> UserSvc: GET /users/{userId}/profile\n기본정보 조회
+        activate UserSvc
+        UserSvc --> Svc: UserProfileResponse\n(생년월일, 성별, 거주지, 직장위치)
+        deactivate UserSvc
+
+        Svc -> AssetSvc: GET /assets/users/{userId}\n자산정보 조회
+        activate AssetSvc
+        AssetSvc --> Svc: AssetResponse\n(본인/배우자 자산, 대출, 월소득, 월지출)
+        deactivate AssetSvc
+
+        Svc -> HousingSvc: GET /housing/{housingId}\n주택정보 조회
+        activate HousingSvc
+        HousingSvc --> Svc: HousingResponse\n(주택유형, 입주희망년월, 가격)
+        deactivate HousingSvc
+
+        Svc -> LoanSvc: GET /loans/{loanId}\n대출상품 조회
+        activate LoanSvc
+        LoanSvc --> Svc: LoanProductResponse\n(대출한도, LTV/DTI/DSR 한도, 금리)
+        deactivate LoanSvc
+    end
+
+    note right of Svc
+        병렬 호출로 성능 최적화
+        5초 → 2초로 단축
+    end note
+
+    == 재무 계산 수행 ==
+    Svc -> Domain: calculate(\nuser, asset, housing, loan)
+    activate Domain
+
+    Domain -> Domain: 1) 입주희망년월 기준 예상자산 산출\n= 현재자산 + (월소득-월지출)×개월수 - 현재대출
+
+    note right of Domain
+        예상자산 계산식:
+        - 현재자산: asset.totalAsset
+        - 월저축액: asset.monthlyIncome - asset.monthlyExpense
+        - 개월수: housing.moveInDate - today
+        - 현재대출: asset.totalLoan
+    end note
+
+    Domain -> Domain: 2) 대출필요금액 산출\n= 주택가격 - 예상자산
+
+    Domain -> Domain: 3) LTV/DTI/DSR 계산\n- LTV = (대출필요금액/주택가격)×100\n- DTI = (연간대출원리금/연소득)×100\n- DSR = (연간총부채원리금/연소득)×100
+
+    note right of Domain
+        재무지표 계산:
+        - LTV: Loan To Value
+        - DTI: Debt To Income
+        - DSR: Debt Service Ratio
+
+        원리금균등상환 방식:
+        월상환액 = 대출액 × (월이자율 × (1+월이자율)^상환개월수)
+                  / ((1+월이자율)^상환개월수 - 1)
+    end note
+
+    Domain -> Domain: 4) 대출상품 기준 충족여부 판단\n- LTV 한도 확인\n- DTI 한도 확인\n- DSR 한도 확인\n- 대출한도 확인
+
+    Domain -> Domain: 5) 입주 후 예상자산/월지출 계산\n- 입주후자산 = 예상자산 - 대출필요금액\n- 입주후월지출 = 월지출 + 월대출상환액
+
+    Domain --> Svc: CalculationResult\n(예상자산, 대출필요금액, LTV/DTI/DSR, 충족여부,\n입주후자산, 입주후월지출)
+    deactivate Domain
+
+    == 계산 결과 저장 및 캐싱 ==
+    Svc -> Repo: save(calculationResult)
+    activate Repo
+    Repo -> DB: INSERT INTO calculation_results\n(user_id, housing_id, loan_id, ..., created_at)
+    DB --> Repo: result_id
+    Repo --> Svc: CalculationEntity (result_id 포함)
+    deactivate Repo
+
+    note right of Svc
+        계산 결과 영구 저장
+        이력 관리 및 추후 조회용
+    end note
+
+    Svc -> Cache: SET 계산 결과 캐싱\nKey: calc:{userId}:{housingId}:{loanId}\nTTL: 3600초 (1시간)
+    activate Cache
+    Cache --> Svc: OK
+    deactivate Cache
+
+    note right of Cache
+        캐시 전략:
+        - TTL: 1시간
+        - 자산/주택정보 변경시 무효화
+        - 히트율 목표: 60% 이상
+    end note
+
+    Svc --> Ctrl: CalculationResponse\n(계산 결과)
+    deactivate Svc
+    Ctrl --> [: 200 OK\n계산 결과
+    deactivate Ctrl
+end
+
+note over Ctrl, LoanSvc
+    **응답 데이터 구조 (CalculationResponse)**:
+
+    **재무 현황**:
+    - estimatedAsset: 입주희망년월 기준 예상자산
+    - loanNeeded: 대출필요 금액
+
+    **대출 분석**:
+    - loanProductName: 실행 대출이름
+    - calculatedLTV: 계산된 LTV
+    - calculatedDTI: 계산된 DTI
+    - calculatedDSR: 계산된 DSR
+    - isEligible: 대출상품 기준 충족여부 (true/false)
+    - eligibilityDetails: 충족/미충족 상세 사유
+
+    **입주 후 재무상태**:
+    - assetAfterMove: 예상 자산
+    - monthlyExpenseAfterMove: 예상 월지출액
+    - monthlyBalance: 여유자금 (월소득 - 월지출)
+end note
+
+@enduml

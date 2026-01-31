@@ -1,0 +1,676 @@
+openapi: 3.0.3
+info:
+  title: User Service API
+  description: |
+    내집마련 도우미 플랫폼 - User 서비스 API
+    사용자 인증 및 기본정보 관리를 담당하는 마이크로서비스
+  version: 1.0.0
+  contact:
+    name: User Service Team
+    email: user-service@homeplanner.com
+
+servers:
+  - url: https://virtserver.swaggerhub.com/homeplanner/user-service/1.0.0
+    description: SwaggerHub Mock Server
+  - url: http://localhost:8080
+    description: Local Development Server
+  - url: https://api.homeplanner.com/user
+    description: Production Server
+
+tags:
+  - name: 회원가입/로그인
+    description: 사용자 인증 관련 API
+  - name: 기본정보관리
+    description: 사용자 기본정보 관리 API
+
+paths:
+  /users/register:
+    post:
+      tags:
+        - 회원가입/로그인
+      summary: 회원가입
+      description: 신규 사용자 회원가입을 처리합니다
+      operationId: registerUser
+      x-user-story: UFR-USER-010
+      x-controller: UserController
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+            examples:
+              normal:
+                summary: 일반 회원가입
+                value:
+                  name: 김민수
+                  email: minsu.kim@example.com
+                  phoneNumber: "01012345678"
+                  userId: minsukim
+                  password: Password123!
+                  passwordConfirm: Password123!
+                  agreeTerms: true
+      responses:
+        '201':
+          description: 회원가입 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegisterResponse'
+              example:
+                success: true
+                message: 회원가입이 완료되었습니다
+                data:
+                  userId: minsukim
+                  email: minsu.kim@example.com
+        '400':
+          description: 입력 데이터 검증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                duplicateUserId:
+                  summary: 아이디 중복
+                  value:
+                    success: false
+                    message: 이미 사용 중인 아이디입니다
+                    errorCode: USER_001
+                duplicateEmail:
+                  summary: 이메일 중복
+                  value:
+                    success: false
+                    message: 이미 사용 중인 이메일입니다
+                    errorCode: USER_002
+                passwordMismatch:
+                  summary: 비밀번호 불일치
+                  value:
+                    success: false
+                    message: 비밀번호가 일치하지 않습니다
+                    errorCode: USER_003
+                weakPassword:
+                  summary: 비밀번호 강도 부족
+                  value:
+                    success: false
+                    message: 비밀번호는 8자 이상, 영문/숫자/특수문자를 포함해야 합니다
+                    errorCode: USER_004
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: 서버 오류가 발생했습니다
+                errorCode: INTERNAL_ERROR
+
+  /users/login:
+    post:
+      tags:
+        - 회원가입/로그인
+      summary: 로그인
+      description: 사용자 로그인을 처리하고 JWT 토큰을 발급합니다
+      operationId: loginUser
+      x-user-story: UFR-USER-020
+      x-controller: UserController
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+            example:
+              userId: minsukim
+              password: Password123!
+              rememberMe: true
+      responses:
+        '200':
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
+              example:
+                success: true
+                message: 로그인에 성공했습니다
+                data:
+                  accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  tokenType: Bearer
+                  expiresIn: 3600
+                  user:
+                    userId: minsukim
+                    name: 김민수
+                    email: minsu.kim@example.com
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  summary: 인증 정보 불일치
+                  value:
+                    success: false
+                    message: 아이디 또는 비밀번호를 확인해주세요
+                    errorCode: AUTH_001
+                accountLocked:
+                  summary: 계정 잠금
+                  value:
+                    success: false
+                    message: 5회 연속 로그인 실패로 계정이 30분간 잠겼습니다
+                    errorCode: AUTH_002
+                    data:
+                      lockUntil: "2025-01-20T10:30:00Z"
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/logout:
+    post:
+      tags:
+        - 회원가입/로그인
+      summary: 로그아웃
+      description: 사용자 로그아웃을 처리하고 JWT 토큰을 무효화합니다
+      operationId: logoutUser
+      x-user-story: UFR-USER-030
+      x-controller: UserController
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 로그아웃 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                success: true
+                message: 로그아웃되었습니다
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: 유효하지 않은 토큰입니다
+                errorCode: AUTH_003
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/profile:
+    get:
+      tags:
+        - 기본정보관리
+      summary: 기본정보 조회
+      description: 로그인한 사용자의 기본정보를 조회합니다
+      operationId: getUserProfile
+      x-user-story: UFR-USER-040
+      x-controller: UserController
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+              example:
+                success: true
+                message: 기본정보 조회에 성공했습니다
+                data:
+                  userId: minsukim
+                  name: 김민수
+                  email: minsu.kim@example.com
+                  phoneNumber: "01012345678"
+                  birthDate: "1990-05-15"
+                  gender: MALE
+                  currentAddress:
+                    roadAddress: 서울특별시 강남구 테헤란로 123
+                    jibunAddress: 서울특별시 강남구 역삼동 123-45
+                    postalCode: "06234"
+                    latitude: 37.498095
+                    longitude: 127.027610
+                  userWorkplaceAddress:
+                    roadAddress: 서울특별시 강남구 삼성로 456
+                    jibunAddress: 서울특별시 강남구 삼성동 456-78
+                    postalCode: "06345"
+                    latitude: 37.509876
+                    longitude: 127.062345
+                  spouseWorkplaceAddress:
+                    roadAddress: 서울특별시 서초구 서초대로 789
+                    jibunAddress: 서울특별시 서초구 서초동 789-12
+                    postalCode: "06567"
+                    latitude: 37.494321
+                    longitude: 127.012345
+                  investmentPropensity: HIGH
+                  createdAt: "2025-01-01T10:00:00Z"
+                  updatedAt: "2025-01-15T14:30:00Z"
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 사용자 정보 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: 기본정보가 등록되지 않았습니다
+                errorCode: USER_005
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - 기본정보관리
+      summary: 기본정보 수정
+      description: 로그인한 사용자의 기본정보를 수정합니다 (생년월일, 성별은 수정 불가)
+      operationId: updateUserProfile
+      x-user-story: UFR-USER-050
+      x-controller: UserController
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
+            example:
+              currentAddress:
+                roadAddress: 서울특별시 강남구 테헤란로 456
+                jibunAddress: 서울특별시 강남구 역삼동 456-78
+                postalCode: "06345"
+                latitude: 37.501234
+                longitude: 127.034567
+              userWorkplaceAddress:
+                roadAddress: 서울특별시 강남구 삼성로 789
+                jibunAddress: 서울특별시 강남구 삼성동 789-12
+                postalCode: "06456"
+                latitude: 37.512345
+                longitude: 127.065432
+              spouseWorkplaceAddress:
+                roadAddress: 서울특별시 서초구 서초대로 321
+                jibunAddress: 서울특별시 서초구 서초동 321-54
+                postalCode: "06678"
+                latitude: 37.487654
+                longitude: 127.005432
+              investmentPropensity: MEDIUM
+      responses:
+        '200':
+          description: 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+              example:
+                success: true
+                message: 기본정보가 업데이트되었습니다
+                data:
+                  userId: minsukim
+                  name: 김민수
+                  email: minsu.kim@example.com
+                  phoneNumber: "01012345678"
+                  birthDate: "1990-05-15"
+                  gender: MALE
+                  currentAddress:
+                    roadAddress: 서울특별시 강남구 테헤란로 456
+                    jibunAddress: 서울특별시 강남구 역삼동 456-78
+                    postalCode: "06345"
+                    latitude: 37.501234
+                    longitude: 127.034567
+                  userWorkplaceAddress:
+                    roadAddress: 서울특별시 강남구 삼성로 789
+                    jibunAddress: 서울특별시 강남구 삼성동 789-12
+                    postalCode: "06456"
+                    latitude: 37.512345
+                    longitude: 127.065432
+                  spouseWorkplaceAddress:
+                    roadAddress: 서울특별시 서초구 서초대로 321
+                    jibunAddress: 서울특별시 서초구 서초동 321-54
+                    postalCode: "06678"
+                    latitude: 37.487654
+                    longitude: 127.005432
+                  investmentPropensity: MEDIUM
+                  updatedAt: "2025-01-20T15:45:00Z"
+        '400':
+          description: 입력 데이터 검증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: 입력 데이터를 확인해주세요
+                errorCode: VALIDATION_ERROR
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 토큰 기반 인증
+
+  schemas:
+    UserRegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - phoneNumber
+        - userId
+        - password
+        - passwordConfirm
+        - agreeTerms
+      properties:
+        name:
+          type: string
+          description: 이름 (2자 이상, 한글/영문)
+          minLength: 2
+          maxLength: 50
+          example: 김민수
+        email:
+          type: string
+          format: email
+          description: 이메일 주소
+          example: minsu.kim@example.com
+        phoneNumber:
+          type: string
+          description: 휴대폰 번호 (하이픈 제외)
+          pattern: '^01[0-9]{8,9}$'
+          example: "01012345678"
+        userId:
+          type: string
+          description: 아이디 (5자 이상, 영문/숫자 조합)
+          minLength: 5
+          maxLength: 20
+          pattern: '^[a-zA-Z0-9]+$'
+          example: minsukim
+        password:
+          type: string
+          description: 비밀번호 (8자 이상, 영문/숫자/특수문자 포함)
+          format: password
+          minLength: 8
+          maxLength: 100
+          example: Password123!
+        passwordConfirm:
+          type: string
+          description: 비밀번호 확인
+          format: password
+          minLength: 8
+          maxLength: 100
+          example: Password123!
+        agreeTerms:
+          type: boolean
+          description: 이용약관 동의 여부
+          example: true
+
+    UserRegisterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 회원가입이 완료되었습니다
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+              example: minsukim
+            email:
+              type: string
+              example: minsu.kim@example.com
+
+    UserLoginRequest:
+      type: object
+      required:
+        - userId
+        - password
+      properties:
+        userId:
+          type: string
+          description: 아이디
+          example: minsukim
+        password:
+          type: string
+          description: 비밀번호
+          format: password
+          example: Password123!
+        rememberMe:
+          type: boolean
+          description: 로그인 유지 여부
+          default: false
+          example: true
+
+    UserLoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 로그인에 성공했습니다
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: JWT 액세스 토큰
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+            refreshToken:
+              type: string
+              description: JWT 리프레시 토큰
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+            tokenType:
+              type: string
+              description: 토큰 타입
+              example: Bearer
+            expiresIn:
+              type: integer
+              description: 토큰 만료 시간 (초)
+              example: 3600
+            user:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  example: minsukim
+                name:
+                  type: string
+                  example: 김민수
+                email:
+                  type: string
+                  example: minsu.kim@example.com
+
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 기본정보 조회에 성공했습니다
+        data:
+          $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: 사용자 아이디
+          example: minsukim
+        name:
+          type: string
+          description: 이름
+          example: 김민수
+        email:
+          type: string
+          description: 이메일
+          example: minsu.kim@example.com
+        phoneNumber:
+          type: string
+          description: 휴대폰 번호
+          example: "01012345678"
+        birthDate:
+          type: string
+          format: date
+          description: 생년월일 (수정 불가)
+          example: "1990-05-15"
+        gender:
+          type: string
+          description: 성별 (수정 불가)
+          enum:
+            - MALE
+            - FEMALE
+          example: MALE
+        currentAddress:
+          $ref: '#/components/schemas/Address'
+        userWorkplaceAddress:
+          $ref: '#/components/schemas/Address'
+        spouseWorkplaceAddress:
+          allOf:
+            - $ref: '#/components/schemas/Address'
+            - nullable: true
+        investmentPropensity:
+          type: string
+          description: 투자 성향
+          enum:
+            - HIGH
+            - MEDIUM
+            - LOW
+          example: HIGH
+        createdAt:
+          type: string
+          format: date-time
+          description: 생성 일시
+          example: "2025-01-01T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 수정 일시
+          example: "2025-01-15T14:30:00Z"
+
+    UserProfileUpdateRequest:
+      type: object
+      properties:
+        currentAddress:
+          $ref: '#/components/schemas/Address'
+        userWorkplaceAddress:
+          $ref: '#/components/schemas/Address'
+        spouseWorkplaceAddress:
+          allOf:
+            - $ref: '#/components/schemas/Address'
+            - nullable: true
+        investmentPropensity:
+          type: string
+          description: 투자 성향
+          enum:
+            - HIGH
+            - MEDIUM
+            - LOW
+          example: MEDIUM
+
+    Address:
+      type: object
+      required:
+        - roadAddress
+        - jibunAddress
+        - postalCode
+        - latitude
+        - longitude
+      properties:
+        roadAddress:
+          type: string
+          description: 도로명 주소
+          example: 서울특별시 강남구 테헤란로 123
+        jibunAddress:
+          type: string
+          description: 지번 주소
+          example: 서울특별시 강남구 역삼동 123-45
+        postalCode:
+          type: string
+          description: 우편번호
+          pattern: '^\d{5}$'
+          example: "06234"
+        latitude:
+          type: number
+          format: double
+          description: 위도
+          example: 37.498095
+        longitude:
+          type: number
+          format: double
+          description: 경도
+          example: 127.027610
+
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+          example: true
+        message:
+          type: string
+          description: 응답 메시지
+          example: 처리가 완료되었습니다
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+          example: false
+        message:
+          type: string
+          description: 에러 메시지
+          example: 오류가 발생했습니다
+        errorCode:
+          type: string
+          description: 에러 코드
+          example: ERROR_CODE
+        data:
+          type: object
+          description: 추가 에러 정보 (선택)
+          nullable: true

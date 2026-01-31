@@ -1,0 +1,307 @@
+-- ============================================
+-- Housing Service Database Schema
+-- PostgreSQL 15.x
+-- ============================================
+-- Description: 주택 서비스 데이터베이스 스키마
+-- Author: 길동 (아키텍트)
+-- Date: 2025-12-29
+-- ============================================
+
+-- 스키마 생성
+CREATE SCHEMA IF NOT EXISTS housing_service;
+
+-- 스키마 설정
+SET search_path TO housing_service;
+
+-- ============================================
+-- 1. housings (주택 정보)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE housings (
+    housing_id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    housing_name VARCHAR(200) NOT NULL,
+    housing_type VARCHAR(50) NOT NULL,
+    price DECIMAL(15,0) NOT NULL,
+    move_in_date VARCHAR(7),
+    completion_date DATE,
+    full_address TEXT NOT NULL,
+    road_address TEXT,
+    jibun_address TEXT,
+    latitude DECIMAL(10,7),
+    longitude DECIMAL(11,7),
+    complex_info JSONB,
+    living_environment JSONB,
+    is_goal BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_housings_user_id ON housings(user_id);
+CREATE INDEX idx_housings_user_goal ON housings(user_id, is_goal);
+CREATE INDEX idx_housings_location ON housings(latitude, longitude);
+
+-- 사용자당 최종목표 주택 1개만 허용
+CREATE UNIQUE INDEX idx_housings_unique_goal ON housings(user_id) WHERE is_goal = true;
+
+-- 제약조건 추가
+ALTER TABLE housings
+ADD CONSTRAINT chk_housings_type
+CHECK (housing_type IN ('APARTMENT', 'OFFICETEL', 'VILLA', 'HOUSE'));
+
+ALTER TABLE housings
+ADD CONSTRAINT chk_housings_price
+CHECK (price > 0);
+
+-- 테이블 주석
+COMMENT ON TABLE housings IS '주택 정보 테이블';
+COMMENT ON COLUMN housings.housing_id IS '주택 ID (기본키)';
+COMMENT ON COLUMN housings.user_id IS '사용자 ID';
+COMMENT ON COLUMN housings.housing_name IS '주택명';
+COMMENT ON COLUMN housings.housing_type IS '주택 유형 (APARTMENT, OFFICETEL, VILLA, HOUSE)';
+COMMENT ON COLUMN housings.price IS '가격 (원)';
+COMMENT ON COLUMN housings.move_in_date IS '입주희망년월 (YYYY-MM)';
+COMMENT ON COLUMN housings.completion_date IS '준공일';
+COMMENT ON COLUMN housings.full_address IS '전체 주소';
+COMMENT ON COLUMN housings.road_address IS '도로명 주소';
+COMMENT ON COLUMN housings.jibun_address IS '지번 주소';
+COMMENT ON COLUMN housings.latitude IS '위도';
+COMMENT ON COLUMN housings.longitude IS '경도';
+COMMENT ON COLUMN housings.complex_info IS '단지 정보 (JSON)';
+COMMENT ON COLUMN housings.living_environment IS '생활환경 정보 (JSON)';
+COMMENT ON COLUMN housings.is_goal IS '최종목표 주택 여부';
+COMMENT ON COLUMN housings.created_at IS '생성 시각';
+COMMENT ON COLUMN housings.updated_at IS '수정 시각';
+
+-- ============================================
+-- 2. transportations (교통호재)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE transportations (
+    transportation_id BIGSERIAL PRIMARY KEY,
+    housing_id BIGINT NOT NULL,
+    transport_type VARCHAR(50) NOT NULL,
+    line_name VARCHAR(100),
+    station_name VARCHAR(200) NOT NULL,
+    distance DECIMAL(6,2),
+    walking_time INTEGER,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_transportations_housing ON transportations(housing_id);
+
+-- 외래키 제약조건
+ALTER TABLE transportations
+ADD CONSTRAINT fk_transportations_housing
+FOREIGN KEY (housing_id) REFERENCES housings(housing_id)
+ON DELETE CASCADE;
+
+-- 제약조건 추가
+ALTER TABLE transportations
+ADD CONSTRAINT chk_transportations_type
+CHECK (transport_type IN ('SUBWAY', 'BUS', 'TRAIN'));
+
+ALTER TABLE transportations
+ADD CONSTRAINT chk_transportations_distance
+CHECK (distance >= 0);
+
+ALTER TABLE transportations
+ADD CONSTRAINT chk_transportations_walking_time
+CHECK (walking_time >= 0);
+
+-- 테이블 주석
+COMMENT ON TABLE transportations IS '교통호재 테이블';
+COMMENT ON COLUMN transportations.transportation_id IS '교통호재 ID (기본키)';
+COMMENT ON COLUMN transportations.housing_id IS '주택 ID (외래키)';
+COMMENT ON COLUMN transportations.transport_type IS '교통수단 유형 (SUBWAY, BUS, TRAIN)';
+COMMENT ON COLUMN transportations.line_name IS '노선명 (예: 2호선, 9호선)';
+COMMENT ON COLUMN transportations.station_name IS '역/정류장명';
+COMMENT ON COLUMN transportations.distance IS '거리 (m)';
+COMMENT ON COLUMN transportations.walking_time IS '도보 소요시간 (분)';
+COMMENT ON COLUMN transportations.created_at IS '생성 시각';
+
+-- ============================================
+-- 3. commute_times (출퇴근 시간)
+-- ============================================
+
+-- 테이블 생성
+CREATE TABLE commute_times (
+    commute_time_id BIGSERIAL PRIMARY KEY,
+    transportation_id BIGINT NOT NULL UNIQUE,
+    self_before_9am INTEGER,
+    self_after_6pm INTEGER,
+    spouse_before_9am INTEGER,
+    spouse_after_6pm INTEGER,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성 (UNIQUE 제약조건으로 자동 생성됨)
+
+-- 외래키 제약조건
+ALTER TABLE commute_times
+ADD CONSTRAINT fk_commute_times_transportation
+FOREIGN KEY (transportation_id) REFERENCES transportations(transportation_id)
+ON DELETE CASCADE;
+
+-- 제약조건 추가
+ALTER TABLE commute_times
+ADD CONSTRAINT chk_commute_times_self_before
+CHECK (self_before_9am >= 0);
+
+ALTER TABLE commute_times
+ADD CONSTRAINT chk_commute_times_self_after
+CHECK (self_after_6pm >= 0);
+
+ALTER TABLE commute_times
+ADD CONSTRAINT chk_commute_times_spouse_before
+CHECK (spouse_before_9am >= 0);
+
+ALTER TABLE commute_times
+ADD CONSTRAINT chk_commute_times_spouse_after
+CHECK (spouse_after_6pm >= 0);
+
+-- 테이블 주석
+COMMENT ON TABLE commute_times IS '출퇴근 시간 테이블';
+COMMENT ON COLUMN commute_times.commute_time_id IS '출퇴근시간 ID (기본키)';
+COMMENT ON COLUMN commute_times.transportation_id IS '교통호재 ID (외래키, 유니크)';
+COMMENT ON COLUMN commute_times.self_before_9am IS '본인 출근(9시 이전 도착) 소요시간 (분)';
+COMMENT ON COLUMN commute_times.self_after_6pm IS '본인 퇴근(18시 이후 출발) 소요시간 (분)';
+COMMENT ON COLUMN commute_times.spouse_before_9am IS '배우자 출근(9시 이전 도착) 소요시간 (분)';
+COMMENT ON COLUMN commute_times.spouse_after_6pm IS '배우자 퇴근(18시 이후 출발) 소요시간 (분)';
+COMMENT ON COLUMN commute_times.created_at IS '생성 시각';
+
+-- ============================================
+-- 4. 트리거: updated_at 자동 업데이트
+-- ============================================
+
+-- 트리거 함수 생성
+CREATE OR REPLACE FUNCTION update_housing_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- housings 테이블 트리거
+CREATE TRIGGER trigger_housings_updated_at
+BEFORE UPDATE ON housings
+FOR EACH ROW
+EXECUTE FUNCTION update_housing_updated_at();
+
+-- ============================================
+-- 5. 샘플 데이터 (테스트용, 선택적)
+-- ============================================
+
+-- 샘플 주택 1
+INSERT INTO housings (
+    user_id, housing_name, housing_type, price, move_in_date,
+    completion_date, full_address, road_address, jibun_address,
+    latitude, longitude, complex_info, living_environment, is_goal
+) VALUES (
+    'testuser1',
+    '강남 아크로리버파크',
+    'APARTMENT',
+    800000000,
+    '2026-03',
+    '2024-12-01',
+    '서울특별시 강남구 개포동 1234',
+    '서울특별시 강남구 개포로 123',
+    '서울특별시 강남구 개포동 1234',
+    37.4872123,
+    127.0567890,
+    '{"complexName": "강남 아크로리버파크", "totalHouseholds": 1500, "totalDong": 10, "totalFloors": 35, "parkingCount": 2000, "moveInDate": "2024-12", "constructionCompany": "대림산업", "houseArea": 84.5, "exclusiveArea": 59.9, "floor": 15, "direction": "남향"}'::jsonb,
+    '{"sunlightLevel": "VERY_GOOD", "noiseLevel": "QUIET", "nearbySchools": ["개포초등학교", "개포중학교"], "nearbyMarts": ["롯데마트", "이마트"], "nearbyHospitals": ["강남세브란스병원"]}'::jsonb,
+    true
+);
+
+-- 교통호재 1
+INSERT INTO transportations (
+    housing_id, transport_type, line_name, station_name, distance, walking_time
+) VALUES (
+    1, 'SUBWAY', '3호선', '대치역', 800, 10
+);
+
+-- 출퇴근 시간 1
+INSERT INTO commute_times (
+    transportation_id, self_before_9am, self_after_6pm, spouse_before_9am, spouse_after_6pm
+) VALUES (
+    1, 35, 40, 30, 35
+);
+
+-- 교통호재 2 (동일 주택)
+INSERT INTO transportations (
+    housing_id, transport_type, line_name, station_name, distance, walking_time
+) VALUES (
+    1, 'SUBWAY', '분당선', '개포동역', 500, 7
+);
+
+-- 출퇴근 시간 2
+INSERT INTO commute_times (
+    transportation_id, self_before_9am, self_after_6pm, spouse_before_9am, spouse_after_6pm
+) VALUES (
+    2, 30, 35, 25, 30
+);
+
+-- 샘플 주택 2
+INSERT INTO housings (
+    user_id, housing_name, housing_type, price, move_in_date,
+    completion_date, full_address, latitude, longitude, is_goal
+) VALUES (
+    'testuser1',
+    '서초 래미안',
+    'APARTMENT',
+    650000000,
+    '2025-06',
+    '2023-05-01',
+    '서울특별시 서초구 서초동 5678',
+    37.4912345,
+    127.0198765,
+    false
+);
+
+-- ============================================
+-- 6. 스키마 검증 쿼리
+-- ============================================
+
+-- 테이블 목록 확인
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'housing_service'
+ORDER BY table_name;
+
+-- 인덱스 확인
+SELECT
+    tablename,
+    indexname,
+    indexdef
+FROM pg_indexes
+WHERE schemaname = 'housing_service'
+ORDER BY tablename, indexname;
+
+-- 제약조건 확인
+SELECT
+    conname AS constraint_name,
+    conrelid::regclass AS table_name,
+    contype AS constraint_type,
+    pg_get_constraintdef(oid) AS constraint_definition
+FROM pg_constraint
+WHERE connamespace = 'housing_service'::regnamespace
+ORDER BY conrelid::regclass::text, conname;
+
+-- 테이블 크기 확인
+SELECT
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'housing_service'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- ============================================
+-- 완료
+-- ============================================

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="내집마련 도우미 플랫폼 - 로그인">
+    <title>로그인 - 내집마련 도우미</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+    <div class="page">
+        <!-- 헤더 -->
+        <header class="header header-center">
+            <div class="logo">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="64" height="64" rx="12" fill="var(--primary-500)"/>
+                    <path d="M32 16L16 28V48H24V36H40V48H48V28L32 16Z" fill="white"/>
+                </svg>
+            </div>
+            <h1 class="header-title">로그인</h1>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container">
+            <form id="loginForm" class="form" novalidate>
+                <!-- 아이디 입력 -->
+                <div class="form-group">
+                    <label for="username" class="form-label">아이디</label>
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="form-input"
+                            placeholder="아이디를 입력하세요"
+                            autocomplete="username"
+                            required
+                            aria-required="true"
+                            aria-describedby="username-error"
+                        >
+                    </div>
+                    <div id="username-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 비밀번호 입력 -->
+                <div class="form-group">
+                    <label for="password" class="form-label">비밀번호</label>
+                    <div class="input-wrapper input-password">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="form-input"
+                            placeholder="비밀번호를 입력하세요"
+                            autocomplete="current-password"
+                            required
+                            aria-required="true"
+                            aria-describedby="password-error"
+                        >
+                        <button
+                            type="button"
+                            class="btn-toggle-password"
+                            aria-label="비밀번호 표시/숨김"
+                            tabindex="-1"
+                        >
+                            <svg class="icon-eye" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 4C5 4 1.73 7.11 1 10c.73 2.89 4 6 9 6s8.27-3.11 9-6c-.73-2.89-4-6-9-6zm0 10a4 4 0 110-8 4 4 0 010 8zm0-6a2 2 0 100 4 2 2 0 000-4z" fill="currentColor"/>
+                            </svg>
+                            <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: none;">
+                                <path d="M10 8a2 2 0 100 4 2 2 0 000-4z" fill="currentColor"/>
+                                <path d="M19.94 9.66c-.42-1.04-1.11-2.07-2.04-3-.93-.93-1.96-1.62-3-2.04A8.93 8.93 0 0010 4c-1.71 0-3.39.52-4.9 1.62-1.04.42-2.07 1.11-3 2.04-.93.93-1.62 1.96-2.04 3-.11.27-.11.57 0 .84.42 1.04 1.11 2.07 2.04 3 .93.93 1.96 1.62 3 2.04A8.93 8.93 0 0010 17c1.71 0 3.39-.52 4.9-1.62 1.04-.42 2.07-1.11 3-2.04.93-.93 1.62-1.96 2.04-3 .11-.27.11-.57 0-.84zM1.65 10c.67-1.68 3.78-5 8.35-5 .48 0 .95.05 1.41.14L9.14 7.41A4 4 0 007.41 9.14L5.14 6.86C3.32 7.82 2.12 8.88 1.65 10zm8.35 5c-.48 0-.95-.05-1.41-.14l2.27-2.27a4 4 0 001.73-1.73l2.27-2.27c1.82.96 3.02 2.02 3.49 3.41-.67 1.68-3.78 5-8.35 5z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="password-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 로그인 유지 체크박스 -->
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input
+                            type="checkbox"
+                            id="rememberMe"
+                            name="rememberMe"
+                            class="checkbox"
+                        >
+                        <span class="checkbox-text">로그인 상태 유지</span>
+                    </label>
+                </div>
+
+                <!-- 로그인 버튼 -->
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-full"
+                    id="loginButton"
+                    disabled
+                >
+                    로그인
+                </button>
+
+                <!-- 링크 -->
+                <div class="form-links">
+                    <a href="02-회원가입.html" class="link link-primary">회원가입</a>
+                    <span class="divider">|</span>
+                    <a href="#" class="link link-secondary" id="forgotPasswordLink">비밀번호 찾기</a>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <!-- 로딩 오버레이 (초기 숨김) -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p class="loading-text">로그인 중...</p>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="common.js"></script>
+    <script>
+        // DOM 요소
+        const loginForm = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const rememberMeCheckbox = document.getElementById('rememberMe');
+        const loginButton = document.getElementById('loginButton');
+        const togglePasswordButton = document.querySelector('.btn-toggle-password');
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+
+        // 비밀번호 표시/숨김 토글
+        togglePasswordButton.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+
+            const iconEye = togglePasswordButton.querySelector('.icon-eye');
+            const iconEyeOff = togglePasswordButton.querySelector('.icon-eye-off');
+
+            if (type === 'password') {
+                iconEye.style.display = 'block';
+                iconEyeOff.style.display = 'none';
+                togglePasswordButton.setAttribute('aria-label', '비밀번호 표시');
+            } else {
+                iconEye.style.display = 'none';
+                iconEyeOff.style.display = 'block';
+                togglePasswordButton.setAttribute('aria-label', '비밀번호 숨김');
+            }
+        });
+
+        // 입력 필드 검증
+        function validateForm() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            // 버튼 활성화/비활성화
+            loginButton.disabled = !(username && password);
+
+            return username && password;
+        }
+
+        // 입력 필드 이벤트
+        usernameInput.addEventListener('input', validateForm);
+        passwordInput.addEventListener('input', validateForm);
+
+        // Floating Label 효과
+        [usernameInput, passwordInput].forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.parentElement.classList.add('focused');
+            });
+
+            input.addEventListener('blur', () => {
+                if (!input.value) {
+                    input.parentElement.parentElement.classList.remove('focused');
+                }
+            });
+        });
+
+        // 로그인 처리
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            const rememberMe = rememberMeCheckbox.checked;
+
+            // 간단한 유효성 검사
+            if (!username) {
+                Validation.required(username, document.getElementById('username-error'));
+                usernameInput.focus();
+                return;
+            }
+
+            if (!password) {
+                Validation.required(password, document.getElementById('password-error'));
+                passwordInput.focus();
+                return;
+            }
+
+            // 로딩 표시
+            UI.showLoading();
+            loginButton.disabled = true;
+
+            try {
+                // API 호출 시뮬레이션 (실제로는 백엔드 API 호출)
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                // 샘플 데이터로 로그인 검증
+                const sampleUser = SampleData.user;
+
+                if (username === sampleUser.username && password === 'test1234!') {
+                    // 로그인 성공
+                    // JWT 토큰 저장 (실제로는 서버에서 받은 토큰)
+                    const token = 'sample_jwt_token_' + Date.now();
+                    <!-- Storage.setAuthToken(token); -->
+
+                    // 사용자 정보 저장
+                    Storage.setUser(sampleUser);
+
+                    // 로그인 상태 유지 설정
+                    if (rememberMe) {
+                        localStorage.setItem('rememberMe', 'true');
+                    } else {
+                        localStorage.removeItem('rememberMe');
+                    }
+
+                    // 성공 메시지
+                    UI.showToast('로그인되었습니다', 'success');
+
+                    // 대시보드로 이동 (1초 후)
+                    setTimeout(() => {
+                        window.location.href = '00-대시보드.html';
+                    }, 1000);
+                } else {
+                    // 로그인 실패
+                    throw new Error('아이디 또는 비밀번호가 올바르지 않습니다');
+                }
+            } catch (error) {
+                UI.hideLoading();
+                loginButton.disabled = false;
+
+                // 에러 메시지 표시
+                UI.showToast(error.message, 'error');
+
+                // 비밀번호 필드 초기화 및 포커스
+                passwordInput.value = '';
+                passwordInput.focus();
+                validateForm();
+            }
+        });
+
+        // 비밀번호 찾기 링크
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            UI.showToast('비밀번호 찾기 기능은 준비 중입니다', 'info');
+        });
+
+        // 페이지 로드 시 저장된 로그인 상태 확인
+        window.addEventListener('DOMContentLoaded', () => {
+            // 이미 로그인되어 있으면 대시보드로 이동
+            const token = Storage.getAuthToken();
+            if (token) {
+                const rememberMe = localStorage.getItem('rememberMe') === 'true';
+                if (rememberMe) {
+                    UI.showToast('자동 로그인 중...', 'info');
+                    setTimeout(() => {
+                        window.location.href = '00-대시보드.html';
+                    }, 500);
+                }
+            }
+
+            // 샘플 데이터 로드 (개발/테스트용)
+            if (!Storage.getUser()) {
+                // 샘플 데이터는 로드하지 않고 로그인 시에만 저장
+                console.log('Login page ready. Use testuser / test1234! to login.');
+            }
+        });
+    </script>
+
+    <style>
+        /* 페이지 전용 스타일 */
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-primary);
+        }
+
+        .header {
+            padding: var(--spacing-xl) var(--spacing-md);
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            color: white;
+        }
+
+        .logo {
+            display: flex;
+            justify-content: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 36px;
+            margin: 0;
+        }
+
+        .container {
+            flex: 1;
+            padding: var(--spacing-xl) var(--spacing-md);
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group.focused .form-label {
+            transform: translateY(-8px);
+            font-size: 12px;
+            color: var(--primary-500);
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+            transition: all 0.2s ease;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-password {
+            position: relative;
+        }
+
+        .btn-toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-toggle-password:hover {
+            color: var(--primary-500);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox:checked {
+            background-color: var(--primary-500);
+            border-color: var(--primary-500);
+        }
+
+        .checkbox-text {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .btn-full {
+            width: 100%;
+            height: 48px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: var(--spacing-md);
+        }
+
+        .form-links {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-sm);
+        }
+
+        .link {
+            font-size: 14px;
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .link:hover {
+            opacity: 0.8;
+        }
+
+        .link-primary {
+            color: var(--primary-500);
+            font-weight: 600;
+        }
+
+        .link-secondary {
+            color: var(--text-secondary);
+        }
+
+        .divider {
+            color: var(--border-color);
+            font-size: 14px;
+        }
+
+        /* 반응형 */
+        @media (min-width: 768px) {
+            .container {
+                padding: var(--spacing-xxl) var(--spacing-lg);
+            }
+
+            .header {
+                padding: var(--spacing-xxl) var(--spacing-lg);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 480px;
+            }
+        }
+    </style>
+</body>
+</html>

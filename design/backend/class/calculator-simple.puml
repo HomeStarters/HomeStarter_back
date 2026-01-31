@@ -1,0 +1,321 @@
+@startuml
+!theme mono
+
+title Calculator 서비스 클래스 설계 (간소화 버전)
+
+package "com.dwj.homestarter.calculator" {
+
+    ' Controller Layer
+    class CalculatorController <<Controller>> {
+        + calculateHousingExpenses()
+        + getCalculationResults()
+        + getCalculationResult()
+        + deleteCalculationResult()
+    }
+
+    ' Service Layer
+    interface ExpenseCalculatorService <<Service>>
+    class ExpenseCalculatorServiceImpl <<Service>> {
+        - calculatorRepository
+        - cacheService
+        - userServiceClient
+        - assetServiceClient
+        - housingServiceClient
+        - loanServiceClient
+        - calculatorDomain
+        + calculateHousingExpenses()
+        + getCalculationResults()
+        + getCalculationResult()
+        + deleteCalculationResult()
+    }
+
+    class CacheService <<Service>> {
+        + get()
+        + set()
+        + delete()
+        + deletePattern()
+    }
+
+    ' Client Interfaces
+    interface UserServiceClient <<External>>
+    interface AssetServiceClient <<External>>
+    interface HousingServiceClient <<External>>
+    interface LoanServiceClient <<External>>
+
+    ' Event Listeners
+    class AssetEventListener <<Listener>> {
+        + handleAssetUpdated()
+    }
+
+    class HousingEventListener <<Listener>> {
+        + handleHousingUpdated()
+    }
+
+    ' Domain Layer
+    class CalculatorDomain <<Domain>> {
+        + calculate()
+        - calculateEstimatedAssets()
+        - calculateLoanRequired()
+        - calculateLTV()
+        - calculateDTI()
+        - calculateDSR()
+        - calculateMonthlyPayment()
+        - checkEligibility()
+        - calculateAfterMoveIn()
+    }
+
+    ' Repository Layer
+    interface CalculatorRepository <<Repository>> {
+        + save()
+        + findById()
+        + findByUserId()
+        + findByUserIdAndHousingId()
+        + findByUserIdAndStatus()
+        + findByIdAndUserId()
+        + findUserIdsByHousingId()
+        + deleteById()
+    }
+
+    class CalculationResultEntity <<Entity>> {
+        + id: String
+        + userId: String
+        + housingId: String
+        + loanProductId: String
+        + estimatedAssets: Long
+        + loanRequired: Long
+        + ltv: Double
+        + dti: Double
+        + dsr: Double
+        + isEligible: Boolean
+        + monthlyPayment: Long
+        + afterMoveInAvailableFunds: Long
+        + status: String
+        + calculatedAt: LocalDateTime
+    }
+
+    ' DTOs
+    class HousingExpensesRequest <<DTO>> {
+        + housingId: String
+        + loanProductId: String
+        + loanAmount: Long
+        + loanTerm: Integer
+    }
+
+    class CalculationResultResponse <<DTO>> {
+        + id: String
+        + userId: String
+        + financialStatus: FinancialStatusDto
+        + loanAnalysis: LoanAnalysisDto
+        + afterMoveIn: AfterMoveInDto
+        + status: String
+    }
+
+    ' Relationships
+    CalculatorController --> ExpenseCalculatorService
+    ExpenseCalculatorServiceImpl ..|> ExpenseCalculatorService
+    ExpenseCalculatorServiceImpl --> CalculatorRepository
+    ExpenseCalculatorServiceImpl --> CacheService
+    ExpenseCalculatorServiceImpl --> UserServiceClient
+    ExpenseCalculatorServiceImpl --> AssetServiceClient
+    ExpenseCalculatorServiceImpl --> HousingServiceClient
+    ExpenseCalculatorServiceImpl --> LoanServiceClient
+    ExpenseCalculatorServiceImpl --> CalculatorDomain
+    CalculatorRepository --> CalculationResultEntity
+    AssetEventListener --> CacheService
+    HousingEventListener --> CacheService
+
+}
+
+note as ControllerApiMapping
+**Controller 메소드 - API 매핑표**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**메소드명**                              **HTTP Method**  **URI Path**                        **설명**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+calculateHousingExpenses()               POST             /calculator/housing-expenses         입주 후 지출 계산
+getCalculationResults()                  GET              /calculator/results                  계산 결과 목록 조회
+getCalculationResult()                   GET              /calculator/results/{id}             계산 결과 상세 조회
+deleteCalculationResult()                DELETE           /calculator/results/{id}             계산 결과 삭제
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**API 상세 매핑**
+
+**1. calculateHousingExpenses()**
+   - Request: HousingExpensesRequest
+     - housingId: String
+     - loanProductId: String
+     - loanAmount: Long
+     - loanTerm: Integer
+   - Response: CalculationResultResponse (201 Created)
+   - 비즈니스 로직:
+     1. 캐시 조회 (calc:{userId}:{housingId}:{loanId})
+     2. 캐시 미스 시:
+        - 외부 서비스 병렬 호출 (User, Asset, Housing, Loan)
+        - Domain 계산 수행 (LTV/DTI/DSR)
+        - 결과 DB 저장
+        - 캐시 저장 (TTL: 1시간)
+     3. 계산 결과 반환
+
+**2. getCalculationResults()**
+   - Query Parameters:
+     - housingId: String (optional)
+     - status: String (optional, ELIGIBLE/INELIGIBLE)
+     - sortBy: String (default: calculatedAt)
+     - sortOrder: String (default: desc)
+     - page: Integer (default: 0)
+     - size: Integer (default: 20)
+   - Response: CalculationResultListResponse (200 OK)
+   - 비즈니스 로직:
+     1. 목록 캐시 조회 (calc:list:{userId}:{page}:{size})
+     2. 캐시 미스 시:
+        - Repository 페이징 조회
+        - 목록 캐시 저장 (TTL: 5분)
+     3. 목록 반환
+
+**3. getCalculationResult()**
+   - Path Parameter: id (String)
+   - Response: CalculationResultResponse (200 OK)
+   - 비즈니스 로직:
+     1. 상세 캐시 조회 (calc:detail:{resultId})
+     2. 캐시 미스 시:
+        - Repository 조회
+        - 상세 캐시 저장 (TTL: 1시간)
+     3. 상세 정보 반환
+
+**4. deleteCalculationResult()**
+   - Path Parameter: id (String)
+   - Response: 204 No Content
+   - 비즈니스 로직:
+     1. 권한 확인 (본인 결과만 삭제 가능)
+     2. Repository 삭제
+     3. 관련 캐시 무효화:
+        - calc:detail:{resultId}
+        - calc:list:{userId}:* (패턴 매칭)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+end note
+
+note as LayeredArchitecture
+**Layered Architecture 계층 구조**
+
+**Controller Layer**
+  - REST API 엔드포인트 처리
+  - 요청/응답 검증 및 변환
+  - HTTP 프로토콜 처리
+
+**Service Layer**
+  - 비즈니스 로직 조율
+  - 트랜잭션 관리
+  - 캐시 전략 구현
+  - 외부 서비스 호출
+
+**Domain Layer**
+  - 핵심 계산 로직
+  - 비즈니스 규칙
+  - 순수 함수형 로직
+
+**Repository Layer**
+  - 데이터 영속성
+  - JPA 인터페이스
+  - 쿼리 메소드
+
+**DTO Layer**
+  - 데이터 전송 객체
+  - API 요청/응답
+  - 외부 서비스 DTO
+end note
+
+note as CacheStrategy
+**캐시 전략 (Cache-Aside Pattern)**
+
+**계산 결과 캐시**
+  - Key: calc:{userId}:{housingId}:{loanId}
+  - TTL: 3600초 (1시간)
+  - 히트율 목표: 60% 이상
+
+**목록 캐시**
+  - Key: calc:list:{userId}:{page}:{size}
+  - TTL: 300초 (5분)
+
+**상세 캐시**
+  - Key: calc:detail:{resultId}
+  - TTL: 3600초 (1시간)
+
+**무효화 전략**
+  - Asset 변경: calc:{userId}:* 전체 삭제
+  - Housing 변경: calc:*:{housingId}:* 삭제
+  - 신규 계산: 목록 캐시 무효화
+  - 결과 삭제: 상세 + 목록 캐시 무효화
+end note
+
+note as EventDrivenInvalidation
+**이벤트 기반 캐시 무효화**
+
+**AssetEventListener**
+  - 구독: asset.events (asset.updated)
+  - 처리:
+    1. AssetUpdated 이벤트 수신
+    2. userId 추출
+    3. calc:{userId}:* 패턴 캐시 삭제
+    4. 목록 캐시 삭제
+    5. ACK 전송
+
+**HousingEventListener**
+  - 구독: housing.events (housing.updated)
+  - 처리:
+    1. HousingUpdated 이벤트 수신
+    2. housingId 추출
+    3. calc:*:{housingId}:* 패턴 캐시 삭제
+    4. 영향받는 사용자 식별
+    5. 사용자별 목록 캐시 삭제
+    6. ACK 전송
+
+**재시도 정책**
+  - 최대 3회 재시도
+  - Exponential Backoff (1초 → 2초 → 4초)
+  - 실패 시 DLQ 이동
+end note
+
+note as DomainCalculationLogic
+**Domain 계산 로직**
+
+**1. 예상자산 계산**
+  estimatedAssets = currentAssets
+    + (monthlyIncome - monthlyExpense) × months
+    - totalLoans
+
+**2. 대출필요금액 계산**
+  loanRequired = housingPrice - estimatedAssets
+
+**3. LTV 계산 (Loan To Value)**
+  LTV = (loanRequired / housingPrice) × 100
+
+**4. DTI 계산 (Debt To Income)**
+  DTI = (연간대출원리금 / 연소득) × 100
+
+**5. DSR 계산 (Debt Service Ratio)**
+  DSR = (연간총부채원리금 / 연소득) × 100
+
+**6. 월 상환액 계산 (원리금균등상환)**
+  monthlyPayment = loanAmount ×
+    (monthlyRate × (1 + monthlyRate)^months) /
+    ((1 + monthlyRate)^months - 1)
+
+**7. 적격성 판단**
+  isEligible = (LTV ≤ ltvLimit) AND
+               (DTI ≤ dtiLimit) AND
+               (DSR ≤ dsrLimit) AND
+               (loanRequired ≤ maxAmount)
+
+**8. 입주 후 재무상태**
+  afterMoveInAssets = estimatedAssets - loanRequired
+  afterMoveInExpenses = monthlyExpense + monthlyPayment
+  availableFunds = monthlyIncome - afterMoveInExpenses
+end note
+
+ControllerApiMapping -[hidden]-> LayeredArchitecture
+LayeredArchitecture -[hidden]-> CacheStrategy
+CacheStrategy -[hidden]-> EventDrivenInvalidation
+EventDrivenInvalidation -[hidden]-> DomainCalculationLogic
+
+@enduml

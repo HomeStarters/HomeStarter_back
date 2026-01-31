@@ -1,0 +1,364 @@
+@startuml asset
+!theme mono
+
+title Asset 서비스 클래스 설계 (Layered Architecture)
+
+package "com.dwj.homestarter.asset" {
+
+    ' Controller Layer
+    package "controller" {
+        class SelfAssetController {
+            - assetService: AssetService
+            + createSelfAssets(request: CreateAssetRequest): ResponseEntity<AssetResponse>
+        }
+
+        class SpouseAssetController {
+            - assetService: AssetService
+            + createSpouseAssets(request: CreateAssetRequest): ResponseEntity<AssetResponse>
+        }
+
+        class AssetController {
+            - assetService: AssetService
+            + getAssets(ownerType: String): ResponseEntity<AssetListResponse>
+            + updateAsset(id: String, request: UpdateAssetRequest): ResponseEntity<AssetResponse>
+            + deleteAsset(id: String): ResponseEntity<Void>
+        }
+    }
+
+    ' Service Layer
+    package "service" {
+        interface AssetService {
+            + createSelfAssets(userId: String, request: CreateAssetRequest): AssetResponse
+            + createSpouseAssets(userId: String, request: CreateAssetRequest): AssetResponse
+            + getAssets(userId: String, ownerType: OwnerType): AssetListResponse
+            + updateAsset(id: String, userId: String, request: UpdateAssetRequest): AssetResponse
+            + deleteAsset(id: String, userId: String): void
+            + calculateTotals(userId: String, ownerType: OwnerType): AssetSummary
+        }
+
+        class AssetServiceImpl {
+            - assetRepository: AssetRepository
+            - assetItemRepository: AssetItemRepository
+            - loanItemRepository: LoanItemRepository
+            - incomeItemRepository: IncomeItemRepository
+            - expenseItemRepository: ExpenseItemRepository
+            - eventPublisher: AssetEventPublisher
+            + createSelfAssets(userId: String, request: CreateAssetRequest): AssetResponse
+            + createSpouseAssets(userId: String, request: CreateAssetRequest): AssetResponse
+            + getAssets(userId: String, ownerType: OwnerType): AssetListResponse
+            + updateAsset(id: String, userId: String, request: UpdateAssetRequest): AssetResponse
+            + deleteAsset(id: String, userId: String): void
+            + calculateTotals(userId: String, ownerType: OwnerType): AssetSummary
+            - checkDuplicateAsset(userId: String, ownerType: OwnerType): void
+            - calculateAssetTotals(items: List<AssetItemEntity>): AssetTotals
+            - publishAssetUpdatedEvent(userId: String, ownerType: OwnerType, changeType: String): void
+        }
+
+        class ValidationService {
+            + validateAssetItem(request: CreateAssetRequest): void
+            + validateUpdateRequest(request: UpdateAssetRequest): void
+            - validateItemName(name: String): void
+            - validateAmount(amount: Long): void
+        }
+
+        class AssetEventPublisher {
+            - kafkaTemplate: KafkaTemplate
+            + publishAssetUpdated(event: AssetUpdatedEvent): void
+            - buildEvent(userId: String, ownerType: OwnerType, changeType: String, summary: AssetSummary): AssetUpdatedEvent
+        }
+    }
+
+    ' Domain Layer
+    package "domain" {
+        class Asset {
+            - id: String
+            - userId: String
+            - ownerType: OwnerType
+            - totalAssets: Long
+            - totalLoans: Long
+            - totalMonthlyIncome: Long
+            - totalMonthlyExpense: Long
+            - netAssets: Long
+            - monthlyAvailableFunds: Long
+            - createdAt: LocalDateTime
+            - updatedAt: LocalDateTime
+            + calculateNetAssets(): Long
+            + calculateMonthlyAvailableFunds(): Long
+        }
+
+        class AssetItem {
+            - id: String
+            - name: String
+            - amount: Long
+            + isValid(): boolean
+        }
+
+        class LoanItem {
+            - id: String
+            - name: String
+            - amount: Long
+            + isValid(): boolean
+        }
+
+        class IncomeItem {
+            - id: String
+            - name: String
+            - amount: Long
+            + isValid(): boolean
+        }
+
+        class ExpenseItem {
+            - id: String
+            - name: String
+            - amount: Long
+            + isValid(): boolean
+        }
+
+        enum OwnerType {
+            SELF
+            SPOUSE
+        }
+
+        class AssetSummary {
+            - totalAssets: Long
+            - totalLoans: Long
+            - totalMonthlyIncome: Long
+            - totalMonthlyExpense: Long
+            - netAssets: Long
+            - monthlyAvailableFunds: Long
+        }
+
+        class AssetUpdatedEvent {
+            - eventId: String
+            - eventType: String
+            - timestamp: LocalDateTime
+            - userId: String
+            - changeType: String
+            - ownerType: OwnerType
+            - summary: AssetSummary
+        }
+    }
+
+    ' DTO Layer
+    package "dto" {
+        class CreateAssetRequest {
+            - assets: List<AssetItemDto>
+            - loans: List<LoanItemDto>
+            - monthlyIncomes: List<IncomeItemDto>
+            - monthlyExpenses: List<ExpenseItemDto>
+        }
+
+        class UpdateAssetRequest {
+            - assets: List<AssetItemDto>
+            - loans: List<LoanItemDto>
+            - monthlyIncomes: List<IncomeItemDto>
+            - monthlyExpenses: List<ExpenseItemDto>
+        }
+
+        class AssetItemDto {
+            - id: String
+            - name: String
+            - amount: Long
+        }
+
+        class LoanItemDto {
+            - id: String
+            - name: String
+            - amount: Long
+        }
+
+        class IncomeItemDto {
+            - id: String
+            - name: String
+            - amount: Long
+        }
+
+        class ExpenseItemDto {
+            - id: String
+            - name: String
+            - amount: Long
+        }
+
+        class AssetResponse {
+            - userId: String
+            - ownerType: String
+            - assets: List<AssetItemDto>
+            - loans: List<LoanItemDto>
+            - monthlyIncomes: List<IncomeItemDto>
+            - monthlyExpenses: List<ExpenseItemDto>
+            - totalAssets: Long
+            - totalLoans: Long
+            - totalMonthlyIncome: Long
+            - totalMonthlyExpense: Long
+            - netAssets: Long
+            - monthlyAvailableFunds: Long
+            - createdAt: String
+            - updatedAt: String
+        }
+
+        class AssetListResponse {
+            - assets: List<AssetResponse>
+            - combinedSummary: CombinedAssetSummaryDto
+        }
+
+        class CombinedAssetSummaryDto {
+            - totalAssets: Long
+            - totalLoans: Long
+            - totalMonthlyIncome: Long
+            - totalMonthlyExpense: Long
+            - netAssets: Long
+            - monthlyAvailableFunds: Long
+        }
+    }
+
+    ' Repository Layer
+    package "repository.jpa" {
+        interface AssetRepository {
+            + findByUserIdAndOwnerType(userId: String, ownerType: OwnerType): Optional<AssetEntity>
+            + findByUserId(userId: String): List<AssetEntity>
+            + existsByUserIdAndOwnerType(userId: String, ownerType: OwnerType): boolean
+            + save(entity: AssetEntity): AssetEntity
+            + deleteById(id: String): void
+        }
+
+        interface AssetItemRepository {
+            + findByAssetId(assetId: String): List<AssetItemEntity>
+            + save(entity: AssetItemEntity): AssetItemEntity
+            + saveAll(entities: List<AssetItemEntity>): List<AssetItemEntity>
+            + deleteByAssetId(assetId: String): void
+        }
+
+        interface LoanItemRepository {
+            + findByAssetId(assetId: String): List<LoanItemEntity>
+            + save(entity: LoanItemEntity): LoanItemEntity
+            + saveAll(entities: List<LoanItemEntity>): List<LoanItemEntity>
+            + deleteByAssetId(assetId: String): void
+        }
+
+        interface IncomeItemRepository {
+            + findByAssetId(assetId: String): List<IncomeItemEntity>
+            + save(entity: IncomeItemEntity): IncomeItemEntity
+            + saveAll(entities: List<IncomeItemEntity>): List<IncomeItemEntity>
+            + deleteByAssetId(assetId: String): void
+        }
+
+        interface ExpenseItemRepository {
+            + findByAssetId(assetId: String): List<ExpenseItemEntity>
+            + save(entity: ExpenseItemEntity): ExpenseItemEntity
+            + saveAll(entities: List<ExpenseItemEntity>): List<ExpenseItemEntity>
+            + deleteByAssetId(assetId: String): void
+        }
+    }
+
+    ' Entity Layer
+    package "repository.entity" {
+        class AssetEntity {
+            - id: String
+            - userId: String
+            - ownerType: String
+            - totalAssets: Long
+            - totalLoans: Long
+            - totalMonthlyIncome: Long
+            - totalMonthlyExpense: Long
+            - netAssets: Long
+            - monthlyAvailableFunds: Long
+            - createdAt: LocalDateTime
+            - updatedAt: LocalDateTime
+            + toDomain(): Asset
+        }
+
+        class AssetItemEntity {
+            - id: String
+            - assetId: String
+            - name: String
+            - amount: Long
+            - createdAt: LocalDateTime
+            - updatedAt: LocalDateTime
+            + toDomain(): AssetItem
+        }
+
+        class LoanItemEntity {
+            - id: String
+            - assetId: String
+            - name: String
+            - amount: Long
+            - createdAt: LocalDateTime
+            - updatedAt: LocalDateTime
+            + toDomain(): LoanItem
+        }
+
+        class IncomeItemEntity {
+            - id: String
+            - assetId: String
+            - name: String
+            - amount: Long
+            - createdAt: LocalDateTime
+            - updatedAt: LocalDateTime
+            + toDomain(): IncomeItem
+        }
+
+        class ExpenseItemEntity {
+            - id: String
+            - assetId: String
+            - name: String
+            - amount: Long
+            - createdAt: LocalDateTime
+            - updatedAt: LocalDateTime
+            + toDomain(): ExpenseItem
+        }
+    }
+
+    ' Config Layer
+    package "config" {
+        class KafkaConfig {
+            + kafkaTemplate(): KafkaTemplate
+            + producerFactory(): ProducerFactory
+        }
+
+        class JpaConfig {
+            + transactionManager(): PlatformTransactionManager
+        }
+    }
+}
+
+' Relationships
+SelfAssetController --> AssetService
+SpouseAssetController --> AssetService
+AssetController --> AssetService
+
+AssetServiceImpl ..|> AssetService
+AssetServiceImpl --> AssetRepository
+AssetServiceImpl --> AssetItemRepository
+AssetServiceImpl --> LoanItemRepository
+AssetServiceImpl --> IncomeItemRepository
+AssetServiceImpl --> ExpenseItemRepository
+AssetServiceImpl --> ValidationService
+AssetServiceImpl --> AssetEventPublisher
+
+AssetRepository --> AssetEntity
+AssetItemRepository --> AssetItemEntity
+LoanItemRepository --> LoanItemEntity
+IncomeItemRepository --> IncomeItemEntity
+ExpenseItemRepository --> ExpenseItemEntity
+
+AssetEntity --> Asset
+AssetItemEntity --> AssetItem
+LoanItemEntity --> LoanItem
+IncomeItemEntity --> IncomeItem
+ExpenseItemEntity --> ExpenseItem
+
+AssetService ..> CreateAssetRequest
+AssetService ..> UpdateAssetRequest
+AssetService ..> AssetResponse
+AssetService ..> AssetListResponse
+
+Asset --> OwnerType
+Asset --> AssetItem
+Asset --> LoanItem
+Asset --> IncomeItem
+Asset --> ExpenseItem
+
+AssetEventPublisher --> AssetUpdatedEvent
+AssetUpdatedEvent --> AssetSummary
+
+@enduml

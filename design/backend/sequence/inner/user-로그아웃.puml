@@ -1,0 +1,71 @@
+@startuml user-로그아웃
+!theme mono
+
+title User 서비스 - 로그아웃 내부 시퀀스
+
+actor "Frontend" as FE
+participant "UserController" as UC
+participant "UserService" as US
+participant "JwtTokenProvider" as JWT
+database "Redis Cache<<E>>" as Cache
+
+== 로그아웃 처리 ==
+
+FE -> UC: POST /api/users/logout\n(Authorization: Bearer {Access Token})
+activate UC
+
+note over UC
+  JWT 토큰 검증:
+  - Authorization 헤더에서 토큰 추출
+  - Bearer 접두사 제거
+end note
+
+UC -> JWT: Access Token 검증 요청\n(Access Token)
+activate JWT
+
+alt 토큰 유효하지 않음
+  JWT --> UC: InvalidTokenException\n(토큰 만료 또는 유효하지 않음)
+  UC --> FE: 401 Unauthorized\n(유효하지 않은 토큰입니다)
+else 토큰 유효
+  JWT --> UC: 토큰 검증 성공\n(사용자 ID)
+  deactivate JWT
+
+  UC -> US: 로그아웃 요청\n(사용자 ID, Access Token)
+  activate US
+
+  note over US
+    로그아웃 처리:
+    1. Refresh Token 삭제
+    2. Access Token 블랙리스트 등록
+  end note
+
+  US -> Cache: Refresh Token 삭제\n(사용자 ID)
+  activate Cache
+  Cache --> US: 삭제 완료
+  deactivate Cache
+
+  note over US
+    Access Token 블랙리스트 등록:
+    - 만료 전까지 재사용 방지
+    - TTL: 토큰 남은 유효시간
+  end note
+
+  US -> Cache: Access Token 블랙리스트 등록\n(Access Token, TTL: 남은 유효시간)
+  activate Cache
+  Cache --> US: 등록 완료
+  deactivate Cache
+
+  US --> UC: 로그아웃 성공
+  deactivate US
+
+  UC --> FE: 200 OK\n(로그아웃되었습니다)
+  deactivate UC
+end
+
+note over FE
+  프론트엔드 처리:
+  - LocalStorage/SessionStorage에서 토큰 삭제
+  - 로그인 화면으로 리다이렉트
+end note
+
+@enduml

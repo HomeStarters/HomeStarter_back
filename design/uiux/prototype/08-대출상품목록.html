@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대출상품 목록</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        /* Search and Filter */
+        .filter-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 40px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: var(--spacing-md);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: var(--spacing-xs);
+            overflow-x: auto;
+            padding-bottom: var(--spacing-xs);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .filter-chips::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip {
+            padding: var(--spacing-xs) var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            background: white;
+            font-size: var(--font-size-sm);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Sort Controls */
+        .sort-controls {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .sort-btn {
+            padding: var(--spacing-xs) var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: white;
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sort-btn.active {
+            background: var(--primary-light);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /* Loan Cards */
+        .loan-grid {
+            display: grid;
+            gap: var(--spacing-md);
+            grid-template-columns: 1fr;
+        }
+
+        .loan-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .loan-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .loan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .loan-title-group {
+            flex: 1;
+        }
+
+        .loan-name {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .loan-target {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .bookmark-btn {
+            padding: var(--spacing-xs);
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 24px;
+            transition: transform 0.2s;
+        }
+
+        .bookmark-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .bookmark-btn.active {
+            color: var(--warning);
+        }
+
+        .loan-highlights {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+        }
+
+        .highlight-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-2xs);
+        }
+
+        .highlight-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .highlight-value {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+        }
+
+        .loan-requirements {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+        }
+
+        .requirement-tag {
+            padding: var(--spacing-2xs) var(--spacing-sm);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xxl) var(--spacing-md);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .empty-state h3 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .loan-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .loan-highlights {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .loan-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">대출상품</h1>
+        <div class="header-actions"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Search and Filter -->
+            <div class="filter-section">
+                <div class="search-box">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2"/>
+                        <path d="M12 12L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <input type="text" class="search-input" id="searchInput" placeholder="대출상품 검색...">
+                </div>
+
+                <div class="filter-chips" id="filterChips">
+                    <button class="chip active" data-filter="all">전체</button>
+                    <button class="chip" data-filter="아파트">아파트</button>
+                    <button class="chip" data-filter="오피스텔">오피스텔</button>
+                    <button class="chip" data-filter="빌라/주택">빌라/주택</button>
+                    <button class="chip" data-filter="무주택자">무주택자</button>
+                    <button class="chip" data-filter="신혼부부">신혼부부</button>
+                </div>
+            </div>
+
+            <!-- Sort Controls -->
+            <div class="sort-controls">
+                <button class="sort-btn active" data-sort="recent">최신순</button>
+                <button class="sort-btn" data-sort="rate">금리순</button>
+                <button class="sort-btn" data-sort="limit">한도순</button>
+            </div>
+
+            <!-- Loan Grid -->
+            <div class="loan-grid" id="loanGrid">
+                <!-- Cards will be rendered here -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-state-icon">💳</div>
+                <h3>검색 결과가 없습니다</h3>
+                <p>다른 검색어나 필터를 시도해보세요</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="common.js"></script>
+    <script>
+        // Sample data
+        const sampleLoans = [
+            {
+                id: 1,
+                name: '신혼부부 특별대출',
+                limit: 300000000,
+                ltv: 70,
+                dti: 60,
+                dsr: 40,
+                rate: 2.5,
+                target: '6억 이하 아파트',
+                targetType: '아파트',
+                requirements: ['무주택자', '신혼부부', '부부합산 연소득 7천만원 이하'],
+                note: '혼인신고 7년 이내 신혼부부',
+                bookmarked: false,
+                createdAt: '2025-01-15'
+            },
+            {
+                id: 2,
+                name: '생애최초 주택구입자금대출',
+                limit: 400000000,
+                ltv: 80,
+                dti: 60,
+                dsr: 40,
+                rate: 2.8,
+                target: '9억 이하 아파트',
+                targetType: '아파트',
+                requirements: ['무주택자', '생애최초', '부부합산 연소득 1억 이하'],
+                note: '생애최초 주택 구입자 대상',
+                bookmarked: false,
+                createdAt: '2025-01-10'
+            },
+            {
+                id: 3,
+                name: '청년 오피스텔 구입자금대출',
+                limit: 200000000,
+                ltv: 60,
+                dti: 50,
+                dsr: 40,
+                rate: 3.2,
+                target: '3억 이하 오피스텔',
+                targetType: '오피스텔',
+                requirements: ['만 34세 이하', '무주택자', '연소득 4천만원 이하'],
+                note: '청년층 주거 안정 지원',
+                bookmarked: false,
+                createdAt: '2025-01-05'
+            },
+            {
+                id: 4,
+                name: '일반주택담보대출',
+                limit: 500000000,
+                ltv: 70,
+                dti: 60,
+                dsr: 40,
+                rate: 4.5,
+                target: '전체 주택',
+                targetType: '빌라/주택',
+                requirements: ['소득증빙 가능자'],
+                note: '일반 주택 담보 대출',
+                bookmarked: false,
+                createdAt: '2025-01-01'
+            },
+            {
+                id: 5,
+                name: '다자녀 가구 특별대출',
+                limit: 350000000,
+                ltv: 80,
+                dti: 70,
+                dsr: 50,
+                rate: 2.3,
+                target: '9억 이하 아파트',
+                targetType: '아파트',
+                requirements: ['2자녀 이상', '무주택 또는 1주택', '부부합산 연소득 1억 이하'],
+                note: '다자녀 가구 우대',
+                bookmarked: false,
+                createdAt: '2024-12-28'
+            },
+            {
+                id: 6,
+                name: '버팀목 전세자금대출',
+                limit: 100000000,
+                ltv: 70,
+                dti: 50,
+                dsr: 40,
+                rate: 1.8,
+                target: '전세보증금',
+                targetType: '아파트',
+                requirements: ['무주택자', '부부합산 연소득 5천만원 이하'],
+                note: '전세 자금 지원',
+                bookmarked: false,
+                createdAt: '2024-12-25'
+            }
+        ];
+
+        // State
+        let loans = [...sampleLoans];
+        let filteredLoans = [...loans];
+        let currentFilter = 'all';
+        let currentSort = 'recent';
+        let searchQuery = '';
+        let bookmarkedIds = new Set();
+
+        // Elements
+        const searchInput = document.getElementById('searchInput');
+        const filterChips = document.getElementById('filterChips').querySelectorAll('.chip');
+        const sortBtns = document.querySelectorAll('.sort-btn');
+        const loanGrid = document.getElementById('loanGrid');
+        const emptyState = document.getElementById('emptyState');
+
+        // Load bookmarks
+        function loadBookmarks() {
+            const saved = Storage.getItem('loan_bookmarks') || [];
+            bookmarkedIds = new Set(saved);
+        }
+
+        // Save bookmarks
+        function saveBookmarks() {
+            Storage.setItem('loan_bookmarks', Array.from(bookmarkedIds));
+        }
+
+        // Search
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            filterAndSort();
+        });
+
+        // Filter
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentFilter = chip.dataset.filter;
+                filterAndSort();
+            });
+        });
+
+        // Sort
+        sortBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                sortBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSort = btn.dataset.sort;
+                filterAndSort();
+            });
+        });
+
+        // Filter and sort
+        function filterAndSort() {
+            // Filter
+            filteredLoans = loans.filter(loan => {
+                // Search filter
+                if (searchQuery) {
+                    const matchName = loan.name.toLowerCase().includes(searchQuery);
+                    const matchTarget = loan.target.toLowerCase().includes(searchQuery);
+                    const matchRequirements = loan.requirements.some(req =>
+                        req.toLowerCase().includes(searchQuery)
+                    );
+                    if (!matchName && !matchTarget && !matchRequirements) {
+                        return false;
+                    }
+                }
+
+                // Type filter
+                if (currentFilter !== 'all') {
+                    const matchType = loan.targetType === currentFilter;
+                    const matchRequirement = loan.requirements.includes(currentFilter);
+                    if (!matchType && !matchRequirement) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Sort
+            if (currentSort === 'recent') {
+                filteredLoans.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+            } else if (currentSort === 'rate') {
+                filteredLoans.sort((a, b) => a.rate - b.rate);
+            } else if (currentSort === 'limit') {
+                filteredLoans.sort((a, b) => b.limit - a.limit);
+            }
+
+            renderLoans();
+        }
+
+        // Render loans
+        function renderLoans() {
+            if (filteredLoans.length === 0) {
+                loanGrid.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            loanGrid.style.display = 'grid';
+            emptyState.style.display = 'none';
+
+            loanGrid.innerHTML = filteredLoans.map(loan => `
+                <div class="loan-card" onclick="viewDetail(${loan.id})">
+                    <div class="loan-header">
+                        <div class="loan-title-group">
+                            <h3 class="loan-name">${loan.name}</h3>
+                            <div class="loan-target">${loan.target}</div>
+                        </div>
+                        <button class="bookmark-btn ${bookmarkedIds.has(loan.id) ? 'active' : ''}"
+                                onclick="event.stopPropagation(); toggleBookmark(${loan.id})"
+                                aria-label="북마크">
+                            ${bookmarkedIds.has(loan.id) ? '★' : '☆'}
+                        </button>
+                    </div>
+
+                    <div class="loan-highlights">
+                        <div class="highlight-item">
+                            <div class="highlight-label">대출한도</div>
+                            <div class="highlight-value">${Format.currency(loan.limit)}</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-label">금리</div>
+                            <div class="highlight-value">연 ${loan.rate}%</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-label">LTV</div>
+                            <div class="highlight-value">최대 ${loan.ltv}%</div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-label">DTI</div>
+                            <div class="highlight-value">최대 ${loan.dti}%</div>
+                        </div>
+                    </div>
+
+                    <div class="loan-requirements">
+                        ${loan.requirements.map(req => `
+                            <span class="requirement-tag">${req}</span>
+                        `).join('')}
+                    </div>
+
+                    <button class="btn btn-secondary loan-detail-btn" onclick="event.stopPropagation(); viewDetail(${loan.id})" style="width: 100%; margin-top: var(--spacing-md);">
+                        상세보기
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Toggle bookmark
+        window.toggleBookmark = function(id) {
+            if (bookmarkedIds.has(id)) {
+                bookmarkedIds.delete(id);
+                UI.showToast('북마크가 해제되었습니다', 'info');
+            } else {
+                bookmarkedIds.add(id);
+                UI.showToast('북마크에 추가되었습니다', 'success');
+            }
+            saveBookmarks();
+            renderLoans();
+        };
+
+        // View detail
+        window.viewDetail = function(id) {
+            Storage.setItem('selected_loan_id', id);
+            window.location.href = '09-대출상품상세.html';
+        };
+
+        // Initialize
+        loadBookmarks();
+        Storage.setItem('loan_products', sampleLoans);
+        filterAndSort();
+    </script>
+</body>
+</html>

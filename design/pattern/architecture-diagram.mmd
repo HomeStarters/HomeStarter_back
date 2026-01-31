@@ -1,0 +1,63 @@
+graph TB
+    Client[클라이언트<br/>Web/Mobile]
+
+    subgraph "API Gateway Layer"
+        Gateway[API Gateway<br/>Gateway Routing<br/>Gateway Aggregation]
+    end
+
+    subgraph "External Services"
+        KakaoMap[카카오맵 API<br/>주소 검색]
+        LLMAPI[LLM API<br/>Claude/GPT]
+    end
+
+    subgraph "Microservices"
+        User[User Service<br/>인증/기본정보]
+        Asset[Asset Service<br/>자산정보 관리]
+        Loan[Loan Service<br/>대출상품 관리]
+        Housing[Housing Service<br/>주택정보 관리]
+        Calculator[Calculator Service<br/>재무계산<br/>Cache-Aside]
+        Roadmap[Roadmap Service<br/>AI 로드맵<br/>Async Request-Reply]
+    end
+
+    subgraph "Infrastructure"
+        Redis[Redis Cache<br/>계산 결과 캐싱]
+        MQ[Message Queue<br/>RabbitMQ/Kafka]
+        DB[(Database<br/>PostgreSQL)]
+    end
+
+    Client -->|HTTPS| Gateway
+    Gateway -->|JWT 인증| User
+    Gateway -->|라우팅| Asset
+    Gateway -->|라우팅| Loan
+    Gateway -->|라우팅| Housing
+    Gateway -->|라우팅 + 집합| Calculator
+    Gateway -->|라우팅| Roadmap
+
+    Gateway -.->|Circuit Breaker<br/>Retry| KakaoMap
+    Roadmap -.->|Circuit Breaker<br/>Retry| LLMAPI
+
+    Calculator -->|캐시 조회/저장| Redis
+    Calculator -->|데이터 조회| User
+    Calculator -->|데이터 조회| Asset
+    Calculator -->|데이터 조회| Housing
+    Calculator -->|데이터 조회| Loan
+
+    Roadmap -->|비동기 작업| MQ
+    MQ -->|AI Worker| LLMAPI
+
+    Asset -->|이벤트 발행| MQ
+    Housing -->|이벤트 발행| MQ
+    MQ -->|캐시 무효화| Calculator
+
+    User --> DB
+    Asset --> DB
+    Loan --> DB
+    Housing --> DB
+    Calculator --> DB
+    Roadmap --> DB
+
+    style Gateway fill:#4A90E2,color:#fff
+    style Calculator fill:#F5A623,color:#fff
+    style Roadmap fill:#F5A623,color:#fff
+    style Redis fill:#D0021B,color:#fff
+    style MQ fill:#7ED321,color:#fff

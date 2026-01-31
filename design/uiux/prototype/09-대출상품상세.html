@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대출상품 상세</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        /* Header Card */
+        .loan-header-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .loan-name {
+            font-size: var(--font-size-xxl);
+            font-weight: var(--font-weight-bold);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .loan-target {
+            font-size: var(--font-size-md);
+            opacity: 0.9;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .loan-highlights-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .highlight-box {
+            text-align: center;
+            padding: var(--spacing-md);
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-md);
+        }
+
+        .highlight-label {
+            font-size: var(--font-size-sm);
+            opacity: 0.9;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .highlight-value {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+        }
+
+        /* Section */
+        .section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        /* Detail Grid */
+        .detail-grid {
+            display: grid;
+            gap: var(--spacing-md);
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .detail-label {
+            font-size: var(--font-size-md);
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            width: 120px;
+        }
+
+        .detail-value {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            text-align: right;
+        }
+
+        /* Requirements List */
+        .requirements-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .requirement-item {
+            display: flex;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md);
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+        }
+
+        .requirement-icon {
+            flex-shrink: 0;
+            color: var(--primary);
+            font-size: 20px;
+        }
+
+        .requirement-text {
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+        }
+
+        /* Note Box */
+        .note-box {
+            background: var(--info-light);
+            border-left: 4px solid var(--info);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-sm);
+        }
+
+        .note-box-title {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+            color: var(--info);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .note-box-text {
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            gap: var(--spacing-sm);
+            z-index: 100;
+        }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .loan-highlights-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .action-buttons {
+                max-width: 800px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">대출상품 상세</h1>
+        <button class="btn-icon" id="bookmarkBtn" aria-label="북마크">☆</button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container" id="loanDetail">
+            <!-- Content will be rendered here -->
+        </div>
+    </main>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button class="btn btn-secondary flex-1" onclick="share()">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <path d="M15 6L10 2L5 6M10 2V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M3 12V16C3 17 4 18 5 18H15C16 18 17 17 17 16V12" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            공유하기
+        </button>
+        <button class="btn btn-primary flex-1" onclick="calculate()">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2"/>
+                <path d="M10 6V10L13 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            이 대출로 계산하기
+        </button>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // State
+        let loan = null;
+        let bookmarkedIds = new Set();
+
+        // Elements
+        const loanDetail = document.getElementById('loanDetail');
+        const bookmarkBtn = document.getElementById('bookmarkBtn');
+
+        // Load data
+        function loadData() {
+            const loanId = Storage.getItem('selected_loan_id');
+            const loans = Storage.getItem('loan_products') || [];
+            loan = loans.find(l => l.id === loanId);
+
+            if (!loan) {
+                UI.showToast('대출상품을 찾을 수 없습니다', 'error');
+                setTimeout(() => history.back(), 1000);
+                return;
+            }
+
+            // Load bookmarks
+            const saved = Storage.getItem('loan_bookmarks') || [];
+            bookmarkedIds = new Set(saved);
+
+            renderDetail();
+            updateBookmarkButton();
+        }
+
+        // Render detail
+        function renderDetail() {
+            loanDetail.innerHTML = `
+                <!-- Header Card -->
+                <div class="loan-header-card">
+                    <h1 class="loan-name">${loan.name}</h1>
+                    <div class="loan-target">${loan.target}</div>
+                    <div class="loan-highlights-grid">
+                        <div class="highlight-box">
+                            <div class="highlight-label">대출한도</div>
+                            <div class="highlight-value">${Format.currency(loan.limit)}</div>
+                        </div>
+                        <div class="highlight-box">
+                            <div class="highlight-label">금리</div>
+                            <div class="highlight-value">연 ${loan.rate}%</div>
+                        </div>
+                        <div class="highlight-box">
+                            <div class="highlight-label">LTV</div>
+                            <div class="highlight-value">최대 ${loan.ltv}%</div>
+                        </div>
+                        <div class="highlight-box">
+                            <div class="highlight-label">DTI</div>
+                            <div class="highlight-value">최대 ${loan.dti}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Basic Info Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">기본정보</h2>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">대출이름</div>
+                            <div class="detail-value">${loan.name}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">대출한도</div>
+                            <div class="detail-value">${Format.currency(loan.limit)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">LTV 한도</div>
+                            <div class="detail-value">최대 ${loan.ltv}%</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">DTI 한도</div>
+                            <div class="detail-value">최대 ${loan.dti}%</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">DSR 한도</div>
+                            <div class="detail-value">최대 ${loan.dsr}%</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">금리</div>
+                            <div class="detail-value">연 ${loan.rate}%</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">대상주택</div>
+                            <div class="detail-value">${loan.target}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Requirements Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">자격요건</h2>
+                    </div>
+                    <div class="requirements-list">
+                        ${loan.requirements.map(req => `
+                            <div class="requirement-item">
+                                <div class="requirement-icon">✓</div>
+                                <div class="requirement-text">${req}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Note Section -->
+                ${loan.note ? `
+                    <div class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">추가정보</h2>
+                        </div>
+                        <div class="note-box">
+                            <div class="note-box-title">안내사항</div>
+                            <div class="note-box-text">${loan.note}</div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Application Guide Section -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">신청 방법</h2>
+                    </div>
+                    <div class="requirements-list">
+                        <div class="requirement-item">
+                            <div class="requirement-icon">1</div>
+                            <div class="requirement-text">자격요건 확인 및 필요 서류 준비</div>
+                        </div>
+                        <div class="requirement-item">
+                            <div class="requirement-icon">2</div>
+                            <div class="requirement-text">금융기관 방문 또는 온라인 신청</div>
+                        </div>
+                        <div class="requirement-item">
+                            <div class="requirement-icon">3</div>
+                            <div class="requirement-text">심사 및 승인 (통상 3-5 영업일)</div>
+                        </div>
+                        <div class="requirement-item">
+                            <div class="requirement-icon">4</div>
+                            <div class="requirement-text">대출 실행</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Update bookmark button
+        function updateBookmarkButton() {
+            if (bookmarkedIds.has(loan.id)) {
+                bookmarkBtn.textContent = '★';
+                bookmarkBtn.style.color = 'var(--warning)';
+            } else {
+                bookmarkBtn.textContent = '☆';
+                bookmarkBtn.style.color = '';
+            }
+        }
+
+        // Toggle bookmark
+        bookmarkBtn.addEventListener('click', () => {
+            if (bookmarkedIds.has(loan.id)) {
+                bookmarkedIds.delete(loan.id);
+                UI.showToast('북마크가 해제되었습니다', 'info');
+            } else {
+                bookmarkedIds.add(loan.id);
+                UI.showToast('북마크에 추가되었습니다', 'success');
+            }
+
+            Storage.setItem('loan_bookmarks', Array.from(bookmarkedIds));
+            updateBookmarkButton();
+        });
+
+        // Share
+        window.share = function() {
+            UI.showToast('공유 기능은 프로토타입에서 제공하지 않습니다', 'info');
+        };
+
+        // Calculate with this loan
+        window.calculate = function() {
+            Storage.setItem('selected_loan_for_calc', loan);
+            UI.showToast('대출상품이 선택되었습니다', 'success');
+            setTimeout(() => {
+                window.location.href = '15-입주후지출계산.html';
+            }, 500);
+        };
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>

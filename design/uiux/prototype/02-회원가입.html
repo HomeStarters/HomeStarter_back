@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="내집마련 도우미 플랫폼 - 회원가입">
+    <title>회원가입 - 내집마련 도우미</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+    <div class="page">
+        <!-- 헤더 -->
+        <header class="header">
+            <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <h1 class="header-title">회원가입</h1>
+            <div class="progress-indicator">1/1</div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container">
+            <form id="signupForm" class="form" novalidate>
+                <!-- 이름 입력 -->
+                <div class="form-group">
+                    <label for="name" class="form-label">이름 <span class="required">*</span></label>
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        class="form-input"
+                        placeholder="2자 이상 입력"
+                        required
+                        aria-required="true"
+                        aria-describedby="name-error"
+                    >
+                    <div id="name-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 이메일 입력 -->
+                <div class="form-group">
+                    <label for="email" class="form-label">이메일 <span class="required">*</span></label>
+                    <div class="input-with-button">
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="form-input"
+                            placeholder="example@email.com"
+                            required
+                            aria-required="true"
+                            aria-describedby="email-error"
+                        >
+                        <button
+                            type="button"
+                            class="btn-check"
+                            id="emailCheckButton"
+                            disabled
+                        >중복확인</button>
+                    </div>
+                    <div id="email-error" class="error-message" role="alert"></div>
+                    <div id="email-success" class="success-message" role="status"></div>
+                </div>
+
+                <!-- 연락처 입력 -->
+                <div class="form-group">
+                    <label for="phone" class="form-label">연락처 <span class="required">*</span></label>
+                    <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        class="form-input"
+                        placeholder="010-0000-0000"
+                        maxlength="13"
+                        required
+                        aria-required="true"
+                        aria-describedby="phone-error"
+                    >
+                    <div id="phone-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 아이디 입력 -->
+                <div class="form-group">
+                    <label for="username" class="form-label">아이디 <span class="required">*</span></label>
+                    <div class="input-with-button">
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="form-input"
+                            placeholder="5자 이상 영문/숫자"
+                            required
+                            aria-required="true"
+                            aria-describedby="username-error"
+                            autocomplete="username"
+                        >
+                        <button
+                            type="button"
+                            class="btn-check"
+                            id="usernameCheckButton"
+                            disabled
+                        >중복확인</button>
+                    </div>
+                    <div id="username-error" class="error-message" role="alert"></div>
+                    <div id="username-success" class="success-message" role="status"></div>
+                </div>
+
+                <!-- 비밀번호 입력 -->
+                <div class="form-group">
+                    <label for="password" class="form-label">비밀번호 <span class="required">*</span></label>
+                    <div class="input-password">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="form-input"
+                            placeholder="8자 이상 영문/숫자/특수문자"
+                            required
+                            aria-required="true"
+                            aria-describedby="password-error password-strength"
+                            autocomplete="new-password"
+                        >
+                        <button
+                            type="button"
+                            class="btn-toggle-password"
+                            aria-label="비밀번호 표시/숨김"
+                            tabindex="-1"
+                        >
+                            <svg class="icon-eye" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 4C5 4 1.73 7.11 1 10c.73 2.89 4 6 9 6s8.27-3.11 9-6c-.73-2.89-4-6-9-6zm0 10a4 4 0 110-8 4 4 0 010 8zm0-6a2 2 0 100 4 2 2 0 000-4z" fill="currentColor"/>
+                            </svg>
+                            <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: none;">
+                                <path d="M10 8a2 2 0 100 4 2 2 0 000-4z" fill="currentColor"/>
+                                <path d="M19.94 9.66c-.42-1.04-1.11-2.07-2.04-3-.93-.93-1.96-1.62-3-2.04A8.93 8.93 0 0010 4c-1.71 0-3.39.52-4.9 1.62-1.04.42-2.07 1.11-3 2.04-.93.93-1.62 1.96-2.04 3-.11.27-.11.57 0 .84.42 1.04 1.11 2.07 2.04 3 .93.93 1.96 1.62 3 2.04A8.93 8.93 0 0010 17c1.71 0 3.39-.52 4.9-1.62 1.04-.42 2.07-1.11 3-2.04.93-.93 1.62-1.96 2.04-3 .11-.27.11-.57 0-.84zM1.65 10c.67-1.68 3.78-5 8.35-5 .48 0 .95.05 1.41.14L9.14 7.41A4 4 0 007.41 9.14L5.14 6.86C3.32 7.82 2.12 8.88 1.65 10zm8.35 5c-.48 0-.95-.05-1.41-.14l2.27-2.27a4 4 0 001.73-1.73l2.27-2.27c1.82.96 3.02 2.02 3.49 3.41-.67 1.68-3.78 5-8.35 5z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="password-error" class="error-message" role="alert"></div>
+                    <!-- 비밀번호 강도 표시기 -->
+                    <div id="password-strength" class="password-strength" style="display: none;">
+                        <div class="strength-bar">
+                            <div class="strength-fill"></div>
+                        </div>
+                        <span class="strength-text"></span>
+                    </div>
+                </div>
+
+                <!-- 비밀번호 확인 -->
+                <div class="form-group">
+                    <label for="passwordConfirm" class="form-label">비밀번호 확인 <span class="required">*</span></label>
+                    <input
+                        type="password"
+                        id="passwordConfirm"
+                        name="passwordConfirm"
+                        class="form-input"
+                        placeholder="비밀번호를 다시 입력하세요"
+                        required
+                        aria-required="true"
+                        aria-describedby="passwordConfirm-error"
+                        autocomplete="new-password"
+                    >
+                    <div id="passwordConfirm-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 약관 동의 -->
+                <div class="form-group">
+                    <div class="terms-section">
+                        <label class="checkbox-label all-agree">
+                            <input
+                                type="checkbox"
+                                id="agreeAll"
+                                class="checkbox"
+                            >
+                            <span class="checkbox-text">전체 동의</span>
+                        </label>
+                        <hr class="divider">
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                id="agreeTerms"
+                                class="checkbox required-term"
+                                required
+                                aria-required="true"
+                            >
+                            <span class="checkbox-text">
+                                <a href="#" class="term-link" onclick="event.preventDefault(); alert('이용약관 내용 표시');">이용약관</a> 동의 <span class="required">(필수)</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                id="agreePrivacy"
+                                class="checkbox required-term"
+                                required
+                                aria-required="true"
+                            >
+                            <span class="checkbox-text">
+                                <a href="#" class="term-link" onclick="event.preventDefault(); alert('개인정보 처리방침 내용 표시');">개인정보 처리방침</a> 동의 <span class="required">(필수)</span>
+                            </span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                id="agreeMarketing"
+                                class="checkbox"
+                            >
+                            <span class="checkbox-text">마케팅 정보 수신 동의 (선택)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 회원가입 버튼 -->
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-full"
+                    id="signupButton"
+                    disabled
+                >
+                    회원가입
+                </button>
+            </form>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="common.js"></script>
+    <script>
+        // 폼 검증 상태
+        const validationState = {
+            name: false,
+            email: false,
+            emailChecked: false,
+            phone: false,
+            username: false,
+            usernameChecked: false,
+            password: false,
+            passwordConfirm: false,
+            terms: false
+        };
+
+        // DOM 요소
+        const form = document.getElementById('signupForm');
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const phoneInput = document.getElementById('phone');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const passwordConfirmInput = document.getElementById('passwordConfirm');
+        const signupButton = document.getElementById('signupButton');
+
+        const emailCheckButton = document.getElementById('emailCheckButton');
+        const usernameCheckButton = document.getElementById('usernameCheckButton');
+
+        const agreeAllCheckbox = document.getElementById('agreeAll');
+        const agreeTermsCheckbox = document.getElementById('agreeTerms');
+        const agreePrivacyCheckbox = document.getElementById('agreePrivacy');
+        const agreeMarketingCheckbox = document.getElementById('agreeMarketing');
+
+        // 비밀번호 표시/숨김 토글
+        document.querySelectorAll('.btn-toggle-password').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = button.previousElementSibling;
+                const type = input.type === 'password' ? 'text' : 'password';
+                input.type = type;
+
+                const iconEye = button.querySelector('.icon-eye');
+                const iconEyeOff = button.querySelector('.icon-eye-off');
+
+                if (type === 'password') {
+                    iconEye.style.display = 'block';
+                    iconEyeOff.style.display = 'none';
+                } else {
+                    iconEye.style.display = 'none';
+                    iconEyeOff.style.display = 'block';
+                }
+            });
+        });
+
+        // 이름 검증
+        nameInput.addEventListener('blur', () => {
+            const value = nameInput.value.trim();
+            const errorElement = document.getElementById('name-error');
+
+            if (!value) {
+                errorElement.textContent = '이름을 입력해주세요';
+                validationState.name = false;
+            } else if (value.length < 2) {
+                errorElement.textContent = '이름은 2자 이상이어야 합니다';
+                validationState.name = false;
+            } else if (!/^[가-힣a-zA-Z\s]+$/.test(value)) {
+                errorElement.textContent = '한글 또는 영문만 입력 가능합니다';
+                validationState.name = false;
+            } else {
+                errorElement.textContent = '';
+                validationState.name = true;
+            }
+
+            updateSubmitButton();
+        });
+
+        // 이메일 검증
+        emailInput.addEventListener('blur', () => {
+            const value = emailInput.value.trim();
+            const errorElement = document.getElementById('email-error');
+            const successElement = document.getElementById('email-success');
+
+            successElement.textContent = '';
+
+            if (!value) {
+                errorElement.textContent = '이메일을 입력해주세요';
+                validationState.email = false;
+                emailCheckButton.disabled = true;
+            } else if (!Validation.email(value, errorElement)) {
+                validationState.email = false;
+                emailCheckButton.disabled = true;
+            } else {
+                errorElement.textContent = '';
+                validationState.email = true;
+                validationState.emailChecked = false;
+                emailCheckButton.disabled = false;
+            }
+
+            updateSubmitButton();
+        });
+
+        // 이메일 중복확인
+        emailCheckButton.addEventListener('click', async () => {
+            const value = emailInput.value.trim();
+            const errorElement = document.getElementById('email-error');
+            const successElement = document.getElementById('email-success');
+
+            emailCheckButton.disabled = true;
+            emailCheckButton.textContent = '확인중...';
+
+            try {
+                // API 호출 시뮬레이션
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 샘플 검증 (실제로는 백엔드 API 호출)
+                const isDuplicate = value === SampleData.user.email;
+
+                if (isDuplicate) {
+                    errorElement.textContent = '이미 사용 중인 이메일입니다';
+                    successElement.textContent = '';
+                    validationState.emailChecked = false;
+                } else {
+                    errorElement.textContent = '';
+                    successElement.textContent = '사용 가능한 이메일입니다';
+                    validationState.emailChecked = true;
+                }
+            } catch (error) {
+                errorElement.textContent = '중복확인 중 오류가 발생했습니다';
+                validationState.emailChecked = false;
+            } finally {
+                emailCheckButton.textContent = '중복확인';
+                emailCheckButton.disabled = false;
+                updateSubmitButton();
+            }
+        });
+
+        // 이메일 값 변경 시 중복확인 초기화
+        emailInput.addEventListener('input', () => {
+            validationState.emailChecked = false;
+            document.getElementById('email-success').textContent = '';
+            updateSubmitButton();
+        });
+
+        // 연락처 자동 하이픈 삽입
+        phoneInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+
+            if (value.length > 3 && value.length <= 7) {
+                value = value.slice(0, 3) + '-' + value.slice(3);
+            } else if (value.length > 7) {
+                value = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7, 11);
+            }
+
+            e.target.value = value;
+        });
+
+        // 연락처 검증
+        phoneInput.addEventListener('blur', () => {
+            const value = phoneInput.value;
+            const errorElement = document.getElementById('phone-error');
+
+            if (!value) {
+                errorElement.textContent = '연락처를 입력해주세요';
+                validationState.phone = false;
+            } else if (!/^010-\d{4}-\d{4}$/.test(value)) {
+                errorElement.textContent = '올바른 연락처 형식이 아닙니다 (010-0000-0000)';
+                validationState.phone = false;
+            } else {
+                errorElement.textContent = '';
+                validationState.phone = true;
+            }
+
+            updateSubmitButton();
+        });
+
+        // 아이디 검증
+        usernameInput.addEventListener('blur', () => {
+            const value = usernameInput.value.trim();
+            const errorElement = document.getElementById('username-error');
+            const successElement = document.getElementById('username-success');
+
+            successElement.textContent = '';
+
+            if (!value) {
+                errorElement.textContent = '아이디를 입력해주세요';
+                validationState.username = false;
+                usernameCheckButton.disabled = true;
+            } else if (value.length < 5) {
+                errorElement.textContent = '아이디는 5자 이상이어야 합니다';
+                validationState.username = false;
+                usernameCheckButton.disabled = true;
+            } else if (!/^[a-zA-Z0-9]+$/.test(value)) {
+                errorElement.textContent = '아이디는 영문/숫자 조합이어야 합니다';
+                validationState.username = false;
+                usernameCheckButton.disabled = true;
+            } else {
+                errorElement.textContent = '';
+                validationState.username = true;
+                validationState.usernameChecked = false;
+                usernameCheckButton.disabled = false;
+            }
+
+            updateSubmitButton();
+        });
+
+        // 아이디 중복확인
+        usernameCheckButton.addEventListener('click', async () => {
+            const value = usernameInput.value.trim();
+            const errorElement = document.getElementById('username-error');
+            const successElement = document.getElementById('username-success');
+
+            usernameCheckButton.disabled = true;
+            usernameCheckButton.textContent = '확인중...';
+
+            try {
+                // API 호출 시뮬레이션
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 샘플 검증
+                const isDuplicate = value === SampleData.user.username;
+
+                if (isDuplicate) {
+                    errorElement.textContent = '이미 사용 중인 아이디입니다';
+                    successElement.textContent = '';
+                    validationState.usernameChecked = false;
+                } else {
+                    errorElement.textContent = '';
+                    successElement.textContent = '사용 가능한 아이디입니다';
+                    validationState.usernameChecked = true;
+                }
+            } catch (error) {
+                errorElement.textContent = '중복확인 중 오류가 발생했습니다';
+                validationState.usernameChecked = false;
+            } finally {
+                usernameCheckButton.textContent = '중복확인';
+                usernameCheckButton.disabled = false;
+                updateSubmitButton();
+            }
+        });
+
+        // 아이디 값 변경 시 중복확인 초기화
+        usernameInput.addEventListener('input', () => {
+            validationState.usernameChecked = false;
+            document.getElementById('username-success').textContent = '';
+            updateSubmitButton();
+        });
+
+        // 비밀번호 강도 검사
+        passwordInput.addEventListener('input', () => {
+            const value = passwordInput.value;
+            const strengthElement = document.getElementById('password-strength');
+            const strengthFill = strengthElement.querySelector('.strength-fill');
+            const strengthText = strengthElement.querySelector('.strength-text');
+
+            if (!value) {
+                strengthElement.style.display = 'none';
+                return;
+            }
+
+            strengthElement.style.display = 'block';
+
+            const strength = Utils.checkPasswordStrength(value);
+
+            // 강도에 따른 스타일 업데이트
+            strengthFill.className = 'strength-fill strength-' + strength;
+            strengthText.className = 'strength-text strength-' + strength;
+
+            if (strength === 'weak') {
+                strengthText.textContent = '약함';
+                strengthFill.style.width = '33%';
+            } else if (strength === 'medium') {
+                strengthText.textContent = '보통';
+                strengthFill.style.width = '66%';
+            } else {
+                strengthText.textContent = '강함';
+                strengthFill.style.width = '100%';
+            }
+        });
+
+        // 비밀번호 검증
+        passwordInput.addEventListener('blur', () => {
+            const value = passwordInput.value;
+            const errorElement = document.getElementById('password-error');
+
+            if (!value) {
+                errorElement.textContent = '비밀번호를 입력해주세요';
+                validationState.password = false;
+            } else if (!Validation.password(value, errorElement)) {
+                validationState.password = false;
+            } else {
+                errorElement.textContent = '';
+                validationState.password = true;
+            }
+
+            updateSubmitButton();
+        });
+
+        // 비밀번호 확인 검증
+        passwordConfirmInput.addEventListener('blur', () => {
+            const password = passwordInput.value;
+            const passwordConfirm = passwordConfirmInput.value;
+            const errorElement = document.getElementById('passwordConfirm-error');
+
+            if (!passwordConfirm) {
+                errorElement.textContent = '비밀번호 확인을 입력해주세요';
+                validationState.passwordConfirm = false;
+            } else if (password !== passwordConfirm) {
+                errorElement.textContent = '비밀번호가 일치하지 않습니다';
+                validationState.passwordConfirm = false;
+            } else {
+                errorElement.textContent = '';
+                validationState.passwordConfirm = true;
+            }
+
+            updateSubmitButton();
+        });
+
+        // 전체 동의 체크박스
+        agreeAllCheckbox.addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            agreeTermsCheckbox.checked = checked;
+            agreePrivacyCheckbox.checked = checked;
+            agreeMarketingCheckbox.checked = checked;
+            updateTermsValidation();
+        });
+
+        // 개별 약관 체크박스
+        [agreeTermsCheckbox, agreePrivacyCheckbox, agreeMarketingCheckbox].forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                // 전체 동의 체크박스 상태 업데이트
+                const allChecked = agreeTermsCheckbox.checked &&
+                                 agreePrivacyCheckbox.checked &&
+                                 agreeMarketingCheckbox.checked;
+                agreeAllCheckbox.checked = allChecked;
+
+                updateTermsValidation();
+            });
+        });
+
+        // 약관 동의 검증
+        function updateTermsValidation() {
+            validationState.terms = agreeTermsCheckbox.checked && agreePrivacyCheckbox.checked;
+            updateSubmitButton();
+        }
+
+        // 제출 버튼 활성화/비활성화
+        function updateSubmitButton() {
+            const isValid =
+                validationState.name &&
+                validationState.email &&
+                validationState.emailChecked &&
+                validationState.phone &&
+                validationState.username &&
+                validationState.usernameChecked &&
+                validationState.password &&
+                validationState.passwordConfirm &&
+                validationState.terms;
+
+            signupButton.disabled = !isValid;
+        }
+
+        // 폼 제출
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            UI.showLoading();
+            signupButton.disabled = true;
+
+            try {
+                // API 호출 시뮬레이션
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 회원가입 성공
+                UI.hideLoading();
+                UI.showToast('회원가입이 완료되었습니다', 'success');
+
+                // 1초 후 기본정보 입력 페이지로 이동
+                setTimeout(() => {
+                    window.location.href = '03-기본정보입력.html';
+                }, 1000);
+            } catch (error) {
+                UI.hideLoading();
+                signupButton.disabled = false;
+                UI.showToast('회원가입 중 오류가 발생했습니다', 'error');
+            }
+        });
+    </script>
+
+    <style>
+        .page {
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .btn-back {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            color: var(--text-primary);
+            margin-right: var(--spacing-sm);
+        }
+
+        .header-title {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .progress-indicator {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .container {
+            padding: var(--spacing-xl) var(--spacing-md);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .required {
+            color: var(--error-500);
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .input-with-button .form-input {
+            flex: 1;
+        }
+
+        .btn-check {
+            flex-shrink: 0;
+            padding: 0 var(--spacing-md);
+            height: 48px;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-check:not(:disabled):hover {
+            background-color: var(--primary-500);
+            color: white;
+            border-color: var(--primary-500);
+        }
+
+        .btn-check:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .input-password {
+            position: relative;
+        }
+
+        .btn-toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .password-strength {
+            margin-top: var(--spacing-sm);
+        }
+
+        .strength-bar {
+            height: 4px;
+            background-color: var(--bg-secondary);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .strength-fill {
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .strength-fill.strength-weak {
+            background-color: var(--error-500);
+        }
+
+        .strength-fill.strength-medium {
+            background-color: var(--warning-500);
+        }
+
+        .strength-fill.strength-strong {
+            background-color: var(--success-500);
+        }
+
+        .strength-text {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .strength-text.strength-weak {
+            color: var(--error-500);
+        }
+
+        .strength-text.strength-medium {
+            color: var(--warning-500);
+        }
+
+        .strength-text.strength-strong {
+            color: var(--success-500);
+        }
+
+        .success-message {
+            font-size: 12px;
+            color: var(--success-500);
+            margin-top: var(--spacing-xs);
+        }
+
+        .terms-section {
+            padding: var(--spacing-md);
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+        }
+
+        .all-agree {
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .divider {
+            margin: var(--spacing-sm) 0;
+            border: none;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .checkbox-label:last-child {
+            margin-bottom: 0;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .checkbox-text {
+            flex: 1;
+            font-size: 14px;
+            line-height: 24px;
+        }
+
+        .term-link {
+            color: var(--primary-500);
+            text-decoration: underline;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                padding: var(--spacing-xxl) var(--spacing-lg);
+            }
+        }
+    </style>
+</body>
+</html>

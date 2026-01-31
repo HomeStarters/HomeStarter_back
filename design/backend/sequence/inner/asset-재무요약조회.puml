@@ -1,0 +1,180 @@
+@startuml asset-재무요약조회
+!theme mono
+
+title Asset Service - 재무 요약 조회 내부 시퀀스
+
+participant "AssetController" as Controller
+participant "AssetService" as Service
+participant "AssetRepository" as Repository
+database "Asset DB" as DB
+database "Redis Cache<<E>>" as Cache
+
+== 재무 요약 조회 API ==
+
+-> Controller: GET /assets/user/{userId}/summary
+activate Controller
+
+Controller -> Controller: JWT에서 요청 userId 추출
+
+Controller -> Controller: 본인/배우자 확인
+note right of Controller
+  본인 정보만 조회 가능
+  (배우자 정보는 본인 소유일 때만)
+end note
+
+Controller -> Service: getUserAssetSummary(userId)
+activate Service
+
+Service -> Cache: 캐시 조회 시도\nkey: "asset:summary:{userId}"
+activate Cache
+
+alt 캐시 히트
+    Cache --> Service: 캐시된 요약 정보 반환
+    deactivate Cache
+
+    note right of Service
+      캐시 TTL: 5분
+      빈번한 조회 최적화
+    end note
+
+else 캐시 미스
+    Cache --> Service: null
+    deactivate Cache
+
+    Service -> Repository: findByUserIdGrouped(userId)
+    activate Repository
+
+    Repository -> DB: 카테고리별 총액 계산
+    note right of DB
+      SELECT owner_type,
+             item_type,
+             SUM(amount) as total
+      FROM asset_items
+      WHERE user_id = ?
+      GROUP BY owner_type, item_type
+    end note
+    DB --> Repository: 그룹화된 총액 데이터
+    deactivate Repository
+
+    Service -> Repository: findByUserId(userId)
+    activate Repository
+    Repository -> DB: 전체 항목 조회
+    note right of DB
+      SELECT * FROM asset_items
+      WHERE user_id = ?
+      ORDER BY owner_type,
+               item_type,
+               created_at
+    end note
+    DB --> Repository: 전체 자산 항목 목록
+    Repository --> Service: List<AssetItem>
+    deactivate Repository
+
+    Service -> Service: 본인/배우자별 분류
+    note right of Service
+      ownerType으로 분류:
+      - SELF: 본인 자산
+      - SPOUSE: 배우자 자산
+    end note
+
+    Service -> Service: 카테고리별 분류
+    note right of Service
+      itemType으로 분류:
+      - ASSET: 자산
+      - LOAN: 대출
+      - INCOME: 월소득
+      - EXPENSE: 월지출
+    end note
+
+    Service -> Service: 본인 재무 계산
+    note right of Service
+      본인 재무:
+      - totalAssets = SUM(SELF.ASSET)
+      - totalLoans = SUM(SELF.LOAN)
+      - totalIncome = SUM(SELF.INCOME)
+      - totalExpense = SUM(SELF.EXPENSE)
+      - netAssets = totalAssets - totalLoans
+    end note
+
+    Service -> Service: 배우자 재무 계산
+    note right of Service
+      배우자 재무:
+      - totalAssets = SUM(SPOUSE.ASSET)
+      - totalLoans = SUM(SPOUSE.LOAN)
+      - totalIncome = SUM(SPOUSE.INCOME)
+      - totalExpense = SUM(SPOUSE.EXPENSE)
+      - netAssets = totalAssets - totalLoans
+    end note
+
+    Service -> Service: 가구 재무 요약 계산
+    note right of Service
+      가구 총계:
+      - totalNetAssets = 본인순자산 + 배우자순자산
+      - totalMonthlyIncome = 본인월소득 + 배우자월소득
+      - totalMonthlyExpense = 본인월지출 + 배우자월지출
+      - monthlyAvailableFunds = totalMonthlyIncome - totalMonthlyExpense
+    end note
+
+    Service -> Repository: getLastUpdatedAt(userId)
+    activate Repository
+    Repository -> DB: 최근 수정일시 조회
+    note right of DB
+      SELECT updated_at
+      FROM asset_items
+      WHERE user_id = ?
+      ORDER BY updated_at DESC
+      LIMIT 1
+    end note
+    DB --> Repository: 최근 수정일시
+    Repository --> Service: lastUpdatedAt
+    deactivate Repository
+
+    Service -> Service: AssetSummaryResponse 생성
+    note right of Service
+      {
+        hasSpouse: true,
+        self: {
+          assets: [...],
+          loans: [...],
+          incomes: [...],
+          expenses: [...],
+          totalAssets: 55000000,
+          totalLoans: 0,
+          totalIncome: 3000000,
+          totalExpense: 1500000,
+          netAssets: 55000000
+        },
+        spouse: {
+          assets: [...],
+          loans: [...],
+          incomes: [...],
+          expenses: [...],
+          totalAssets: 20000000,
+          totalLoans: 0,
+          totalIncome: 2500000,
+          totalExpense: 1000000,
+          netAssets: 20000000
+        },
+        summary: {
+          totalNetAssets: 75000000,
+          totalMonthlyIncome: 5500000,
+          totalMonthlyExpense: 2500000,
+          monthlyAvailableFunds: 3000000
+        },
+        lastUpdatedAt: "2025-01-15T10:30:00Z"
+      }
+    end note
+
+    Service -> Cache: 요약 정보 캐싱 (5분)
+    activate Cache
+    Cache --> Service: 캐싱 완료
+    deactivate Cache
+end
+
+Service --> Controller: AssetSummaryResponse
+deactivate Service
+
+Controller --> : 200 OK\n(재무 요약 정보)
+deactivate Controller
+
+@enduml

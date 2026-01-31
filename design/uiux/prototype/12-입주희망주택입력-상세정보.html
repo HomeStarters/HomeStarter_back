@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주택 등록 - 상세정보</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: var(--spacing-xl) var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        .section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .required {
+            color: var(--error);
+        }
+
+        /* Card List */
+        .card-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .info-card {
+            padding: var(--spacing-md);
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .card-title {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .card-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: var(--background);
+            color: var(--primary);
+        }
+
+        .card-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: var(--font-size-sm);
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        /* Commute Time Table */
+        .commute-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: var(--spacing-sm);
+            font-size: var(--font-size-sm);
+        }
+
+        .commute-table th,
+        .commute-table td {
+            padding: var(--spacing-sm);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .commute-table th {
+            background: var(--background);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+        }
+
+        .commute-table td {
+            color: var(--text-primary);
+        }
+
+        /* Textarea */
+        textarea.input {
+            min-height: 100px;
+            resize: vertical;
+            font-family: var(--font-family);
+            line-height: 1.5;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-tertiary);
+            background: var(--background);
+            border-radius: var(--radius-md);
+        }
+
+        /* FAB */
+        .fab {
+            position: fixed;
+            bottom: 90px;
+            right: var(--spacing-md);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.2s;
+            z-index: 90;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            box-shadow: var(--shadow-xl);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bottom-sheet.active {
+            transform: translateY(0);
+        }
+
+        .bottom-sheet-header {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .bottom-sheet-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .bottom-sheet-body {
+            padding: var(--spacing-md);
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .bottom-sheet-footer {
+            padding: var(--spacing-md);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .bottom-sheet-footer .btn {
+            flex: 1;
+        }
+
+        /* Backdrop */
+        .backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .backdrop.active {
+            display: block;
+        }
+
+        /* Sticky CTA */
+        .sticky-cta {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .sticky-cta .btn {
+            flex: 1;
+            max-width: 290px;
+        }
+
+        .sticky-cta-container {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            gap: var(--spacing-sm);
+            width: 100%;
+        }
+
+        /* Date Picker Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-md);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 24px;
+        }
+
+        .modal-body {
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+        }
+
+        .date-picker-content {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .date-select {
+            flex: 1;
+        }
+
+        .date-select label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .date-select select {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+        }
+
+        @media (min-width: 768px) {
+            .bottom-sheet {
+                max-height: 60vh;
+            }
+
+            .fab {
+                bottom: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">주택 등록</h1>
+        <div class="header-actions">
+            <span class="progress-indicator">2/2</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="form-container">
+            <!-- 교통정보 Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">교통정보</h2>
+                    <button type="button" class="btn btn-secondary btn-sm" id="addTransportBtn">
+                        + 교통호재 추가
+                    </button>
+                </div>
+
+                <div class="card-list" id="transportList">
+                    <div class="empty-state">
+                        교통호재를 추가해주세요
+                    </div>
+                </div>
+            </section>
+
+            <!-- 단지정보 Section -->
+            <section class="section">
+                <h2 class="section-title">단지정보</h2>
+
+                <div class="form-group">
+                    <label for="complexCount">단지 수</label>
+                    <input
+                        type="number"
+                        id="complexCount"
+                        class="input"
+                        placeholder="예: 3"
+                        min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="tradingVolume">거래량</label>
+                    <input
+                        type="text"
+                        id="tradingVolume"
+                        class="input"
+                        placeholder="예: 월 평균 5건">
+                </div>
+            </section>
+
+            <!-- 주거환경 Section -->
+            <section class="section">
+                <h2 class="section-title">주거환경</h2>
+
+                <div class="form-group">
+                    <label for="surroundings">주변환경</label>
+                    <textarea
+                        id="surroundings"
+                        class="input"
+                        placeholder="주변 환경에 대해 자유롭게 작성해주세요"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="lighting">채광</label>
+                    <textarea
+                        id="lighting"
+                        class="input"
+                        placeholder="채광 상태에 대해 자유롭게 작성해주세요"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="view">뷰</label>
+                    <textarea
+                        id="view"
+                        class="input"
+                        placeholder="전망에 대해 자유롭게 작성해주세요"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="noise">소음</label>
+                    <textarea
+                        id="noise"
+                        class="input"
+                        placeholder="소음 상태에 대해 자유롭게 작성해주세요"></textarea>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- FAB for Adding Transport -->
+    <button class="fab" id="fabAddTransport" aria-label="교통호재 추가">
+        +
+    </button>
+
+    <!-- Sticky CTA -->
+    <div class="sticky-cta">
+        <div class="sticky-cta-container">
+            <button type="button" class="btn btn-secondary" id="prevBtn">
+                이전
+            </button>
+            <button type="button" class="btn btn-primary" id="saveBtn">
+                저장
+            </button>
+        </div>
+    </div>
+
+    <!-- Transport Info Bottom Sheet -->
+    <div class="backdrop" id="transportBackdrop"></div>
+    <div class="bottom-sheet" id="transportSheet">
+        <div class="bottom-sheet-header">
+            <h2 class="bottom-sheet-title" id="sheetTitle">교통호재 추가</h2>
+            <button class="modal-close" id="closeTransportSheet" aria-label="닫기">&times;</button>
+        </div>
+        <div class="bottom-sheet-body">
+            <div class="form-group">
+                <label for="transportName">교통호재명 <span class="required">*</span></label>
+                <input
+                    type="text"
+                    id="transportName"
+                    class="input"
+                    placeholder="예: 지하철 9호선"
+                    maxlength="50">
+            </div>
+
+            <div class="form-group">
+                <label for="openingDate">개통예정일 <span class="required">*</span></label>
+                <button
+                    type="button"
+                    class="date-picker-trigger placeholder"
+                    id="openingDateTrigger"
+                    style="width: 100%;"
+                    aria-label="개통예정일 선택">
+                    YYYY년 MM월
+                </button>
+                <input type="hidden" id="openingDate">
+            </div>
+
+            <h3 style="margin-top: var(--spacing-lg); margin-bottom: var(--spacing-md); font-size: var(--font-size-md);">
+                출퇴근 시간 (분)
+            </h3>
+
+            <div class="form-group">
+                <label for="selfBefore">본인 출퇴근 시간 (개통 전)</label>
+                <input
+                    type="number"
+                    id="selfBefore"
+                    class="input"
+                    placeholder="0"
+                    min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="selfAfter">본인 출퇴근 시간 (개통 후)</label>
+                <input
+                    type="number"
+                    id="selfAfter"
+                    class="input"
+                    placeholder="0"
+                    min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="spouseBefore">배우자 출퇴근 시간 (개통 전)</label>
+                <input
+                    type="number"
+                    id="spouseBefore"
+                    class="input"
+                    placeholder="0"
+                    min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="spouseAfter">배우자 출퇴근 시간 (개통 후)</label>
+                <input
+                    type="number"
+                    id="spouseAfter"
+                    class="input"
+                    placeholder="0"
+                    min="0">
+            </div>
+        </div>
+        <div class="bottom-sheet-footer">
+            <button type="button" class="btn btn-secondary" id="cancelTransport">취소</button>
+            <button type="button" class="btn btn-primary" id="saveTransport" disabled>저장</button>
+        </div>
+    </div>
+
+    <!-- Date Picker Modal -->
+    <div class="modal" id="datePickerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">개통예정일 선택</h2>
+                <button class="modal-close" id="closeDatePicker" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="date-picker-content">
+                    <div class="date-select">
+                        <label for="yearSelect">년도</label>
+                        <select id="yearSelect" aria-label="년도 선택"></select>
+                    </div>
+                    <div class="date-select">
+                        <label for="monthSelect">월</label>
+                        <select id="monthSelect" aria-label="월 선택">
+                            <option value="01">1월</option>
+                            <option value="02">2월</option>
+                            <option value="03">3월</option>
+                            <option value="04">4월</option>
+                            <option value="05">5월</option>
+                            <option value="06">6월</option>
+                            <option value="07">7월</option>
+                            <option value="08">8월</option>
+                            <option value="09">9월</option>
+                            <option value="10">10월</option>
+                            <option value="11">11월</option>
+                            <option value="12">12월</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary" id="confirmDate" style="width: 100%;">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // State
+        let transportItems = [];
+        let editingIndex = -1;
+
+        // Initialize year options
+        const yearSelect = document.getElementById('yearSelect');
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year <= currentYear + 10; year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year + '년';
+            yearSelect.appendChild(option);
+        }
+
+        // Elements
+        const transportList = document.getElementById('transportList');
+        const addTransportBtn = document.getElementById('addTransportBtn');
+        const fabAddTransport = document.getElementById('fabAddTransport');
+        const transportBackdrop = document.getElementById('transportBackdrop');
+        const transportSheet = document.getElementById('transportSheet');
+        const closeTransportSheet = document.getElementById('closeTransportSheet');
+        const cancelTransport = document.getElementById('cancelTransport');
+        const saveTransport = document.getElementById('saveTransport');
+        const sheetTitle = document.getElementById('sheetTitle');
+
+        const transportNameInput = document.getElementById('transportName');
+        const openingDateTrigger = document.getElementById('openingDateTrigger');
+        const openingDateInput = document.getElementById('openingDate');
+        const selfBeforeInput = document.getElementById('selfBefore');
+        const selfAfterInput = document.getElementById('selfAfter');
+        const spouseBeforeInput = document.getElementById('spouseBefore');
+        const spouseAfterInput = document.getElementById('spouseAfter');
+
+        const datePickerModal = document.getElementById('datePickerModal');
+        const closeDatePicker = document.getElementById('closeDatePicker');
+        const confirmDate = document.getElementById('confirmDate');
+
+        const prevBtn = document.getElementById('prevBtn');
+        const saveBtn = document.getElementById('saveBtn');
+
+        // Open transport sheet
+        function openTransportSheet(index = -1) {
+            editingIndex = index;
+
+            if (index === -1) {
+                // Adding new
+                sheetTitle.textContent = '교통호재 추가';
+                transportNameInput.value = '';
+                openingDateInput.value = '';
+                openingDateTrigger.textContent = 'YYYY년 MM월';
+                openingDateTrigger.classList.add('placeholder');
+                selfBeforeInput.value = '';
+                selfAfterInput.value = '';
+                spouseBeforeInput.value = '';
+                spouseAfterInput.value = '';
+            } else {
+                // Editing
+                sheetTitle.textContent = '교통호재 수정';
+                const item = transportItems[index];
+                transportNameInput.value = item.name;
+                openingDateInput.value = item.openingDate;
+                const [year, month] = item.openingDate.split('-');
+                openingDateTrigger.textContent = `${year}년 ${parseInt(month)}월`;
+                openingDateTrigger.classList.remove('placeholder');
+                selfBeforeInput.value = item.selfBefore || '';
+                selfAfterInput.value = item.selfAfter || '';
+                spouseBeforeInput.value = item.spouseBefore || '';
+                spouseAfterInput.value = item.spouseAfter || '';
+            }
+
+            transportBackdrop.classList.add('active');
+            transportSheet.classList.add('active');
+            validateTransportForm();
+        }
+
+        addTransportBtn.addEventListener('click', () => openTransportSheet());
+        fabAddTransport.addEventListener('click', () => openTransportSheet());
+
+        function closeSheet() {
+            transportBackdrop.classList.remove('active');
+            transportSheet.classList.remove('active');
+        }
+
+        closeTransportSheet.addEventListener('click', closeSheet);
+        cancelTransport.addEventListener('click', closeSheet);
+        transportBackdrop.addEventListener('click', closeSheet);
+
+        // Date Picker
+        openingDateTrigger.addEventListener('click', () => {
+            datePickerModal.classList.add('active');
+        });
+
+        closeDatePicker.addEventListener('click', () => {
+            datePickerModal.classList.remove('active');
+        });
+
+        confirmDate.addEventListener('click', () => {
+            const year = yearSelect.value;
+            const month = document.getElementById('monthSelect').value;
+            const dateValue = `${year}-${month}`;
+            const displayValue = `${year}년 ${parseInt(month)}월`;
+
+            openingDateInput.value = dateValue;
+            openingDateTrigger.textContent = displayValue;
+            openingDateTrigger.classList.remove('placeholder');
+            datePickerModal.classList.remove('active');
+            validateTransportForm();
+        });
+
+        datePickerModal.addEventListener('click', (e) => {
+            if (e.target === datePickerModal) {
+                datePickerModal.classList.remove('active');
+            }
+        });
+
+        // Validate transport form
+        function validateTransportForm() {
+            const isValid = transportNameInput.value.trim() && openingDateInput.value;
+            saveTransport.disabled = !isValid;
+        }
+
+        transportNameInput.addEventListener('input', validateTransportForm);
+
+        // Save transport
+        saveTransport.addEventListener('click', () => {
+            const item = {
+                name: transportNameInput.value.trim(),
+                openingDate: openingDateInput.value,
+                selfBefore: parseInt(selfBeforeInput.value) || 0,
+                selfAfter: parseInt(selfAfterInput.value) || 0,
+                spouseBefore: parseInt(spouseBeforeInput.value) || 0,
+                spouseAfter: parseInt(spouseAfterInput.value) || 0
+            };
+
+            if (editingIndex === -1) {
+                transportItems.push(item);
+            } else {
+                transportItems[editingIndex] = item;
+            }
+
+            renderTransportList();
+            closeSheet();
+            UI.showToast(editingIndex === -1 ? '교통호재가 추가되었습니다' : '교통호재가 수정되었습니다', 'success');
+        });
+
+        // Render transport list
+        function renderTransportList() {
+            if (transportItems.length === 0) {
+                transportList.innerHTML = '<div class="empty-state">교통호재를 추가해주세요</div>';
+                return;
+            }
+
+            transportList.innerHTML = transportItems.map((item, index) => {
+                const [year, month] = item.openingDate.split('-');
+                return `
+                    <div class="info-card">
+                        <div class="card-header">
+                            <h3 class="card-title">${item.name}</h3>
+                            <div class="card-actions">
+                                <button class="btn-icon" onclick="editTransport(${index})" aria-label="수정">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                                <button class="btn-icon" onclick="deleteTransport(${index})" aria-label="삭제">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="info-row">
+                                <span class="info-label">개통예정일</span>
+                                <span class="info-value">${year}년 ${parseInt(month)}월</span>
+                            </div>
+                            <table class="commute-table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>개통 전</th>
+                                        <th>개통 후</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>본인</td>
+                                        <td>${item.selfBefore}분</td>
+                                        <td>${item.selfAfter}분</td>
+                                    </tr>
+                                    <tr>
+                                        <td>배우자</td>
+                                        <td>${item.spouseBefore}분</td>
+                                        <td>${item.spouseAfter}분</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Global functions for card actions
+        window.editTransport = function(index) {
+            openTransportSheet(index);
+        };
+
+        window.deleteTransport = function(index) {
+            UI.showConfirm('이 교통호재를 삭제하시겠습니까?', () => {
+                transportItems.splice(index, 1);
+                renderTransportList();
+                UI.showToast('교통호재가 삭제되었습니다', 'success');
+            });
+        };
+
+        // Previous button
+        prevBtn.addEventListener('click', () => {
+            window.location.href = '11-입주희망주택입력-기본정보.html';
+        });
+
+        // Save button
+        saveBtn.addEventListener('click', () => {
+            // Save all data
+            const detailData = {
+                transportItems: transportItems,
+                complexCount: parseInt(document.getElementById('complexCount').value) || 0,
+                tradingVolume: document.getElementById('tradingVolume').value.trim(),
+                surroundings: document.getElementById('surroundings').value.trim(),
+                lighting: document.getElementById('lighting').value.trim(),
+                view: document.getElementById('view').value.trim(),
+                noise: document.getElementById('noise').value.trim()
+            };
+
+            Storage.setItem('housing_detail_info', detailData);
+
+            // Combine basic and detail info
+            const basicInfo = Storage.getItem('housing_basic_info') || {};
+            const housingData = {
+                id: Date.now(),
+                ...basicInfo,
+                ...detailData,
+                createdAt: new Date().toISOString()
+            };
+
+            // Save to housing list
+            const housingList = Storage.getItem('housing_list') || [];
+            housingList.push(housingData);
+            Storage.setItem('housing_list', housingList);
+
+            // Clear temporary data
+            Storage.removeItem('housing_basic_info');
+            Storage.removeItem('housing_detail_info');
+
+            UI.showToast('주택정보가 저장되었습니다', 'success');
+
+            setTimeout(() => {
+                window.location.href = '13-입주희망주택목록.html';
+            }, 1000);
+        });
+
+        // Load saved data if exists
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedData = Storage.getItem('housing_detail_info');
+            if (savedData) {
+                if (savedData.transportItems) {
+                    transportItems = savedData.transportItems;
+                    renderTransportList();
+                }
+                if (savedData.complexCount) {
+                    document.getElementById('complexCount').value = savedData.complexCount;
+                }
+                if (savedData.tradingVolume) {
+                    document.getElementById('tradingVolume').value = savedData.tradingVolume;
+                }
+                if (savedData.surroundings) {
+                    document.getElementById('surroundings').value = savedData.surroundings;
+                }
+                if (savedData.lighting) {
+                    document.getElementById('lighting').value = savedData.lighting;
+                }
+                if (savedData.view) {
+                    document.getElementById('view').value = savedData.view;
+                }
+                if (savedData.noise) {
+                    document.getElementById('noise').value = savedData.noise;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

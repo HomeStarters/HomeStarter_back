@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대출상품 관리</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        /* Admin Actions */
+        .admin-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+            gap: var(--spacing-sm);
+        }
+
+        .admin-actions h2 {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .stat-value {
+            font-size: var(--font-size-xxl);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+        }
+
+        /* Products Table */
+        .products-table-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .products-table thead {
+            background: var(--bg-primary);
+        }
+
+        .products-table th {
+            padding: var(--spacing-md);
+            text-align: left;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .products-table td {
+            padding: var(--spacing-md);
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .products-table tbody tr:hover {
+            background: var(--bg-primary);
+        }
+
+        .products-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+        }
+
+        .status-badge.active {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .status-badge.inactive {
+            background: var(--text-disabled);
+            color: var(--text-secondary);
+        }
+
+        /* Action Buttons */
+        .table-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-icon-small {
+            padding: var(--spacing-xs);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: var(--transition-fast);
+            border-radius: var(--radius-sm);
+        }
+
+        .btn-icon-small:hover {
+            background: var(--bg-primary);
+            color: var(--primary);
+        }
+
+        .btn-icon-small.danger:hover {
+            color: var(--danger);
+        }
+
+        /* Mobile Card View */
+        .products-cards {
+            display: none;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .product-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .product-card-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .product-card-info {
+            display: grid;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .product-card-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: var(--font-size-sm);
+        }
+
+        .product-card-label {
+            color: var(--text-secondary);
+        }
+
+        .product-card-value {
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xxl);
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        /* Form Styles */
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .label {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .input,
+        .textarea {
+            width: 100%;
+            padding: 12px var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+            font-family: inherit;
+            transition: all var(--transition-normal);
+        }
+
+        .input:focus,
+        .textarea:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+        }
+
+        .textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-lg);
+        }
+
+        /* Responsive */
+        @media (max-width: 767px) {
+            .products-table-container {
+                display: none;
+            }
+
+            .products-cards {
+                display: block;
+            }
+
+            .admin-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">대출상품 관리</h1>
+        <div style="width: 24px;"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Admin Actions -->
+            <div class="admin-actions">
+                <h2>대출상품 목록</h2>
+                <button class="btn btn-primary" onclick="openAddForm()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <path d="M10 5V15M5 10H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    상품 추가
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">전체 상품</div>
+                    <div class="stat-value" id="totalCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">활성 상품</div>
+                    <div class="stat-value" id="activeCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">비활성 상품</div>
+                    <div class="stat-value" id="inactiveCount">0</div>
+                </div>
+            </div>
+
+            <!-- Table View (Desktop) -->
+            <div class="products-table-container">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>상태</th>
+                            <th>대출이름</th>
+                            <th>대출한도</th>
+                            <th>금리</th>
+                            <th>LTV</th>
+                            <th>DTI</th>
+                            <th>대상주택</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                        <!-- Will be rendered dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Card View (Mobile) -->
+            <div class="products-cards" id="productsCards">
+                <!-- Will be rendered dynamically -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for Add/Edit Form -->
+    <div id="formModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h3 id="formTitle">대출상품 추가</h3>
+                <button class="icon-button" onclick="closeFormModal()" aria-label="닫기">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm" class="form">
+                    <div class="form-group">
+                        <label class="label" for="productName">대출이름 *</label>
+                        <input type="text" id="productName" class="input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="productLimit">대출한도 (만원) *</label>
+                        <input type="number" id="productLimit" class="input" min="0" step="1000" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="label" for="productLTV">LTV 한도 (%) *</label>
+                            <input type="number" id="productLTV" class="input" min="0" max="100" step="5" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="label" for="productDTI">DTI 한도 (%) *</label>
+                            <input type="number" id="productDTI" class="input" min="0" max="100" step="5" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="productDSR">DSR 한도 (%) *</label>
+                        <input type="number" id="productDSR" class="input" min="0" max="100" step="5" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="productRate">금리 (%) *</label>
+                        <input type="number" id="productRate" class="input" min="0" max="20" step="0.1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="productTarget">대상주택 *</label>
+                        <input type="text" id="productTarget" class="input" placeholder="예: 6억 이하 주택" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="productTargetType">대상유형 *</label>
+                        <select id="productTargetType" class="input" required>
+                            <option value="">선택하세요</option>
+                            <option value="신혼부부">신혼부부</option>
+                            <option value="생애최초">생애최초</option>
+                            <option value="청년">청년</option>
+                            <option value="일반">일반</option>
+                            <option value="다자녀">다자녀</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="productRequirements">자격요건 (줄바꿈으로 구분) *</label>
+                        <textarea id="productRequirements" class="textarea" rows="4" placeholder="예:&#10;무주택 세대주&#10;연소득 7천만원 이하&#10;부부합산 자산 3.45억원 이하" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="productNote">비고</label>
+                        <textarea id="productNote" class="textarea" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="productActive" checked>
+                            <span>활성화</span>
+                        </label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary btn-full" onclick="closeFormModal()">취소</button>
+                        <button type="submit" class="btn btn-primary btn-full">저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // State
+        let products = [];
+        let editingId = null;
+
+        // Elements
+        const productsTableBody = document.getElementById('productsTableBody');
+        const productsCards = document.getElementById('productsCards');
+        const formModal = document.getElementById('formModal');
+        const productForm = document.getElementById('productForm');
+        const formTitle = document.getElementById('formTitle');
+
+        // Load data
+        function loadData() {
+            const stored = localStorage.getItem('loan_products');
+            products = stored ? JSON.parse(stored) : [];
+            renderProducts();
+            updateStats();
+        }
+
+        // Render products
+        function renderProducts() {
+            // Table view
+            if (products.length === 0) {
+                productsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <div>등록된 대출상품이 없습니다</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                productsTableBody.innerHTML = products.map(product => `
+                    <tr>
+                        <td>
+                            <span class="status-badge ${product.active ? 'active' : 'inactive'}">
+                                ${product.active ? '활성' : '비활성'}
+                            </span>
+                        </td>
+                        <td>${product.name}</td>
+                        <td>${Format.currency(product.limit)}</td>
+                        <td>연 ${product.rate}%</td>
+                        <td>최대 ${product.ltv}%</td>
+                        <td>최대 ${product.dti}%</td>
+                        <td>${product.target}</td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-icon-small" onclick="toggleActive('${product.id}')" title="${product.active ? '비활성화' : '활성화'}">
+                                    ${product.active ? '⏸️' : '▶️'}
+                                </button>
+                                <button class="btn-icon-small" onclick="editProduct('${product.id}')" title="수정">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon-small danger" onclick="deleteProduct('${product.id}')" title="삭제">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Card view
+            if (products.length === 0) {
+                productsCards.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>등록된 대출상품이 없습니다</div>
+                    </div>
+                `;
+            } else {
+                productsCards.innerHTML = products.map(product => `
+                    <div class="product-card">
+                        <div class="product-card-header">
+                            <div>
+                                <div class="product-card-title">${product.name}</div>
+                                <span class="status-badge ${product.active ? 'active' : 'inactive'}">
+                                    ${product.active ? '활성' : '비활성'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="product-card-info">
+                            <div class="product-card-row">
+                                <span class="product-card-label">대출한도</span>
+                                <span class="product-card-value">${Format.currency(product.limit)}</span>
+                            </div>
+                            <div class="product-card-row">
+                                <span class="product-card-label">금리</span>
+                                <span class="product-card-value">연 ${product.rate}%</span>
+                            </div>
+                            <div class="product-card-row">
+                                <span class="product-card-label">LTV / DTI</span>
+                                <span class="product-card-value">최대 ${product.ltv}% / 최대 ${product.dti}%</span>
+                            </div>
+                            <div class="product-card-row">
+                                <span class="product-card-label">대상주택</span>
+                                <span class="product-card-value">${product.target}</span>
+                            </div>
+                        </div>
+                        <div class="table-actions">
+                            <button class="btn btn-secondary flex-1" onclick="toggleActive('${product.id}')">
+                                ${product.active ? '비활성화' : '활성화'}
+                            </button>
+                            <button class="btn btn-secondary flex-1" onclick="editProduct('${product.id}')">
+                                수정
+                            </button>
+                            <button class="btn btn-danger flex-1" onclick="deleteProduct('${product.id}')">
+                                삭제
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Update stats
+        function updateStats() {
+            document.getElementById('totalCount').textContent = products.length;
+            document.getElementById('activeCount').textContent = products.filter(p => p.active).length;
+            document.getElementById('inactiveCount').textContent = products.filter(p => !p.active).length;
+        }
+
+        // Open add form
+        window.openAddForm = function() {
+            editingId = null;
+            formTitle.textContent = '대출상품 추가';
+            productForm.reset();
+            document.getElementById('productActive').checked = true;
+            formModal.classList.remove('hidden');
+        };
+
+        // Edit product
+        window.editProduct = function(id) {
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            editingId = id;
+            formTitle.textContent = '대출상품 수정';
+
+            document.getElementById('productName').value = product.name;
+            document.getElementById('productLimit').value = product.limit;
+            document.getElementById('productLTV').value = product.ltv;
+            document.getElementById('productDTI').value = product.dti;
+            document.getElementById('productDSR').value = product.dsr;
+            document.getElementById('productRate').value = product.rate;
+            document.getElementById('productTarget').value = product.target;
+            document.getElementById('productTargetType').value = product.targetType;
+            document.getElementById('productRequirements').value = product.requirements.join('\n');
+            document.getElementById('productNote').value = product.note || '';
+            document.getElementById('productActive').checked = product.active;
+
+            formModal.classList.remove('hidden');
+        };
+
+        // Delete product
+        window.deleteProduct = function(id) {
+            if (!confirm('이 대출상품을 삭제하시겠습니까?')) return;
+
+            products = products.filter(p => p.id !== id);
+            localStorage.setItem('loan_products', JSON.stringify(products));
+            UI.showToast('대출상품이 삭제되었습니다', 'success');
+            renderProducts();
+            updateStats();
+        };
+
+        // Toggle active status
+        window.toggleActive = function(id) {
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            product.active = !product.active;
+            localStorage.setItem('loan_products', JSON.stringify(products));
+            UI.showToast(`대출상품이 ${product.active ? '활성화' : '비활성화'}되었습니다`, 'info');
+            renderProducts();
+            updateStats();
+        };
+
+        // Close form modal
+        window.closeFormModal = function() {
+            formModal.classList.add('hidden');
+        };
+
+        // Form submit
+        productForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const formData = {
+                name: document.getElementById('productName').value.trim(),
+                limit: parseInt(document.getElementById('productLimit').value),
+                ltv: parseInt(document.getElementById('productLTV').value),
+                dti: parseInt(document.getElementById('productDTI').value),
+                dsr: parseInt(document.getElementById('productDSR').value),
+                rate: parseFloat(document.getElementById('productRate').value),
+                target: document.getElementById('productTarget').value.trim(),
+                targetType: document.getElementById('productTargetType').value,
+                requirements: document.getElementById('productRequirements').value.trim().split('\n').filter(r => r.trim()),
+                note: document.getElementById('productNote').value.trim(),
+                active: document.getElementById('productActive').checked
+            };
+
+            if (editingId) {
+                // Update existing
+                const index = products.findIndex(p => p.id === editingId);
+                if (index !== -1) {
+                    products[index] = {
+                        ...products[index],
+                        ...formData,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+                UI.showToast('대출상품이 수정되었습니다', 'success');
+            } else {
+                // Add new
+                const newProduct = {
+                    id: 'loan_' + Date.now(),
+                    ...formData,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                products.push(newProduct);
+                UI.showToast('대출상품이 추가되었습니다', 'success');
+            }
+
+            localStorage.setItem('loan_products', JSON.stringify(products));
+            renderProducts();
+            updateStats();
+            closeFormModal();
+        });
+
+        // Modal background click to close
+        formModal.addEventListener('click', (e) => {
+            if (e.target === formModal) {
+                closeFormModal();
+            }
+        });
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>

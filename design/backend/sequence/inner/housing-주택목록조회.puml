@@ -1,0 +1,108 @@
+@startuml housing-주택목록조회
+!theme mono
+
+title Housing Service - 주택 목록 조회 내부 시퀀스 (UFR-HOUS-020)
+
+participant "HousingController" as HC
+participant "HousingService" as HS
+participant "HousingRepository" as HR
+database "Housing DB" as DB
+database "Redis Cache<<E>>" as Cache
+
+== 주택 목록 조회 ==
+
+-> HC: GET /housings\n?page=0&size=10&sort=createdAt,desc
+activate HC
+
+HC -> HC: 페이징 파라미터 검증
+note right of HC
+  검증 항목:
+  - page >= 0
+  - size (1~100)
+  - sort 필드 유효성
+end note
+
+HC -> HC: JWT에서 userId 추출
+
+HC -> HS: 주택 목록 조회 요청\n(userId, pageRequest)
+activate HS
+
+HS -> Cache: 캐시 조회 시도\nkey: "housing:list:{userId}:page:{page}"
+activate Cache
+
+alt 캐시 히트
+    Cache --> HS: 캐시된 목록 반환
+    deactivate Cache
+
+    note right of HS
+      캐시 TTL: 5분
+      자주 조회되는 목록 성능 최적화
+    end note
+
+else 캐시 미스
+    Cache --> HS: null
+    deactivate Cache
+
+    HS -> HR: 사용자별 주택 목록 조회\n(userId, pageable)
+    activate HR
+
+    HR -> DB: SELECT h.*,\n  COUNT(*) OVER() as total_count\nFROM housing h\nWHERE h.user_id = ?\nORDER BY ? ?\nLIMIT ? OFFSET ?
+    note right of DB
+      페이징 쿼리:
+      - 총 개수 계산 (COUNT OVER)
+      - 정렬 적용
+      - LIMIT/OFFSET으로 페이징
+    end note
+
+    DB --> HR: 주택 목록 + 총 개수
+    deactivate HR
+
+    HS -> HS: Page<Housing> 객체 생성
+    note right of HS
+      Spring Data의 Page 객체:
+      - content: 주택 목록
+      - totalElements: 총 개수
+      - totalPages: 총 페이지 수
+      - number: 현재 페이지
+      - size: 페이지 크기
+    end note
+
+    HS -> HS: HousingListResponse DTO 변환
+    note right of HS
+      각 주택별 요약 정보:
+      - housingId
+      - name
+      - address
+      - price
+      - moveInDate
+      - isFinal (최종목표 여부)
+      - createdAt
+    end note
+
+    HS -> Cache: 목록 캐싱 (5분)
+    activate Cache
+    Cache --> HS: 캐싱 완료
+    deactivate Cache
+end
+
+HS --> HC: Page<HousingListResponse>
+deactivate HS
+
+HC -> HC: 페이지 메타데이터 포함 응답 생성
+note right of HC
+  응답 형식:
+  {
+    content: [...],
+    page: {
+      number: 0,
+      size: 10,
+      totalElements: 25,
+      totalPages: 3
+    }
+  }
+end note
+
+HC --> : 200 OK\n(주택 목록, 페이지 정보)
+deactivate HC
+
+@enduml

@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주택 등록 - 기본정보</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: var(--spacing-xl) var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .required {
+            color: var(--error);
+        }
+
+        /* Segment Control */
+        .segment-control {
+            display: flex;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-2xs);
+            background: var(--surface);
+            border-radius: var(--radius-md);
+        }
+
+        .segment-button {
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .segment-button.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Date Picker Trigger */
+        .date-picker-trigger {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: white;
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .date-picker-trigger:hover {
+            border-color: var(--primary);
+        }
+
+        .date-picker-trigger.placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Character Counter */
+        .input-wrapper {
+            position: relative;
+        }
+
+        .char-counter {
+            position: absolute;
+            right: var(--spacing-md);
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+        }
+
+        .input-with-counter {
+            padding-right: 60px;
+        }
+
+        /* Address Field */
+        .address-display {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md);
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-top: var(--spacing-xs);
+        }
+
+        .address-text {
+            flex: 1;
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+        }
+
+        .address-text.placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .btn-change {
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        /* Price Input */
+        .price-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .price-input-wrapper input {
+            flex: 1;
+        }
+
+        .price-unit {
+            font-size: var(--font-size-md);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        /* Error Message */
+        .error-message {
+            margin-top: var(--spacing-xs);
+            font-size: var(--font-size-sm);
+            color: var(--error);
+            display: none;
+        }
+
+        .form-group.error .input,
+        .form-group.error .date-picker-trigger {
+            border-color: var(--error);
+        }
+
+        .form-group.error .error-message {
+            display: block;
+        }
+
+        /* Sticky CTA */
+        .sticky-cta {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+        }
+
+        .sticky-cta .btn {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-md);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 24px;
+        }
+
+        .modal-body {
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+        }
+
+        /* Date Picker Modal */
+        .date-picker-content {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .date-select {
+            flex: 1;
+        }
+
+        .date-select label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .date-select select {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+        }
+
+        /* Address Search Modal */
+        .search-field {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .search-field input {
+            flex: 1;
+        }
+
+        .address-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .address-item {
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .address-item:hover {
+            border-color: var(--primary);
+            background: var(--background);
+        }
+
+        .address-road {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-2xs);
+        }
+
+        .address-jibun {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-tertiary);
+        }
+
+        @media (min-width: 768px) {
+            .sticky-cta {
+                padding: var(--spacing-lg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title">주택 등록</h1>
+        <div class="header-actions">
+            <span class="progress-indicator">1/2</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <form id="housingForm" class="form" novalidate>
+            <!-- 기본정보 섹션 -->
+            <section class="form-section">
+                <h2 class="section-title">기본정보</h2>
+
+                <!-- 주택유형 -->
+                <div class="form-group">
+                    <label class="form-label">주택유형 <span class="required">*</span></label>
+                    <div class="segment-control" role="radiogroup" aria-label="주택유형 선택">
+                        <button
+                            type="button"
+                            class="segment-item"
+                            data-value="매매"
+                            role="radio"
+                            aria-checked="false">
+                            매매
+                        </button>
+                        <button
+                            type="button"
+                            class="segment-item"
+                            data-value="전세"
+                            role="radio"
+                            aria-checked="false">
+                            전세
+                        </button>
+                        <button
+                            type="button"
+                            class="segment-item"
+                            data-value="월세"
+                            role="radio"
+                            aria-checked="false">
+                            월세
+                        </button>
+                    </div>
+                    <input type="hidden" id="housingType" name="housingType">
+                    <div id="housingType-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 입주희망년월 -->
+                <div class="form-group">
+                    <label for="moveInDate" class="form-label">입주희망년월 <span class="required">*</span></label>
+                    <button
+                        type="button"
+                        class="date-picker-trigger placeholder"
+                        id="moveInDateTrigger"
+                        aria-label="입주희망년월 선택">
+                        YYYY년 MM월
+                    </button>
+                    <input type="hidden" id="moveInDate" name="moveInDate">
+                    <div id="moveInDate-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 주택이름 -->
+                <div class="form-group">
+                    <label for="housingName" class="form-label">주택이름 <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            id="housingName"
+                            name="housingName"
+                            class="form-input input-with-counter"
+                            placeholder="예: 반포자이"
+                            maxlength="50"
+                            aria-describedby="nameCounter">
+                        <span class="char-counter" id="nameCounter">0/50</span>
+                    </div>
+                    <div id="housingName-error" class="error-message" role="alert"></div>
+                </div>
+            </section>
+
+            <!-- 위치정보 섹션 -->
+            <section class="form-section">
+                <h2 class="section-title">위치정보</h2>
+
+                <!-- 위치 -->
+                <div class="form-group">
+                    <label for="address" class="form-label">위치 <span class="required">*</span></label>
+                    <input
+                        type="text"
+                        id="address"
+                        name="address"
+                        class="form-input"
+                        placeholder="예: 서울시 서초구 반포동"
+                        maxlength="200"
+                        aria-describedby="address-error">
+                    <div id="address-error" class="error-message" role="alert"></div>
+                </div>
+            </section>
+
+            <!-- 상세정보 섹션 -->
+            <section class="form-section">
+                <h2 class="section-title">상세정보</h2>
+
+                <!-- 준공년월 -->
+                <div class="form-group">
+                    <label for="completionDate" class="form-label">준공년월 <span class="required">*</span></label>
+                    <button
+                        type="button"
+                        class="date-picker-trigger placeholder"
+                        id="completionDateTrigger"
+                        aria-label="준공년월 선택">
+                        YYYY년 MM월
+                    </button>
+                    <input type="hidden" id="completionDate" name="completionDate">
+                    <div id="completionDate-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 가격 -->
+                <div class="form-group">
+                    <label for="price" class="form-label">가격 <span class="required">*</span></label>
+                    <div class="price-input-wrapper">
+                        <input
+                            type="text"
+                            id="price"
+                            name="price"
+                            class="form-input"
+                            placeholder="0"
+                            inputmode="numeric"
+                            pattern="[0-9,]*"
+                            aria-describedby="price-error">
+                        <span class="price-unit">원</span>
+                    </div>
+                    <div id="price-error" class="error-message" role="alert"></div>
+                </div>
+
+                <!-- 타입 -->
+                <div class="form-group">
+                    <label for="housingType2" class="form-label">타입 <span class="required">*</span></label>
+                    <input
+                        type="text"
+                        id="housingType2"
+                        name="housingType2"
+                        class="form-input"
+                        placeholder="예: 84㎡, 32평"
+                        maxlength="20"
+                        aria-describedby="housingType2-error">
+                    <div id="housingType2-error" class="error-message" role="alert"></div>
+                </div>
+            </section>
+
+            <!-- 다음 버튼 -->
+            <button
+                type="submit"
+                class="btn btn-primary btn-full sticky-bottom"
+                id="nextBtn"
+                disabled>
+                다음
+            </button>
+        </form>
+    </main>
+
+    <!-- Sticky CTA -->
+    <div class="sticky-cta">
+        <button
+            type="button"
+            class="btn btn-primary"
+            id="nextBtn"
+            disabled
+            title="모든 필수 항목을 입력해주세요">
+            다음
+        </button>
+    </div>
+
+    <!-- Date Picker Modal -->
+    <div class="modal" id="datePickerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="datePickerTitle">날짜 선택</h2>
+                <button class="modal-close" id="closeDatePicker" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="date-picker-content">
+                    <div class="date-select">
+                        <label for="yearSelect">년도</label>
+                        <select id="yearSelect" aria-label="년도 선택"></select>
+                    </div>
+                    <div class="date-select">
+                        <label for="monthSelect">월</label>
+                        <select id="monthSelect" aria-label="월 선택">
+                            <option value="01">1월</option>
+                            <option value="02">2월</option>
+                            <option value="03">3월</option>
+                            <option value="04">4월</option>
+                            <option value="05">5월</option>
+                            <option value="06">6월</option>
+                            <option value="07">7월</option>
+                            <option value="08">8월</option>
+                            <option value="09">9월</option>
+                            <option value="10">10월</option>
+                            <option value="11">11월</option>
+                            <option value="12">12월</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary" id="confirmDate" style="width: 100%;">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Address Search Modal -->
+    <div class="modal" id="addressModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">주소 검색</h2>
+                <button class="modal-close" id="closeAddressModal" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-field">
+                    <input
+                        type="text"
+                        id="addressSearchInput"
+                        class="input"
+                        placeholder="도로명, 지번, 건물명 검색"
+                        aria-label="주소 검색">
+                    <button type="button" class="btn btn-primary" id="searchBtn">검색</button>
+                </div>
+                <div class="address-list" id="addressList">
+                    <div class="empty-state">
+                        주소를 검색해주세요
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // Validation state
+        const validationState = {
+            housingType: false,
+            moveInDate: false,
+            housingName: false,
+            address: false,
+            completionDate: false,
+            price: false,
+            housingType2: false
+        };
+
+        // Sample address data
+        const sampleAddresses = [
+            {
+                roadAddress: '서울특별시 서초구 반포대로 58',
+                jibunAddress: '서울특별시 서초구 반포동 19-3'
+            },
+            {
+                roadAddress: '서울특별시 강남구 테헤란로 152',
+                jibunAddress: '서울특별시 강남구 역삼동 737-20'
+            },
+            {
+                roadAddress: '서울특별시 송파구 올림픽로 300',
+                jibunAddress: '서울특별시 송파구 신천동 7-29'
+            },
+            {
+                roadAddress: '경기도 성남시 분당구 판교역로 152',
+                jibunAddress: '경기도 성남시 분당구 삼평동 681'
+            },
+            {
+                roadAddress: '서울특별시 마포구 월드컵북로 396',
+                jibunAddress: '서울특별시 마포구 상암동 1595'
+            }
+        ];
+
+        // Initialize year options for date picker
+        const yearSelect = document.getElementById('yearSelect');
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year <= currentYear + 10; year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year + '년';
+            yearSelect.appendChild(option);
+        }
+
+        // Housing Type Segment Control
+        const housingTypeButtons = document.querySelectorAll('.segment-control .segment-button');
+        const housingTypeInput = document.getElementById('housingType');
+
+        housingTypeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                housingTypeButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-checked', 'false');
+                });
+                button.classList.add('active');
+                button.setAttribute('aria-checked', 'true');
+                housingTypeInput.value = button.dataset.value;
+                validationState.housingType = true;
+                button.closest('.form-group').classList.remove('error');
+                updateSubmitButton();
+            });
+        });
+
+        // Date Picker
+        let currentDateField = null;
+        const datePickerModal = document.getElementById('datePickerModal');
+        const datePickerTitle = document.getElementById('datePickerTitle');
+        const moveInDateTrigger = document.getElementById('moveInDateTrigger');
+        const completionDateTrigger = document.getElementById('completionDateTrigger');
+        const closeDatePicker = document.getElementById('closeDatePicker');
+        const confirmDate = document.getElementById('confirmDate');
+
+        function openDatePicker(fieldId, title) {
+            currentDateField = fieldId;
+            datePickerTitle.textContent = title;
+            datePickerModal.classList.add('active');
+        }
+
+        moveInDateTrigger.addEventListener('click', () => {
+            openDatePicker('moveInDate', '입주희망년월 선택');
+        });
+
+        completionDateTrigger.addEventListener('click', () => {
+            openDatePicker('completionDate', '준공년월 선택');
+        });
+
+        closeDatePicker.addEventListener('click', () => {
+            datePickerModal.classList.remove('active');
+        });
+
+        confirmDate.addEventListener('click', () => {
+            const year = yearSelect.value;
+            const month = document.getElementById('monthSelect').value;
+            const dateValue = `${year}-${month}`;
+            const displayValue = `${year}년 ${parseInt(month)}월`;
+
+            if (currentDateField === 'moveInDate') {
+                document.getElementById('moveInDate').value = dateValue;
+                moveInDateTrigger.textContent = displayValue;
+                moveInDateTrigger.classList.remove('placeholder');
+                validationState.moveInDate = true;
+                moveInDateTrigger.closest('.form-group').classList.remove('error');
+            } else if (currentDateField === 'completionDate') {
+                document.getElementById('completionDate').value = dateValue;
+                completionDateTrigger.textContent = displayValue;
+                completionDateTrigger.classList.remove('placeholder');
+                validationState.completionDate = true;
+                completionDateTrigger.closest('.form-group').classList.remove('error');
+            }
+
+            datePickerModal.classList.remove('active');
+            updateSubmitButton();
+        });
+
+        // Housing Name with character counter
+        const housingNameInput = document.getElementById('housingName');
+        const nameCounter = document.getElementById('nameCounter');
+
+        housingNameInput.addEventListener('input', () => {
+            const length = housingNameInput.value.length;
+            nameCounter.textContent = `${length}/50`;
+            validationState.housingName = length > 0;
+            if (length > 0) {
+                housingNameInput.closest('.form-group').classList.remove('error');
+            }
+            updateSubmitButton();
+        });
+
+        housingNameInput.addEventListener('blur', () => {
+            if (!validationState.housingName) {
+                housingNameInput.closest('.form-group').classList.add('error');
+            }
+        });
+
+        // Address Input
+        const addressInput = document.getElementById('address');
+
+        addressInput.addEventListener('input', () => {
+            validationState.address = addressInput.value.trim().length > 0;
+            if (validationState.address) {
+                addressInput.closest('.form-group').classList.remove('error');
+            }
+            updateSubmitButton();
+        });
+
+        addressInput.addEventListener('blur', () => {
+            if (!validationState.address) {
+                addressInput.closest('.form-group').classList.add('error');
+            }
+        });
+
+        // Price input with comma formatting
+        const priceInput = document.getElementById('price');
+
+        priceInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/,/g, '');
+            if (!/^\d*$/.test(value)) {
+                value = value.replace(/\D/g, '');
+            }
+            e.target.value = Utils.formatCurrency(parseInt(value) || 0);
+            validationState.price = value.length > 0;
+            if (value.length > 0) {
+                priceInput.closest('.form-group').classList.remove('error');
+            }
+            updateSubmitButton();
+        });
+
+        priceInput.addEventListener('blur', () => {
+            if (!validationState.price) {
+                priceInput.closest('.form-group').classList.add('error');
+            }
+        });
+
+        // Housing Type 2
+        const housingType2Input = document.getElementById('housingType2');
+
+        housingType2Input.addEventListener('input', () => {
+            validationState.housingType2 = housingType2Input.value.trim().length > 0;
+            if (validationState.housingType2) {
+                housingType2Input.closest('.form-group').classList.remove('error');
+            }
+            updateSubmitButton();
+        });
+
+        housingType2Input.addEventListener('blur', () => {
+            if (!validationState.housingType2) {
+                housingType2Input.closest('.form-group').classList.add('error');
+            }
+        });
+
+        // Update submit button state
+        const nextBtn = document.getElementById('nextBtn');
+
+        function updateSubmitButton() {
+            const allValid = Object.values(validationState).every(v => v === true);
+            nextBtn.disabled = !allValid;
+            if (allValid) {
+                nextBtn.removeAttribute('title');
+            } else {
+                nextBtn.setAttribute('title', '모든 필수 항목을 입력해주세요');
+            }
+        }
+
+        // Next button
+        nextBtn.addEventListener('click', () => {
+            if (!nextBtn.disabled) {
+                // Save data to localStorage
+                const formData = {
+                    housingType: housingTypeInput.value,
+                    moveInDate: document.getElementById('moveInDate').value,
+                    housingName: housingNameInput.value,
+                    address: addressInput.value,
+                    completionDate: document.getElementById('completionDate').value,
+                    price: priceInput.value.replace(/,/g, ''),
+                    housingType2: housingType2Input.value
+                };
+
+                Storage.setItem('housing_basic_info', formData);
+                UI.showToast('기본정보가 저장되었습니다', 'success');
+
+                setTimeout(() => {
+                    window.location.href = '12-입주희망주택입력-상세정보.html';
+                }, 1000);
+            }
+        });
+
+        // Close modals on backdrop click
+        datePickerModal.addEventListener('click', (e) => {
+            if (e.target === datePickerModal) {
+                datePickerModal.classList.remove('active');
+            }
+        });
+
+        // Load saved data if exists
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedData = Storage.getItem('housing_basic_info');
+            if (savedData) {
+                // Restore form data
+                if (savedData.housingType) {
+                    const button = Array.from(housingTypeButtons).find(btn => btn.dataset.value === savedData.housingType);
+                    if (button) {
+                        button.click();
+                    }
+                }
+                if (savedData.moveInDate) {
+                    const [year, month] = savedData.moveInDate.split('-');
+                    document.getElementById('moveInDate').value = savedData.moveInDate;
+                    moveInDateTrigger.textContent = `${year}년 ${parseInt(month)}월`;
+                    moveInDateTrigger.classList.remove('placeholder');
+                    validationState.moveInDate = true;
+                }
+                if (savedData.housingName) {
+                    housingNameInput.value = savedData.housingName;
+                    nameCounter.textContent = `${savedData.housingName.length}/50`;
+                    validationState.housingName = true;
+                }
+                if (savedData.address) {
+                    addressInput.value = savedData.address;
+                    validationState.address = true;
+                }
+                if (savedData.completionDate) {
+                    const [year, month] = savedData.completionDate.split('-');
+                    document.getElementById('completionDate').value = savedData.completionDate;
+                    completionDateTrigger.textContent = `${year}년 ${parseInt(month)}월`;
+                    completionDateTrigger.classList.remove('placeholder');
+                    validationState.completionDate = true;
+                }
+                if (savedData.price) {
+                    priceInput.value = Utils.formatCurrency(parseInt(savedData.price));
+                    validationState.price = true;
+                }
+                if (savedData.housingType2) {
+                    housingType2Input.value = savedData.housingType2;
+                    validationState.housingType2 = true;
+                }
+                updateSubmitButton();
+            }
+        });
+    </script>
+</body>
+</html>

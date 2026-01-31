@@ -1,0 +1,163 @@
+@startuml housing-erd
+!theme mono
+
+' Housing Service ERD
+title Housing Service - Entity Relationship Diagram
+
+skinparam linetype ortho
+skinparam roundcorner 10
+
+' ============================================
+' Entity Definitions
+' ============================================
+
+entity "housings" as housing {
+  * **housing_id : BIGSERIAL** <<PK>>
+  --
+  * user_id : VARCHAR(100)
+  * housing_name : VARCHAR(200)
+  * housing_type : VARCHAR(50)
+  * price : DECIMAL(15,0)
+  --
+  move_in_date : VARCHAR(7)
+  completion_date : DATE
+  --
+  * full_address : TEXT
+  road_address : TEXT
+  jibun_address : TEXT
+  latitude : DECIMAL(10,7)
+  longitude : DECIMAL(11,7)
+  --
+  complex_info : JSONB
+  living_environment : JSONB
+  --
+  * is_goal : BOOLEAN = false
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+entity "transportations" as transportation {
+  * **transportation_id : BIGSERIAL** <<PK>>
+  --
+  * housing_id : BIGINT <<FK>>
+  --
+  * transport_type : VARCHAR(50)
+  line_name : VARCHAR(100)
+  * station_name : VARCHAR(200)
+  distance : DECIMAL(6,2)
+  walking_time : INTEGER
+  --
+  * created_at : TIMESTAMP
+}
+
+entity "commute_times" as commute {
+  * **commute_time_id : BIGSERIAL** <<PK>>
+  --
+  * transportation_id : BIGINT <<FK>>
+  --
+  self_before_9am : INTEGER
+  self_after_6pm : INTEGER
+  spouse_before_9am : INTEGER
+  spouse_after_6pm : INTEGER
+  --
+  * created_at : TIMESTAMP
+}
+
+' ============================================
+' Relationships
+' ============================================
+
+housing ||--o{ transportation : "has"
+transportation ||--|| commute : "has"
+
+' ============================================
+' Notes
+' ============================================
+
+note right of housing
+  **주택 정보**
+  - 사용자별 주택 관리
+  - 최종목표 주택 플래그
+  - 주소 및 좌표 정보
+  - JSONB로 복잡한 정보 저장
+
+  **제약조건**
+  - housing_type: APARTMENT|OFFICETEL|VILLA|HOUSE
+  - price > 0
+  - 사용자당 is_goal=true는 1개만
+
+  **인덱스**
+  - (user_id)
+  - (user_id, is_goal)
+  - (latitude, longitude)
+end note
+
+note right of transportation
+  **교통호재 정보**
+  - 주택별 여러 교통호재 등록 가능
+  - 지하철, 버스, 기차 등
+
+  **제약조건**
+  - transport_type: SUBWAY|BUS|TRAIN
+  - distance >= 0
+  - walking_time >= 0
+  - CASCADE DELETE (housing 삭제 시)
+
+  **인덱스**
+  - (housing_id)
+end note
+
+note right of commute
+  **출퇴근 시간 정보**
+  - 교통호재당 1개의 출퇴근시간
+  - 본인/배우자 출퇴근 시간
+  - 9시 이전 출근 / 18시 이후 퇴근
+
+  **제약조건**
+  - 모든 시간 >= 0
+  - transportation_id UNIQUE
+  - CASCADE DELETE (transportation 삭제 시)
+end note
+
+note bottom of housing
+  **JSON 구조**
+
+  complex_info:
+  {
+    "complexName": "단지명",
+    "totalHouseholds": 1000,
+    "totalDong": 10,
+    "totalFloors": 20,
+    "parkingCount": 500,
+    "moveInDate": "2024-03",
+    "constructionCompany": "건설사",
+    "houseArea": 84.5,
+    "exclusiveArea": 59.8,
+    "floor": 10,
+    "direction": "남향"
+  }
+
+  living_environment:
+  {
+    "sunlightLevel": "VERY_GOOD",
+    "noiseLevel": "QUIET",
+    "nearbySchools": ["초등학교", "중학교"],
+    "nearbyMarts": ["마트1", "마트2"],
+    "nearbyHospitals": ["병원1"]
+  }
+end note
+
+' ============================================
+' Legend
+' ============================================
+
+legend right
+  |= Symbol |= Meaning |
+  | **PK** | Primary Key |
+  | **FK** | Foreign Key |
+  | * | NOT NULL |
+  | ||--o{ | One to Many |
+  | ||--|| | One to One |
+endlegend
+
+@enduml

@@ -1,0 +1,154 @@
+@startuml roadmap-erd
+!theme mono
+
+' Roadmap Service ERD
+' 작성일: 2025-12-29
+
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 60
+
+' 외부 참조 엔티티 (User 서비스)
+entity "Users\n(외부 서비스)" as users {
+  * id : VARCHAR(36) <<PK>>
+  --
+  username : VARCHAR(50)
+  email : VARCHAR(100)
+}
+
+' 생애주기 이벤트
+entity "lifecycle_events" as lifecycle_events {
+  * id : VARCHAR(36) <<PK>>
+  --
+  * user_id : VARCHAR(36) <<FK>>
+  * name : VARCHAR(100)
+  * event_type : VARCHAR(20)
+  * event_date : VARCHAR(7)
+  housing_criteria : VARCHAR(200)
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' 로드맵
+entity "roadmaps" as roadmaps {
+  * id : VARCHAR(36) <<PK>>
+  --
+  * user_id : VARCHAR(36) <<FK>>
+  * version : INT
+  * status : VARCHAR(20)
+  * task_id : VARCHAR(36) <<FK>>
+  * final_housing_id : VARCHAR(36)
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' 로드맵 단계
+entity "roadmap_stages" as roadmap_stages {
+  * id : VARCHAR(36) <<PK>>
+  --
+  * roadmap_id : VARCHAR(36) <<FK>>
+  * stage_number : INT
+  * stage_name : VARCHAR(100)
+  * move_in_date : VARCHAR(7)
+  * duration : INT
+  * estimated_price : BIGINT
+  * location : VARCHAR(200)
+  * type : VARCHAR(50)
+  features : TEXT
+  * target_savings : BIGINT
+  * monthly_savings : BIGINT
+  loan_amount : BIGINT
+  loan_product : VARCHAR(100)
+  * strategy : TEXT
+  tips : TEXT
+}
+
+' 실행 가이드
+entity "execution_guides" as execution_guides {
+  * id : VARCHAR(36) <<PK>>
+  --
+  * roadmap_id : VARCHAR(36) <<FK>>
+  * monthly_savings_plan : TEXT
+  warnings : TEXT
+  tips : TEXT
+}
+
+' 비동기 작업 추적
+entity "roadmap_tasks" as roadmap_tasks {
+  * id : VARCHAR(36) <<PK>>
+  --
+  * user_id : VARCHAR(36) <<FK>>
+  * status : VARCHAR(20)
+  * progress : INT
+  message : VARCHAR(200)
+  roadmap_id : VARCHAR(36) <<FK>>
+  error_message : TEXT
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+  completed_at : TIMESTAMP
+}
+
+' 관계 정의
+users ||--o{ lifecycle_events : "소유"
+users ||--o{ roadmaps : "소유\n(최대 3개 버전)"
+users ||--o{ roadmap_tasks : "요청"
+
+roadmaps ||--|{ roadmap_stages : "포함\n(1~5개 단계)"
+roadmaps ||--|| execution_guides : "포함"
+roadmaps }o--|| roadmap_tasks : "생성된 작업"
+
+' 노트
+note right of roadmaps
+  **버전 관리**
+  - 사용자당 최대 3개 버전
+  - 4번째 생성 시 가장 오래된 버전 삭제
+  - version: 1부터 순차 증가
+
+  **상태 (status)**
+  - PROCESSING: 생성 중
+  - COMPLETED: 완료
+  - FAILED: 실패
+end note
+
+note right of lifecycle_events
+  **이벤트 유형 (event_type)**
+  - MARRIAGE: 결혼
+  - BIRTH: 출산
+  - CHILD_EDUCATION: 자녀교육
+  - RETIREMENT: 은퇴
+  - OTHER: 기타
+
+  **날짜 형식**
+  - event_date: yyyy-MM
+end note
+
+note right of roadmap_tasks
+  **작업 상태 (status)**
+  - PENDING: 대기
+  - PROCESSING: 처리 중
+  - COMPLETED: 완료
+  - FAILED: 실패
+
+  **진행률 (progress)**
+  - 0~100 (%)
+end note
+
+note left of roadmap_stages
+  **JSON 필드**
+  - features: 주택 특징 배열
+  - tips: 팁 배열
+
+  **순서 보장**
+  - stage_number로 정렬
+  - 1부터 순차 증가
+end note
+
+note left of execution_guides
+  **JSON 필드**
+  - monthly_savings_plan:
+    월별 저축 플랜 배열
+  - warnings: 주의사항 배열
+  - tips: 팁 배열
+end note
+
+@enduml

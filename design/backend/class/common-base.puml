@@ -1,0 +1,201 @@
+@startuml common-base
+!theme mono
+
+' ========================================
+' 공통 기본 컴포넌트 설계
+' Package: com.dwj.homestarter.common
+' ========================================
+
+package "com.dwj.homestarter.common" {
+
+    ' ===== Exception =====
+    package "exception" {
+        enum ErrorCode {
+            + INVALID_INPUT_VALUE
+            + UNAUTHORIZED
+            + FORBIDDEN
+            + NOT_FOUND
+            + DUPLICATE_RESOURCE
+            + INTERNAL_SERVER_ERROR
+            + EXTERNAL_API_ERROR
+            --
+            - code: String
+            - message: String
+            --
+            + getCode(): String
+            + getMessage(): String
+        }
+
+        class BusinessException {
+            - errorCode: ErrorCode
+            - detail: String
+            --
+            + BusinessException(errorCode: ErrorCode)
+            + BusinessException(errorCode: ErrorCode, detail: String)
+            + getErrorCode(): ErrorCode
+            + getDetail(): String
+        }
+
+        class InfraException {
+            - errorCode: ErrorCode
+            - detail: String
+            --
+            + InfraException(errorCode: ErrorCode)
+            + InfraException(errorCode: ErrorCode, detail: String)
+            + getErrorCode(): ErrorCode
+            + getDetail(): String
+        }
+
+        BusinessException --> ErrorCode
+        InfraException --> ErrorCode
+    }
+
+    ' ===== DTO =====
+    package "dto" {
+        class ApiResponse<T> {
+            - success: boolean
+            - data: T
+            - errorCode: String
+            - errorMessage: String
+            --
+            + success(data: T): ApiResponse<T>
+            + error(errorCode: String, message: String): ApiResponse<T>
+        }
+
+        class PageRequest {
+            - page: int
+            - size: int
+            - sort: String
+            --
+            + getPage(): int
+            + getSize(): int
+            + getSort(): String
+        }
+
+        class PageResponse<T> {
+            - content: List<T>
+            - totalElements: long
+            - totalPages: int
+            - currentPage: int
+            - size: int
+            --
+            + getContent(): List<T>
+            + getTotalElements(): long
+            + getTotalPages(): int
+            + getCurrentPage(): int
+            + getSize(): int
+        }
+
+        class JwtTokenDTO {
+            - accessToken: String
+            - refreshToken: String
+            - tokenType: String
+            - expiresIn: long
+            --
+            + getAccessToken(): String
+            + getRefreshToken(): String
+            + getTokenType(): String
+            + getExpiresIn(): long
+        }
+    }
+
+    ' ===== Entity =====
+    package "entity" {
+        abstract class BaseTimeEntity {
+            - createdAt: LocalDateTime
+            - updatedAt: LocalDateTime
+            --
+            # onCreate(): void
+            # onUpdate(): void
+        }
+    }
+
+    ' ===== Config =====
+    package "config" {
+        class JpaConfig {
+            + entityManagerFactory(): LocalContainerEntityManagerFactoryBean
+            + transactionManager(): PlatformTransactionManager
+        }
+
+        class RedisConfig {
+            - host: String
+            - port: int
+            --
+            + redisConnectionFactory(): RedisConnectionFactory
+            + redisTemplate(): RedisTemplate<String, Object>
+        }
+
+        class SecurityConfig {
+            + securityFilterChain(http: HttpSecurity): SecurityFilterChain
+            + passwordEncoder(): PasswordEncoder
+            + authenticationManager(): AuthenticationManager
+        }
+
+        class SwaggerConfig {
+            + openAPI(): OpenAPI
+        }
+
+        package "jwt" {
+            class JwtTokenProvider {
+                - secretKey: String
+                - accessTokenExpiration: long
+                - refreshTokenExpiration: long
+                --
+                + generateAccessToken(userId: Long, email: String): String
+                + generateRefreshToken(userId: Long): String
+                + validateToken(token: String): boolean
+                + getUserIdFromToken(token: String): Long
+                + getEmailFromToken(token: String): String
+            }
+
+            class JwtAuthenticationFilter {
+                - jwtTokenProvider: JwtTokenProvider
+                --
+                # doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain): void
+                - resolveToken(request: HttpServletRequest): String
+            }
+
+            class CustomUserDetailsService {
+                + loadUserByUsername(username: String): UserDetails
+            }
+
+            JwtAuthenticationFilter --> JwtTokenProvider
+        }
+    }
+
+    ' ===== Util =====
+    package "util" {
+        class DateUtil {
+            + {static} now(): LocalDateTime
+            + {static} toLocalDate(date: Date): LocalDate
+            + {static} toDate(localDate: LocalDate): Date
+            + {static} formatDate(date: LocalDateTime, pattern: String): String
+            + {static} parseDate(dateStr: String, pattern: String): LocalDateTime
+        }
+
+        class ValidationUtil {
+            + {static} validateEmail(email: String): boolean
+            + {static} validatePhoneNumber(phone: String): boolean
+            + {static} validatePassword(password: String): boolean
+            + {static} isNotEmpty(value: String): boolean
+        }
+
+        class EncryptUtil {
+            + {static} encrypt(data: String, key: String): String
+            + {static} decrypt(encryptedData: String, key: String): String
+            + {static} hash(data: String): String
+        }
+    }
+
+    ' ===== AOP =====
+    package "aop" {
+        class LoggingAspect {
+            + logBefore(joinPoint: JoinPoint): void
+            + logAfter(joinPoint: JoinPoint): void
+            + logAfterReturning(joinPoint: JoinPoint, result: Object): void
+            + logAfterThrowing(joinPoint: JoinPoint, error: Throwable): void
+        }
+    }
+}
+
+@enduml

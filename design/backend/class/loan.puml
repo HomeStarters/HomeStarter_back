@@ -1,0 +1,398 @@
+@startuml loan
+!theme mono
+
+title Loan Service - Class Design (Layered Architecture)
+
+' ========================================
+' Controller Layer
+' ========================================
+package "com.dwj.homestarter.loan.controller" {
+    class LoanProductController {
+        - loanProductService: LoanProductService
+        --
+        + getLoanProducts(housingType: String, sortBy: String, sortOrder: String, keyword: String, page: int, size: int): ResponseEntity<LoanProductListResponse>
+        + getLoanProductDetail(id: Long): ResponseEntity<LoanProductResponse>
+        --
+        «constructor»
+        + LoanProductController(loanProductService: LoanProductService)
+    }
+
+    class LoanProductAdminController {
+        - loanProductService: LoanProductService
+        - authorizationService: AuthorizationService
+        --
+        + createLoanProduct(request: CreateLoanProductRequest): ResponseEntity<LoanProductResponse>
+        + updateLoanProduct(id: Long, request: UpdateLoanProductRequest): ResponseEntity<LoanProductResponse>
+        + deleteLoanProduct(id: Long): ResponseEntity<ApiResponse>
+        --
+        «constructor»
+        + LoanProductAdminController(loanProductService: LoanProductService, authorizationService: AuthorizationService)
+    }
+}
+
+' ========================================
+' Service Layer
+' ========================================
+package "com.dwj.homestarter.loan.service" {
+    class LoanProductService {
+        - loanProductRepository: LoanProductRepository
+        - cacheService: CacheService
+        --
+        + getLoanProducts(housingType: String, sortBy: String, sortOrder: String, keyword: String, page: int, size: int): LoanProductListResponse
+        + getLoanProductById(id: Long): LoanProductResponse
+        + createLoanProduct(request: CreateLoanProductRequest): LoanProductResponse
+        + updateLoanProduct(id: Long, request: UpdateLoanProductRequest): LoanProductResponse
+        + deleteLoanProduct(id: Long): void
+        - validateLoanProductData(request: CreateLoanProductRequest): void
+        - validateLoanProductData(request: UpdateLoanProductRequest): void
+        - generateCacheKey(filters: Map<String, Object>): String
+        - invalidateListCache(): void
+        - invalidateProductCache(id: Long): void
+        --
+        «constructor»
+        + LoanProductService(loanProductRepository: LoanProductRepository, cacheService: CacheService)
+    }
+
+    class AuthorizationService {
+        --
+        + verifyToken(token: String): UserInfo
+        + checkAdminRole(userInfo: UserInfo): boolean
+        --
+        «constructor»
+        + AuthorizationService()
+    }
+
+    class CacheService {
+        --
+        + get(key: String): Object
+        + set(key: String, value: Object, ttl: long): void
+        + delete(key: String): void
+        + deletePattern(pattern: String): void
+        --
+        «constructor»
+        + CacheService()
+    }
+}
+
+' ========================================
+' Domain Layer (Entity)
+' ========================================
+package "com.dwj.homestarter.loan.domain" {
+    class LoanProduct {
+        - id: Long
+        - name: String
+        - loanLimit: Long
+        - ltvLimit: Double
+        - dtiLimit: Double
+        - dsrLimit: Double
+        - interestRate: Double
+        - targetHousing: String
+        - incomeRequirement: String
+        - applicantRequirement: String
+        - remarks: String
+        - active: boolean
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        --
+        + getId(): Long
+        + getName(): String
+        + getLoanLimit(): Long
+        + getLtvLimit(): Double
+        + getDtiLimit(): Double
+        + getDsrLimit(): Double
+        + getInterestRate(): Double
+        + getTargetHousing(): String
+        + getIncomeRequirement(): String
+        + getApplicantRequirement(): String
+        + getRemarks(): String
+        + isActive(): boolean
+        + getCreatedAt(): LocalDateTime
+        + getUpdatedAt(): LocalDateTime
+        + setName(name: String): void
+        + setLoanLimit(loanLimit: Long): void
+        + setLtvLimit(ltvLimit: Double): void
+        + setDtiLimit(dtiLimit: Double): void
+        + setDsrLimit(dsrLimit: Double): void
+        + setInterestRate(interestRate: Double): void
+        + setTargetHousing(targetHousing: String): void
+        + setIncomeRequirement(incomeRequirement: String): void
+        + setApplicantRequirement(applicantRequirement: String): void
+        + setRemarks(remarks: String): void
+        + setActive(active: boolean): void
+        + setUpdatedAt(updatedAt: LocalDateTime): void
+        --
+        «JPA Entity»
+        «Table» loan_products
+    }
+}
+
+' ========================================
+' Repository Layer
+' ========================================
+package "com.dwj.homestarter.loan.repository" {
+    interface LoanProductRepository {
+        + findAll(pageable: Pageable): Page<LoanProduct>
+        + findById(id: Long): Optional<LoanProduct>
+        + findByActiveTrue(pageable: Pageable): Page<LoanProduct>
+        + findByActiveTrueAndTargetHousingContaining(targetHousing: String, pageable: Pageable): Page<LoanProduct>
+        + findByActiveTrueAndNameContainingOrTargetHousingContaining(name: String, targetHousing: String, pageable: Pageable): Page<LoanProduct>
+        + save(loanProduct: LoanProduct): LoanProduct
+        + deleteById(id: Long): void
+        + existsById(id: Long): boolean
+        + countByActiveTrue(): long
+        --
+        «interface»
+        «extends» JpaRepository<LoanProduct, Long>
+    }
+}
+
+' ========================================
+' DTO Layer
+' ========================================
+package "com.dwj.homestarter.loan.dto" {
+    class LoanProductListResponse {
+        - success: boolean
+        - data: LoanProductListData
+        - message: String
+        --
+        + getSuccess(): boolean
+        + getData(): LoanProductListData
+        + getMessage(): String
+        --
+        «DTO»
+    }
+
+    class LoanProductListData {
+        - content: List<LoanProductDTO>
+        - pageable: PageInfo
+        --
+        + getContent(): List<LoanProductDTO>
+        + getPageable(): PageInfo
+        --
+        «DTO»
+    }
+
+    class LoanProductResponse {
+        - success: boolean
+        - data: LoanProductDTO
+        - message: String
+        --
+        + getSuccess(): boolean
+        + getData(): LoanProductDTO
+        + getMessage(): String
+        --
+        «DTO»
+    }
+
+    class LoanProductDTO {
+        - id: Long
+        - name: String
+        - loanLimit: Long
+        - ltvLimit: Double
+        - dtiLimit: Double
+        - dsrLimit: Double
+        - interestRate: Double
+        - targetHousing: String
+        - incomeRequirement: String
+        - applicantRequirement: String
+        - remarks: String
+        - active: boolean
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        --
+        + getId(): Long
+        + getName(): String
+        + getLoanLimit(): Long
+        + getLtvLimit(): Double
+        + getDtiLimit(): Double
+        + getDsrLimit(): Double
+        + getInterestRate(): Double
+        + getTargetHousing(): String
+        + getIncomeRequirement(): String
+        + getApplicantRequirement(): String
+        + getRemarks(): String
+        + isActive(): boolean
+        + getCreatedAt(): LocalDateTime
+        + getUpdatedAt(): LocalDateTime
+        + from(loanProduct: LoanProduct): LoanProductDTO {static}
+        --
+        «DTO»
+    }
+
+    class CreateLoanProductRequest {
+        - name: String
+        - loanLimit: Long
+        - ltvLimit: Double
+        - dtiLimit: Double
+        - dsrLimit: Double
+        - interestRate: Double
+        - targetHousing: String
+        - incomeRequirement: String
+        - applicantRequirement: String
+        - remarks: String
+        --
+        + getName(): String
+        + getLoanLimit(): Long
+        + getLtvLimit(): Double
+        + getDtiLimit(): Double
+        + getDsrLimit(): Double
+        + getInterestRate(): Double
+        + getTargetHousing(): String
+        + getIncomeRequirement(): String
+        + getApplicantRequirement(): String
+        + getRemarks(): String
+        + toEntity(): LoanProduct
+        --
+        «DTO»
+        «@Valid»
+    }
+
+    class UpdateLoanProductRequest {
+        - name: String
+        - loanLimit: Long
+        - ltvLimit: Double
+        - dtiLimit: Double
+        - dsrLimit: Double
+        - interestRate: Double
+        - targetHousing: String
+        - incomeRequirement: String
+        - applicantRequirement: String
+        - remarks: String
+        - active: boolean
+        --
+        + getName(): String
+        + getLoanLimit(): Long
+        + getLtvLimit(): Double
+        + getDtiLimit(): Double
+        + getDsrLimit(): Double
+        + getInterestRate(): Double
+        + getTargetHousing(): String
+        + getIncomeRequirement(): String
+        + getApplicantRequirement(): String
+        + getRemarks(): String
+        + isActive(): boolean
+        --
+        «DTO»
+        «@Valid»
+    }
+
+    class PageInfo {
+        - pageNumber: int
+        - pageSize: int
+        - totalElements: long
+        - totalPages: int
+        --
+        + getPageNumber(): int
+        + getPageSize(): int
+        + getTotalElements(): long
+        + getTotalPages(): int
+        + from(page: Page<?>): PageInfo {static}
+        --
+        «DTO»
+    }
+
+    class ApiResponse {
+        - success: boolean
+        - data: Object
+        - message: String
+        --
+        + getSuccess(): boolean
+        + getData(): Object
+        + getMessage(): String
+        + success(message: String): ApiResponse {static}
+        + success(data: Object, message: String): ApiResponse {static}
+        --
+        «DTO»
+    }
+
+    class ErrorResponse {
+        - success: boolean
+        - error: ErrorDetail
+        --
+        + getSuccess(): boolean
+        + getError(): ErrorDetail
+        + of(code: String, message: String): ErrorResponse {static}
+        --
+        «DTO»
+    }
+
+    class ErrorDetail {
+        - code: String
+        - message: String
+        - details: List<FieldError>
+        --
+        + getCode(): String
+        + getMessage(): String
+        + getDetails(): List<FieldError>
+        --
+        «DTO»
+    }
+
+    class FieldError {
+        - field: String
+        - message: String
+        --
+        + getField(): String
+        + getMessage(): String
+        --
+        «DTO»
+    }
+
+    class UserInfo {
+        - userId: String
+        - username: String
+        - role: String
+        --
+        + getUserId(): String
+        + getUsername(): String
+        + getRole(): String
+        --
+        «DTO»
+    }
+}
+
+' ========================================
+' Relationships
+' ========================================
+
+' Controller → Service
+LoanProductController --> LoanProductService : uses
+LoanProductAdminController --> LoanProductService : uses
+LoanProductAdminController --> AuthorizationService : uses
+
+' Service → Repository
+LoanProductService --> LoanProductRepository : uses
+LoanProductService --> CacheService : uses
+
+' Repository → Domain
+LoanProductRepository --> LoanProduct : manages
+
+' Controller → DTO
+LoanProductController ..> LoanProductListResponse : returns
+LoanProductController ..> LoanProductResponse : returns
+LoanProductAdminController ..> CreateLoanProductRequest : receives
+LoanProductAdminController ..> UpdateLoanProductRequest : receives
+LoanProductAdminController ..> LoanProductResponse : returns
+LoanProductAdminController ..> ApiResponse : returns
+LoanProductAdminController ..> ErrorResponse : returns
+
+' Service → DTO
+LoanProductService ..> LoanProductListResponse : creates
+LoanProductService ..> LoanProductResponse : creates
+LoanProductService ..> CreateLoanProductRequest : receives
+LoanProductService ..> UpdateLoanProductRequest : receives
+
+' DTO → Domain
+CreateLoanProductRequest ..> LoanProduct : converts to
+LoanProductDTO ..> LoanProduct : converts from
+
+' DTO Composition
+LoanProductListResponse *-- LoanProductListData
+LoanProductListData *-- LoanProductDTO
+LoanProductListData *-- PageInfo
+LoanProductResponse *-- LoanProductDTO
+ErrorResponse *-- ErrorDetail
+ErrorDetail *-- FieldError
+AuthorizationService ..> UserInfo : returns
+
+@enduml

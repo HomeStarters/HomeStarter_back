@@ -1,0 +1,85 @@
+@startuml 회원가입-로그인
+!theme mono
+
+title 회원가입-로그인 플로우
+
+actor "사용자" as User
+participant "Frontend" as FE
+participant "API Gateway" as GW
+participant "User Service" as US
+database "User DB" as DB
+
+== UFR-USER-010: 회원가입 ==
+User -> FE: 회원가입 정보 입력
+activate FE
+FE -> GW: POST /api/users/register\n(이메일, 비밀번호, 이름)
+activate GW
+GW -> US: 회원가입 요청
+activate US
+US -> DB: 이메일 중복 확인
+activate DB
+DB --> US: 중복 확인 결과
+deactivate DB
+alt 이메일 중복
+  US --> GW: 400 Bad Request\n(이메일 중복)
+  GW --> FE: 회원가입 실패
+  FE --> User: 중복 오류 메시지 표시
+else 이메일 사용 가능
+  US -> DB: 사용자 정보 저장\n(비밀번호 암호화)
+  activate DB
+  DB --> US: 저장 완료
+  deactivate DB
+  US --> GW: 201 Created\n(사용자 ID)
+  deactivate US
+  GW --> FE: 회원가입 성공
+  deactivate GW
+  FE --> User: 가입 완료 메시지
+  deactivate FE
+end
+
+== UFR-USER-020: 로그인 ==
+User -> FE: 로그인 정보 입력
+activate FE
+FE -> GW: POST /api/users/login\n(이메일, 비밀번호)
+activate GW
+GW -> US: 로그인 요청
+activate US
+US -> DB: 사용자 조회\n(이메일)
+activate DB
+DB --> US: 사용자 정보
+deactivate DB
+alt 사용자 없음 또는 비밀번호 불일치
+  US --> GW: 401 Unauthorized\n(인증 실패)
+  GW --> FE: 로그인 실패
+  FE --> User: 오류 메시지 표시
+else 인증 성공
+  US -> US: JWT 토큰 생성\n(Access Token, Refresh Token)
+  US --> GW: 200 OK\n(JWT 토큰, 사용자 정보)
+  deactivate US
+  GW --> FE: 로그인 성공\n(토큰, 사용자 정보)
+  deactivate GW
+  FE -> FE: 토큰 저장\n(LocalStorage/SessionStorage)
+  FE --> User: 메인 화면 이동
+  deactivate FE
+end
+
+== UFR-USER-030: 로그아웃 ==
+User -> FE: 로그아웃 요청
+activate FE
+FE -> GW: POST /api/users/logout\n(Authorization: Bearer {token})
+activate GW
+GW -> US: 로그아웃 요청
+activate US
+US -> DB: Refresh Token 무효화
+activate DB
+DB --> US: 무효화 완료
+deactivate DB
+US --> GW: 200 OK\n(로그아웃 성공)
+deactivate US
+GW --> FE: 로그아웃 완료
+deactivate GW
+FE -> FE: 토큰 삭제\n(LocalStorage/SessionStorage)
+FE --> User: 로그인 화면 이동
+deactivate FE
+
+@enduml

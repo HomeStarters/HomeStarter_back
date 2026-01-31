@@ -1,0 +1,587 @@
+openapi: 3.0.0
+info:
+  title: Housing Service API
+  description: 입주희망 주택 관리 서비스 API
+  version: 1.0.0
+  contact:
+    name: Housing Service Team
+
+servers:
+  - url: https://api.home-starter.com/housing/v1
+    description: Production server
+  - url: https://virtserver.swaggerhub.com/home-starter/housing/1.0.0
+    description: SwaggerHub Mock server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Housing
+    description: 입주희망 주택 관리
+
+paths:
+  /housings:
+    post:
+      summary: 입주희망 주택 등록
+      description: 새로운 입주희망 주택 정보를 등록합니다
+      operationId: createHousing
+      x-user-story: UFR-HOUS-010
+      x-controller: HousingController
+      tags:
+        - Housing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HousingCreateRequest'
+            example:
+              housingType: SALE
+              moveInDate: "2025-06"
+              name: "래미안 강남 퍼스티지"
+              address:
+                fullAddress: "서울특별시 강남구 테헤란로 123"
+                roadAddress: "서울특별시 강남구 테헤란로 123"
+                jibunAddress: "서울특별시 강남구 역삼동 123-45"
+                zipCode: "06234"
+                latitude: 37.5012345
+                longitude: 127.0398765
+              completionDate: "2023-12"
+              price: 850000000
+              type: "84㎡"
+              transportations:
+                - name: "지하철 9호선 연장"
+                  openingDate: "2026-12"
+                  commuteTime:
+                    selfBefore: 45
+                    selfAfter: 25
+                    spouseBefore: 50
+                    spouseAfter: 30
+              complexInfo:
+                complexCount: 3
+                tradingVolume: "월 평균 5건"
+              livingEnvironment:
+                surroundings: "역세권, 대형마트 도보 5분"
+                sunlight: HIGH
+                view: "한강뷰"
+                noise: LOW
+                memo: "조용하고 채광이 좋은 곳"
+      responses:
+        '201':
+          description: 주택 등록 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HousingResponse'
+              example:
+                id: "housing-uuid-001"
+                userId: "user-uuid-001"
+                housingType: "SALE"
+                moveInDate: "2025-06"
+                name: "래미안 강남 퍼스티지"
+                address:
+                  fullAddress: "서울특별시 강남구 테헤란로 123"
+                  latitude: 37.5012345
+                  longitude: 127.0398765
+                price: 850000000
+                isGoal: false
+                createdAt: "2024-12-20T15:30:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: 입주희망 주택 목록 조회
+      description: 등록된 모든 입주희망 주택 목록을 조회합니다
+      operationId: getHousings
+      x-user-story: UFR-HOUS-020
+      x-controller: HousingController
+      tags:
+        - Housing
+      parameters:
+        - name: housingType
+          in: query
+          description: 주택 유형 필터
+          schema:
+            type: string
+            enum: [SALE, JEONSE, MONTHLY_RENT]
+        - name: sortBy
+          in: query
+          description: 정렬 기준
+          schema:
+            type: string
+            enum: [moveInDate, price, createdAt]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          description: 정렬 순서
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: 주택 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  housings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HousingListItem'
+                  total:
+                    type: integer
+                    description: 전체 주택 수
+              example:
+                housings:
+                  - id: "housing-uuid-001"
+                    name: "래미안 강남 퍼스티지"
+                    housingType: "SALE"
+                    address:
+                      fullAddress: "서울특별시 강남구 테헤란로 123"
+                    price: 850000000
+                    moveInDate: "2025-06"
+                    type: "84㎡"
+                    isGoal: true
+                  - id: "housing-uuid-002"
+                    name: "힐스테이트 용산"
+                    housingType: "JEONSE"
+                    address:
+                      fullAddress: "서울특별시 용산구 한강대로 456"
+                    price: 500000000
+                    moveInDate: "2024-12"
+                    type: "59㎡"
+                    isGoal: false
+                total: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /housings/{id}:
+    get:
+      summary: 입주희망 주택 상세 조회
+      description: 특정 주택의 상세 정보를 조회합니다
+      operationId: getHousing
+      x-user-story: UFR-HOUS-030
+      x-controller: HousingController
+      tags:
+        - Housing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 주택 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 주택 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HousingResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: 입주희망 주택 수정
+      description: 주택 정보를 수정합니다
+      operationId: updateHousing
+      x-user-story: UFR-HOUS-040
+      x-controller: HousingController
+      tags:
+        - Housing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 주택 ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HousingUpdateRequest'
+      responses:
+        '200':
+          description: 주택 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HousingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: 입주희망 주택 삭제
+      description: 주택 정보를 삭제합니다
+      operationId: deleteHousing
+      x-user-story: UFR-HOUS-040
+      x-controller: HousingController
+      tags:
+        - Housing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 주택 ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 주택 삭제 성공
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /housings/{id}/goal:
+    put:
+      summary: 최종목표 주택 설정
+      description: 특정 주택을 최종목표 주택으로 설정합니다 (기존 최종목표는 자동 해제)
+      operationId: setGoalHousing
+      x-user-story: UFR-HOUS-050
+      x-controller: HousingController
+      tags:
+        - Housing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 주택 ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 최종목표 주택 설정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: 주택 ID
+                  isGoal:
+                    type: boolean
+                    description: 최종목표 여부
+                  message:
+                    type: string
+                    description: 처리 결과 메시지
+              example:
+                id: "housing-uuid-001"
+                isGoal: true
+                message: "최종목표 주택으로 설정되었습니다"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 토큰을 사용한 인증
+
+  schemas:
+    Address:
+      type: object
+      required:
+        - fullAddress
+        - latitude
+        - longitude
+      properties:
+        fullAddress:
+          type: string
+          description: 전체 주소
+        roadAddress:
+          type: string
+          description: 도로명 주소
+        jibunAddress:
+          type: string
+          description: 지번 주소
+        zipCode:
+          type: string
+          description: 우편번호
+        latitude:
+          type: number
+          format: double
+          description: 위도
+        longitude:
+          type: number
+          format: double
+          description: 경도
+
+    Transportation:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 교통호재명
+          maxLength: 100
+        openingDate:
+          type: string
+          format: yyyy-MM
+          description: 개통예정일
+        commuteTime:
+          type: object
+          description: 출퇴근 시간 정보
+          properties:
+            selfBefore:
+              type: integer
+              description: 본인 출퇴근 시간 (개통 전, 분)
+            selfAfter:
+              type: integer
+              description: 본인 출퇴근 시간 (개통 후, 분)
+            spouseBefore:
+              type: integer
+              description: 배우자 출퇴근 시간 (개통 전, 분)
+            spouseAfter:
+              type: integer
+              description: 배우자 출퇴근 시간 (개통 후, 분)
+
+    ComplexInfo:
+      type: object
+      properties:
+        complexCount:
+          type: integer
+          description: 단지 수
+        tradingVolume:
+          type: string
+          description: 거래량
+          maxLength: 100
+
+    LivingEnvironment:
+      type: object
+      properties:
+        surroundings:
+          type: string
+          description: 주변환경
+          maxLength: 200
+        sunlight:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          description: 채광
+        view:
+          type: string
+          description: 뷰
+          maxLength: 100
+        noise:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          description: 주변소음
+        memo:
+          type: string
+          description: 비고
+          maxLength: 500
+
+    HousingCreateRequest:
+      type: object
+      required:
+        - housingType
+        - moveInDate
+        - name
+        - address
+        - completionDate
+        - price
+        - type
+      properties:
+        housingType:
+          type: string
+          enum: [SALE, JEONSE, MONTHLY_RENT]
+          description: 주택유형 (매매/전세/월세)
+        moveInDate:
+          type: string
+          format: yyyy-MM
+          description: 입주희망년월
+        name:
+          type: string
+          description: 주택이름
+          maxLength: 50
+        address:
+          $ref: '#/components/schemas/Address'
+        completionDate:
+          type: string
+          format: yyyy-MM
+          description: 준공년월
+        price:
+          type: integer
+          format: int64
+          description: 가격 (원)
+        type:
+          type: string
+          description: 타입 (예. 84㎡)
+          maxLength: 50
+        transportations:
+          type: array
+          description: 교통호재 목록
+          items:
+            $ref: '#/components/schemas/Transportation'
+        complexInfo:
+          $ref: '#/components/schemas/ComplexInfo'
+        livingEnvironment:
+          $ref: '#/components/schemas/LivingEnvironment'
+
+    HousingUpdateRequest:
+      type: object
+      properties:
+        housingType:
+          type: string
+          enum: [SALE, JEONSE, MONTHLY_RENT]
+        moveInDate:
+          type: string
+          format: yyyy-MM
+        name:
+          type: string
+          maxLength: 50
+        address:
+          $ref: '#/components/schemas/Address'
+        completionDate:
+          type: string
+          format: yyyy-MM
+        price:
+          type: integer
+          format: int64
+        type:
+          type: string
+          maxLength: 50
+        transportations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transportation'
+        complexInfo:
+          $ref: '#/components/schemas/ComplexInfo'
+        livingEnvironment:
+          $ref: '#/components/schemas/LivingEnvironment'
+
+    HousingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 주택 ID
+        userId:
+          type: string
+          description: 사용자 ID
+        housingType:
+          type: string
+          enum: [SALE, JEONSE, MONTHLY_RENT]
+        moveInDate:
+          type: string
+          format: yyyy-MM
+        name:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        completionDate:
+          type: string
+          format: yyyy-MM
+        price:
+          type: integer
+          format: int64
+        type:
+          type: string
+        transportations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transportation'
+        complexInfo:
+          $ref: '#/components/schemas/ComplexInfo'
+        livingEnvironment:
+          $ref: '#/components/schemas/LivingEnvironment'
+        isGoal:
+          type: boolean
+          description: 최종목표 주택 여부
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    HousingListItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        housingType:
+          type: string
+          enum: [SALE, JEONSE, MONTHLY_RENT]
+        address:
+          type: object
+          properties:
+            fullAddress:
+              type: string
+        price:
+          type: integer
+          format: int64
+        moveInDate:
+          type: string
+          format: yyyy-MM
+        type:
+          type: string
+        isGoal:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: 에러 코드
+        message:
+          type: string
+          description: 에러 메시지
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "INVALID_REQUEST"
+            message: "입력 데이터가 올바르지 않습니다"
+            timestamp: "2024-12-20T15:30:00Z"
+
+    Unauthorized:
+      description: 인증 실패
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "UNAUTHORIZED"
+            message: "인증이 필요합니다"
+            timestamp: "2024-12-20T15:30:00Z"
+
+    NotFound:
+      description: 리소스를 찾을 수 없음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: "NOT_FOUND"
+            message: "주택 정보를 찾을 수 없습니다"
+            timestamp: "2024-12-20T15:30:00Z"

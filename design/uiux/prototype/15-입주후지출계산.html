@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입주 후 지출 계산</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            padding-bottom: 100px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-top: calc(-1 * var(--spacing-sm));
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        /* Input Section */
+        .input-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .required {
+            color: var(--error);
+        }
+
+        select.input {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+            color: var(--text-primary);
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Loan Summary Card */
+        .loan-summary {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--background);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .loan-summary h3 {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .loan-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-sm);
+        }
+
+        .loan-info-item {
+            font-size: var(--font-size-sm);
+        }
+
+        .loan-info-label {
+            color: var(--text-secondary);
+        }
+
+        .loan-info-value {
+            color: var(--text-primary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        /* Calculate Button */
+        .calculate-btn-wrapper {
+            margin-top: var(--spacing-lg);
+        }
+
+        /* Result Section */
+        .result-section {
+            display: none;
+        }
+
+        .result-section.active {
+            display: block;
+        }
+
+        .result-grid {
+            display: grid;
+            gap: var(--spacing-lg);
+        }
+
+        @media (min-width: 768px) {
+            .result-grid {
+                grid-template-columns: 3fr 2fr;
+            }
+
+            .result-left {
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-lg);
+            }
+        }
+
+        .result-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+        }
+
+        .result-card h2 {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .result-items {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .result-value {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+        }
+
+        .result-value.emphasis {
+            font-size: var(--font-size-lg);
+            color: var(--primary);
+        }
+
+        .result-value.success {
+            color: var(--success);
+        }
+
+        .result-value.error {
+            color: var(--error);
+        }
+
+        /* Gauge Bar */
+        .gauge-item {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .gauge-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .gauge-label {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+        }
+
+        .gauge-values {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .gauge-current {
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .gauge-bar {
+            height: 12px;
+            background: var(--border);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: var(--radius-full);
+            transition: width 1s ease;
+        }
+
+        .gauge-fill.success {
+            background: var(--success);
+        }
+
+        .gauge-fill.error {
+            background: var(--error);
+        }
+
+        /* Status Badge */
+        .status-badge {
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            margin-top: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .status-badge.success {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .status-badge.error {
+            background: var(--error-light);
+            color: var(--error);
+        }
+
+        .status-reasons {
+            margin-top: var(--spacing-sm);
+            padding-left: var(--spacing-lg);
+        }
+
+        .status-reasons li {
+            font-size: var(--font-size-sm);
+            color: var(--error);
+            margin-bottom: var(--spacing-2xs);
+        }
+
+        /* Loading */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-message {
+            font-size: var(--font-size-md);
+            color: var(--text-secondary);
+        }
+
+        /* Sticky CTA */
+        .sticky-cta {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-md);
+            background: white;
+            border-top: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            display: none;
+        }
+
+        .sticky-cta.active {
+            display: block;
+        }
+
+        .sticky-cta-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .sticky-cta .btn {
+            flex: 1;
+        }
+
+        .btn-icon-only {
+            width: 48px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <h1 class="header-title" id="housingName">주택 이름</h1>
+        <div class="header-actions"></div>
+    </header>
+
+    <div class="subtitle">입주 후 지출 계산</div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Input Section -->
+            <section class="section input-section">
+                <h2 class="section-title">대출 조건 입력</h2>
+
+                <div class="form-group">
+                    <label for="housingSelect">주택 선택 <span class="required">*</span></label>
+                    <select id="housingSelect" class="input">
+                        <option value="">주택을 선택하세요</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="loanProduct">대출상품 선택 <span class="required">*</span></label>
+                    <select id="loanProduct" class="input">
+                        <option value="">대출상품을 선택하세요</option>
+                    </select>
+                </div>
+
+                <div class="loan-summary" id="loanSummary" style="display: none;">
+                    <h3 id="selectedLoanName"></h3>
+                    <div class="loan-info-grid">
+                        <div class="loan-info-item">
+                            <div class="loan-info-label">대출한도</div>
+                            <div class="loan-info-value" id="loanLimit"></div>
+                        </div>
+                        <div class="loan-info-item">
+                            <div class="loan-info-label">금리</div>
+                            <div class="loan-info-value" id="loanRate"></div>
+                        </div>
+                        <div class="loan-info-item">
+                            <div class="loan-info-label">LTV 한도</div>
+                            <div class="loan-info-value" id="ltvLimit"></div>
+                        </div>
+                        <div class="loan-info-item">
+                            <div class="loan-info-label">DTI 한도</div>
+                            <div class="loan-info-value" id="dtiLimit"></div>
+                        </div>
+                        <div class="loan-info-item">
+                            <div class="loan-info-label">DSR 한도</div>
+                            <div class="loan-info-value" id="dsrLimit"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="calculate-btn-wrapper">
+                    <button type="button" class="btn btn-primary" id="calculateBtn" disabled style="width: 100%;">
+                        계산하기
+                    </button>
+                </div>
+            </section>
+
+            <!-- Result Section -->
+            <section class="section result-section" id="resultSection">
+                <div class="result-grid">
+                    <div class="result-left">
+                        <!-- 재무 현황 -->
+                        <div class="result-card">
+                            <h2>재무 현황</h2>
+                            <div class="result-items">
+                                <div class="result-item">
+                                    <span class="result-label">입주희망년월</span>
+                                    <span class="result-value" id="moveInDate"></span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">예상자산</span>
+                                    <span class="result-value" id="expectedAssets"></span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">대출필요 금액</span>
+                                    <span class="result-value emphasis" id="loanNeeded"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 대출 분석 -->
+                        <div class="result-card">
+                            <h2>대출 분석</h2>
+                            <div class="result-items">
+                                <div class="result-item">
+                                    <span class="result-label">실행 대출</span>
+                                    <span class="result-value" id="executedLoan"></span>
+                                </div>
+                            </div>
+
+                            <!-- LTV Gauge -->
+                            <div class="gauge-item">
+                                <div class="gauge-header">
+                                    <span class="gauge-label">LTV (Loan To Value)</span>
+                                    <span class="gauge-values">
+                                        <span class="gauge-current" id="ltvCurrent">0</span>% /
+                                        <span id="ltvMax">0</span>%
+                                    </span>
+                                </div>
+                                <div class="gauge-bar">
+                                    <div class="gauge-fill" id="ltvFill" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- DTI Gauge -->
+                            <div class="gauge-item">
+                                <div class="gauge-header">
+                                    <span class="gauge-label">DTI (Debt To Income)</span>
+                                    <span class="gauge-values">
+                                        <span class="gauge-current" id="dtiCurrent">0</span>% /
+                                        <span id="dtiMax">0</span>%
+                                    </span>
+                                </div>
+                                <div class="gauge-bar">
+                                    <div class="gauge-fill" id="dtiFill" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- DSR Gauge -->
+                            <div class="gauge-item">
+                                <div class="gauge-header">
+                                    <span class="gauge-label">DSR (Debt Service Ratio)</span>
+                                    <span class="gauge-values">
+                                        <span class="gauge-current" id="dsrCurrent">0</span>% /
+                                        <span id="dsrMax">0</span>%
+                                    </span>
+                                </div>
+                                <div class="gauge-bar">
+                                    <div class="gauge-fill" id="dsrFill" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Status Badge -->
+                            <div class="status-badge" id="statusBadge">
+                                <span id="statusIcon"></span>
+                                <span id="statusMessage"></span>
+                            </div>
+                            <ul class="status-reasons" id="statusReasons" style="display: none;"></ul>
+                        </div>
+                    </div>
+
+                    <!-- 입주 후 재무상태 -->
+                    <div class="result-card">
+                        <h2>입주 후 예상</h2>
+                        <div class="result-items">
+                            <div class="result-item">
+                                <span class="result-label">예상 자산</span>
+                                <span class="result-value" id="afterAssets"></span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">예상 월지출액</span>
+                                <span class="result-value" id="monthlyExpense"></span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">여유자금</span>
+                                <span class="result-value emphasis" id="surplus"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-message">최적의 대출 조건을 찾고 있습니다...</div>
+    </div>
+
+    <!-- Sticky CTA -->
+    <div class="sticky-cta" id="stickyCta">
+        <div class="sticky-cta-container">
+            <button type="button" class="btn btn-secondary" id="recalculateBtn">
+                다른 대출로 재계산
+            </button>
+            <button type="button" class="btn btn-primary" id="saveResultBtn">
+                결과 저장
+            </button>
+            <button type="button" class="btn btn-secondary btn-icon-only" id="shareBtn" title="공유하기">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 8C19.6569 8 21 6.65685 21 5C21 3.34315 19.6569 2 18 2C16.3431 2 15 3.34315 15 5C15 6.65685 16.3431 8 18 8Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M6 15C7.65685 15 9 13.6569 9 12C9 10.3431 7.65685 9 6 9C4.34315 9 3 10.3431 3 12C3 13.6569 4.34315 15 6 15Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M18 22C19.6569 22 21 20.6569 21 19C21 17.3431 19.6569 16 18 16C16.3431 16 15 17.3431 15 19C15 20.6569 16.3431 22 18 22Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M8.59 13.51L15.42 17.49" stroke="currentColor" stroke-width="2"/>
+                    <path d="M15.41 6.51L8.59 10.49" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        // Sample loan products
+        const sampleLoanProducts = [
+            {
+                id: 1,
+                name: '주택담보대출 프리미엄',
+                limit: 500000000,
+                rate: 3.5,
+                ltvLimit: 70,
+                dtiLimit: 60,
+                dsrLimit: 40
+            },
+            {
+                id: 2,
+                name: '신혼부부 특례대출',
+                limit: 600000000,
+                rate: 2.8,
+                ltvLimit: 80,
+                dtiLimit: 70,
+                dsrLimit: 50
+            },
+            {
+                id: 3,
+                name: '생애최초 구매자 대출',
+                limit: 400000000,
+                rate: 3.0,
+                ltvLimit: 80,
+                dtiLimit: 60,
+                dsrLimit: 40
+            }
+        ];
+
+        // Get housing data
+        const housingList = JSON.parse(localStorage.getItem('housings') || '[]');
+        let housing = null;
+
+        // Populate housing select
+        const housingSelect = document.getElementById('housingSelect');
+        housingList.forEach(h => {
+            const option = document.createElement('option');
+            option.value = h.id;
+            option.textContent = `${h.name} - ${Utils.formatCurrency(h.price)}원`;
+            housingSelect.appendChild(option);
+        });
+
+        // Housing selection handler
+        housingSelect.addEventListener('change', (e) => {
+            const selectedId = e.target.value;
+            if (selectedId) {
+                housing = housingList.find(h => h.id === selectedId);
+                document.getElementById('housingName').textContent = housing.name;
+                updateCalculateButton();
+            } else {
+                housing = null;
+                document.getElementById('housingName').textContent = '주택 이름';
+                updateCalculateButton();
+            }
+        });
+
+        // Auto-select first housing if available
+        if (housingList.length > 0) {
+            housingSelect.value = housingList[0].id;
+            housing = housingList[0];
+            document.getElementById('housingName').textContent = housing.name;
+        }
+
+        // Get user asset data
+        const selfAssets = Storage.getAssets('assets') || [];
+        const selfLoans = Storage.getAssets('loans') || [];
+        const selfIncome = Storage.getAssets('income') || [];
+        const selfExpense = Storage.getAssets('expense') || [];
+        const spouseAssets = Storage.getAssets('spouse_assets') || [];
+        const spouseLoans = Storage.getAssets('spouse_loans') || [];
+        const spouseIncome = Storage.getAssets('spouse_income') || [];
+
+        // Calculate totals
+        const totalAssets =
+            selfAssets.reduce((sum, item) => sum + item.amount, 0) +
+            spouseAssets.reduce((sum, item) => sum + item.amount, 0);
+
+        const totalLoans =
+            selfLoans.reduce((sum, item) => sum + item.amount, 0) +
+            spouseLoans.reduce((sum, item) => sum + item.amount, 0);
+
+        const totalIncome =
+            selfIncome.reduce((sum, item) => sum + item.amount, 0) +
+            spouseIncome.reduce((sum, item) => sum + item.amount, 0);
+
+        const totalExpense =
+            selfExpense.reduce((sum, item) => sum + item.amount, 0);
+
+        // Elements
+        const housingNameEl = document.getElementById('housingName');
+        const loanProductSelect = document.getElementById('loanProduct');
+        const loanSummary = document.getElementById('loanSummary');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resultSection = document.getElementById('resultSection');
+        const stickyCta = document.getElementById('stickyCta');
+        const recalculateBtn = document.getElementById('recalculateBtn');
+        const saveResultBtn = document.getElementById('saveResultBtn');
+        const shareBtn = document.getElementById('shareBtn');
+
+        let selectedLoan = null;
+        let calculationResult = null;
+
+        // Initialize
+        if (housing) {
+            housingNameEl.textContent = housing.name;
+        }
+
+        // Populate loan products
+        sampleLoanProducts.forEach(loan => {
+            const option = document.createElement('option');
+            option.value = loan.id;
+            option.textContent = loan.name;
+            loanProductSelect.appendChild(option);
+        });
+
+        // Function to update calculate button state
+        function updateCalculateButton() {
+            calculateBtn.disabled = !housing || !selectedLoan;
+        }
+
+        // Loan product selection
+        loanProductSelect.addEventListener('change', (e) => {
+            const loanId = parseInt(e.target.value);
+            selectedLoan = sampleLoanProducts.find(loan => loan.id === loanId);
+
+            if (selectedLoan) {
+                document.getElementById('selectedLoanName').textContent = selectedLoan.name;
+                document.getElementById('loanLimit').textContent = Utils.formatCurrency(selectedLoan.limit) + '원';
+                document.getElementById('loanRate').textContent = selectedLoan.rate + '%';
+                document.getElementById('ltvLimit').textContent = selectedLoan.ltvLimit + '%';
+                document.getElementById('dtiLimit').textContent = selectedLoan.dtiLimit + '%';
+                document.getElementById('dsrLimit').textContent = selectedLoan.dsrLimit + '%';
+
+                loanSummary.style.display = 'block';
+            } else {
+                loanSummary.style.display = 'none';
+            }
+            updateCalculateButton();
+        });
+
+        // Calculate button
+        calculateBtn.addEventListener('click', () => {
+            performCalculation();
+        });
+
+        // Perform calculation
+        function performCalculation() {
+            loadingOverlay.classList.add('active');
+
+            setTimeout(() => {
+                const housingPrice = parseInt(housing.price);
+                const loanNeeded = Math.max(0, housingPrice - totalAssets);
+                const loanAmount = Math.min(loanNeeded, selectedLoan.limit);
+
+                // Calculate ratios
+                const ltv = (loanAmount / housingPrice) * 100;
+                const monthlyPayment = calculateMonthlyPayment(loanAmount, selectedLoan.rate, 30);
+                const yearlyIncome = totalIncome * 12;
+                const dti = yearlyIncome > 0 ? (monthlyPayment * 12 / yearlyIncome) * 100 : 0;
+                const totalDebtPayment = monthlyPayment + (totalLoans * 0.05 / 12); // Assume 5% interest on existing loans
+                const dsr = yearlyIncome > 0 ? (totalDebtPayment * 12 / yearlyIncome) * 100 : 0;
+
+                // Check compliance
+                const ltvPass = ltv <= selectedLoan.ltvLimit;
+                const dtiPass = dti <= selectedLoan.dtiLimit;
+                const dsrPass = dsr <= selectedLoan.dsrLimit;
+                const allPass = ltvPass && dtiPass && dsrPass;
+
+                // Calculate after-move finances
+                const afterAssets = totalAssets + housingPrice - loanAmount;
+                const monthlyExpense = totalExpense + monthlyPayment;
+                const surplus = totalIncome - monthlyExpense;
+
+                calculationResult = {
+                    moveInDate: housing.moveInDate,
+                    expectedAssets: totalAssets,
+                    loanNeeded: loanNeeded,
+                    loanAmount: loanAmount,
+                    ltv: ltv,
+                    dti: dti,
+                    dsr: dsr,
+                    ltvPass: ltvPass,
+                    dtiPass: dtiPass,
+                    dsrPass: dsrPass,
+                    allPass: allPass,
+                    afterAssets: afterAssets,
+                    monthlyExpense: monthlyExpense,
+                    surplus: surplus,
+                    loanName: selectedLoan.name,
+                    housingId: housing.id,
+                    housingName: housing.housingName,
+                    createdAt: new Date().toISOString()
+                };
+
+                loadingOverlay.classList.remove('active');
+                displayResults();
+            }, 2000);
+        }
+
+        // Calculate monthly payment
+        function calculateMonthlyPayment(principal, annualRate, years) {
+            const monthlyRate = annualRate / 100 / 12;
+            const numPayments = years * 12;
+            return principal * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+                   (Math.pow(1 + monthlyRate, numPayments) - 1);
+        }
+
+        // Display results
+        function displayResults() {
+            const [year, month] = calculationResult.moveInDate.split('-');
+
+            // 재무 현황
+            document.getElementById('moveInDate').textContent = `${year}년 ${parseInt(month)}월`;
+            document.getElementById('expectedAssets').textContent = Utils.formatCurrency(calculationResult.expectedAssets) + '원';
+            document.getElementById('loanNeeded').textContent = Utils.formatCurrency(calculationResult.loanNeeded) + '원';
+
+            // 대출 분석
+            document.getElementById('executedLoan').textContent = calculationResult.loanName;
+
+            // LTV
+            document.getElementById('ltvCurrent').textContent = calculationResult.ltv.toFixed(1);
+            document.getElementById('ltvMax').textContent = selectedLoan.ltvLimit;
+            const ltvFill = document.getElementById('ltvFill');
+            ltvFill.style.width = Math.min(calculationResult.ltv, 100) + '%';
+            ltvFill.className = 'gauge-fill ' + (calculationResult.ltvPass ? 'success' : 'error');
+
+            // DTI
+            document.getElementById('dtiCurrent').textContent = calculationResult.dti.toFixed(1);
+            document.getElementById('dtiMax').textContent = selectedLoan.dtiLimit;
+            const dtiFill = document.getElementById('dtiFill');
+            dtiFill.style.width = Math.min(calculationResult.dti, 100) + '%';
+            dtiFill.className = 'gauge-fill ' + (calculationResult.dtiPass ? 'success' : 'error');
+
+            // DSR
+            document.getElementById('dsrCurrent').textContent = calculationResult.dsr.toFixed(1);
+            document.getElementById('dsrMax').textContent = selectedLoan.dsrLimit;
+            const dsrFill = document.getElementById('dsrFill');
+            dsrFill.style.width = Math.min(calculationResult.dsr, 100) + '%';
+            dsrFill.className = 'gauge-fill ' + (calculationResult.dsrPass ? 'success' : 'error');
+
+            // Status badge
+            const statusBadge = document.getElementById('statusBadge');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusReasons = document.getElementById('statusReasons');
+
+            if (calculationResult.allPass) {
+                statusBadge.className = 'status-badge success';
+                statusIcon.textContent = '✅';
+                statusMessage.textContent = '이 대출상품을 이용할 수 있습니다';
+                statusReasons.style.display = 'none';
+            } else {
+                statusBadge.className = 'status-badge error';
+                statusIcon.textContent = '❌';
+                statusMessage.textContent = '이 대출상품 기준을 충족하지 못합니다';
+
+                const reasons = [];
+                if (!calculationResult.ltvPass) {
+                    const diff = (calculationResult.ltv - selectedLoan.ltvLimit).toFixed(1);
+                    reasons.push(`LTV가 ${diff}% 초과합니다`);
+                }
+                if (!calculationResult.dtiPass) {
+                    const diff = (calculationResult.dti - selectedLoan.dtiLimit).toFixed(1);
+                    reasons.push(`DTI가 ${diff}% 초과합니다`);
+                }
+                if (!calculationResult.dsrPass) {
+                    const diff = (calculationResult.dsr - selectedLoan.dsrLimit).toFixed(1);
+                    reasons.push(`DSR이 ${diff}% 초과합니다`);
+                }
+
+                statusReasons.innerHTML = reasons.map(r => `<li>${r}</li>`).join('');
+                statusReasons.style.display = 'block';
+            }
+
+            // 입주 후 재무상태
+            document.getElementById('afterAssets').textContent = Utils.formatCurrency(calculationResult.afterAssets) + '원';
+            document.getElementById('monthlyExpense').textContent = Utils.formatCurrency(calculationResult.monthlyExpense) + '원';
+            const surplusEl = document.getElementById('surplus');
+            surplusEl.textContent = Utils.formatCurrency(calculationResult.surplus) + '원';
+            surplusEl.className = 'result-value emphasis ' + (calculationResult.surplus >= 0 ? 'success' : 'error');
+
+            // Show result section
+            resultSection.classList.add('active');
+            stickyCta.classList.add('active');
+
+            // Scroll to result
+            setTimeout(() => {
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        // Recalculate button
+        recalculateBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Save result button
+        saveResultBtn.addEventListener('click', () => {
+            if (!calculationResult) return;
+
+            const results = Storage.getItem('calculation_results') || [];
+            results.push(calculationResult);
+            Storage.setItem('calculation_results', results);
+
+            UI.showToast('계산 결과가 저장되었습니다', 'success');
+        });
+
+        // Share button
+        shareBtn.addEventListener('click', () => {
+            UI.showToast('공유 기능은 프로토타입에서 제공하지 않습니다', 'info');
+        });
+    </script>
+
+    <!-- 하단 탭 네비게이션 (Mobile) -->
+    <nav class="bottom-nav">
+        <a href="00-대시보드.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+                <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>홈</span>
+        </a>
+        <a href="13-입주희망주택목록.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>주택</span>
+        </a>
+        <a href="15-입주후지출계산.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>계산</span>
+        </a>
+        <a href="18-장기주거로드맵조회.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>로드맵</span>
+        </a>
+    </nav>
+</body>
+</html>

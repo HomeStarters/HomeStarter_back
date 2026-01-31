@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="내집마련 도우미 플랫폼 - 기본정보입력">
+    <title>기본정보입력 - 내집마련 도우미</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+    <div class="page">
+        <!-- 헤더 -->
+        <header class="header">
+            <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <h1 class="header-title">기본정보입력</h1>
+            <div class="progress-indicator">2/5</div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container">
+            <form id="basicInfoForm" class="form" novalidate>
+                <!-- 개인정보 섹션 -->
+                <section class="form-section">
+                    <h2 class="section-title">개인정보</h2>
+
+                    <!-- 생년월일 -->
+                    <div class="form-group">
+                        <label for="birthDate" class="form-label">생년월일 <span class="required">*</span></label>
+                        <input
+                            type="date"
+                            id="birthDate"
+                            name="birthDate"
+                            class="form-input"
+                            required
+                            aria-required="true"
+                            aria-describedby="birthDate-error"
+                        >
+                        <div id="birthDate-error" class="error-message" role="alert"></div>
+                    </div>
+
+                    <!-- 성별 -->
+                    <div class="form-group">
+                        <label class="form-label">성별 <span class="required">*</span></label>
+                        <div class="segment-control">
+                            <button
+                                type="button"
+                                class="segment-item"
+                                data-value="male"
+                                role="radio"
+                                aria-checked="false"
+                            >남성</button>
+                            <button
+                                type="button"
+                                class="segment-item"
+                                data-value="female"
+                                role="radio"
+                                aria-checked="false"
+                            >여성</button>
+                        </div>
+                        <input type="hidden" id="gender" name="gender" required>
+                        <div id="gender-error" class="error-message" role="alert"></div>
+                    </div>
+                </section>
+
+                <!-- 거주 및 직장정보 섹션 -->
+                <section class="form-section">
+                    <h2 class="section-title">거주 및 직장정보</h2>
+
+                    <!-- 현재 거주지 -->
+                    <div class="form-group">
+                        <label for="currentAddress" class="form-label">현재 거주지 <span class="required">*</span></label>
+                        <input
+                            type="text"
+                            id="currentAddress"
+                            name="currentAddress"
+                            class="form-input"
+                            placeholder="예: 서울시 관악구 봉천동"
+                            required
+                            aria-required="true"
+                            aria-describedby="currentAddress-error"
+                        >
+                        <div id="currentAddress-error" class="error-message" role="alert"></div>
+                    </div>
+
+                    <!-- 본인 직장위치 -->
+                    <div class="form-group">
+                        <label for="workAddress" class="form-label">본인 직장위치 <span class="required">*</span></label>
+                        <input
+                            type="text"
+                            id="workAddress"
+                            name="workAddress"
+                            class="form-input"
+                            placeholder="예: 서울시 강남구 역삼동"
+                            required
+                            aria-required="true"
+                            aria-describedby="workAddress-error"
+                        >
+                        <div id="workAddress-error" class="error-message" role="alert"></div>
+                    </div>
+
+                    <!-- 배우자 직장위치 -->
+                    <div class="form-group">
+                        <label for="spouseWorkAddress" class="form-label">배우자 직장위치 <span class="optional">(선택)</span></label>
+                        <input
+                            type="text"
+                            id="spouseWorkAddress"
+                            name="spouseWorkAddress"
+                            class="form-input"
+                            placeholder="예: 서울시 서초구 서초동"
+                            aria-describedby="spouseWorkAddress-error"
+                        >
+                        <div id="spouseWorkAddress-error" class="error-message" role="alert"></div>
+                    </div>
+                </section>
+
+                <!-- 투자정보 섹션 -->
+                <section class="form-section">
+                    <h2 class="section-title">투자정보</h2>
+
+                    <!-- 투자성향 -->
+                    <div class="form-group">
+                        <label class="form-label">투자성향 <span class="required">*</span></label>
+                        <p class="form-help">주택 구매 시 투자 리스크에 대한 수용도를 선택해주세요</p>
+                        <div class="segment-control triple">
+                            <button
+                                type="button"
+                                class="segment-item"
+                                data-value="high"
+                                role="radio"
+                                aria-checked="false"
+                            >
+                                <span class="segment-label">상</span>
+                                <span class="segment-desc">공격적</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="segment-item"
+                                data-value="medium"
+                                role="radio"
+                                aria-checked="false"
+                            >
+                                <span class="segment-label">중</span>
+                                <span class="segment-desc">중립적</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="segment-item"
+                                data-value="low"
+                                role="radio"
+                                aria-checked="false"
+                            >
+                                <span class="segment-label">하</span>
+                                <span class="segment-desc">보수적</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="investmentStyle" name="investmentStyle" required>
+                        <div id="investmentStyle-error" class="error-message" role="alert"></div>
+                    </div>
+                </section>
+
+                <!-- 다음 버튼 -->
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-full sticky-bottom"
+                    id="nextButton"
+                    disabled
+                >
+                    다음
+                </button>
+            </form>
+        </main>
+    </div>
+
+    <!-- 주소 검색 모달 (직접 입력 방식으로 변경되어 사용하지 않음) -->
+    <!--
+    <div id="addressModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">주소 검색</h2>
+                <button class="btn-close-modal" id="closeModal" aria-label="닫기">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="search-box">
+                    <input
+                        type="text"
+                        id="addressSearchInput"
+                        class="form-input"
+                        placeholder="도로명, 지번, 건물명 검색"
+                    >
+                    <button class="btn btn-primary" id="searchButton">검색</button>
+                </div>
+                <div id="searchResults" class="search-results">
+                    <p class="empty-message">주소를 입력하고 검색 버튼을 클릭하세요</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    -->
+
+    <!-- JavaScript -->
+    <script src="common.js"></script>
+    <script>
+        // 폼 검증 상태
+        const validationState = {
+            birthDate: false,
+            gender: false,
+            currentAddress: false,
+            workAddress: false,
+            investmentStyle: false
+        };
+
+        // DOM 요소
+        const form = document.getElementById('basicInfoForm');
+        const birthDateInput = document.getElementById('birthDate');
+        const genderButtons = document.querySelectorAll('.segment-control:not(.triple) .segment-item');
+        const investmentButtons = document.querySelectorAll('.triple .segment-item');
+        const nextButton = document.getElementById('nextButton');
+
+        // 주소 관련 (직접 입력 방식으로 변경)
+        const currentAddressInput = document.getElementById('currentAddress');
+        const workAddressInput = document.getElementById('workAddress');
+        const spouseWorkAddressInput = document.getElementById('spouseWorkAddress');
+
+        // 주소 검색 모달 관련 코드 (사용하지 않음 - 주석 처리)
+        /*
+        const addressModal = document.getElementById('addressModal');
+        const closeModalButton = document.getElementById('closeModal');
+        const addressSearchInput = document.getElementById('addressSearchInput');
+        const searchButton = document.getElementById('searchButton');
+        const searchResults = document.getElementById('searchResults');
+
+        let currentAddressField = null; // 현재 검색 중인 주소 필드
+        */
+
+        // 세그먼트 컨트롤 (성별)
+        genderButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // 모든 버튼 비활성화
+                genderButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-checked', 'false');
+                });
+
+                // 선택된 버튼 활성화
+                button.classList.add('active');
+                button.setAttribute('aria-checked', 'true');
+
+                // Hidden 필드에 값 저장
+                const value = button.dataset.value;
+                document.getElementById('gender').value = value;
+                validationState.gender = true;
+
+                updateSubmitButton();
+            });
+        });
+
+        // 세그먼트 컨트롤 (투자성향)
+        investmentButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // 모든 버튼 비활성화
+                investmentButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-checked', 'false');
+                });
+
+                // 선택된 버튼 활성화
+                button.classList.add('active');
+                button.setAttribute('aria-checked', 'true');
+
+                // Hidden 필드에 값 저장
+                const value = button.dataset.value;
+                document.getElementById('investmentStyle').value = value;
+                validationState.investmentStyle = true;
+
+                updateSubmitButton();
+            });
+        });
+
+        // 생년월일 검증
+        birthDateInput.addEventListener('change', () => {
+            const value = birthDateInput.value;
+            const errorElement = document.getElementById('birthDate-error');
+
+            if (!value) {
+                errorElement.textContent = '생년월일을 선택해주세요';
+                validationState.birthDate = false;
+            } else {
+                const birthDate = new Date(value);
+                const today = new Date();
+                const age = today.getFullYear() - birthDate.getFullYear();
+
+                if (age < 18) {
+                    errorElement.textContent = '만 18세 이상만 가입할 수 있습니다';
+                    validationState.birthDate = false;
+                } else if (age > 100) {
+                    errorElement.textContent = '올바른 생년월일을 입력해주세요';
+                    validationState.birthDate = false;
+                } else {
+                    errorElement.textContent = '';
+                    validationState.birthDate = true;
+                }
+            }
+
+            updateSubmitButton();
+        });
+
+        // 주소 직접 입력 검증
+        currentAddressInput.addEventListener('input', () => {
+            const value = currentAddressInput.value.trim();
+            const errorElement = document.getElementById('currentAddress-error');
+
+            if (value.length === 0) {
+                errorElement.textContent = '';
+                validationState.currentAddress = false;
+            } else if (value.length < 5) {
+                errorElement.textContent = '최소 5자 이상 입력해주세요';
+                validationState.currentAddress = false;
+            } else {
+                errorElement.textContent = '';
+                validationState.currentAddress = true;
+            }
+
+            updateSubmitButton();
+        });
+
+        workAddressInput.addEventListener('input', () => {
+            const value = workAddressInput.value.trim();
+            const errorElement = document.getElementById('workAddress-error');
+
+            if (value.length === 0) {
+                errorElement.textContent = '';
+                validationState.workAddress = false;
+            } else if (value.length < 5) {
+                errorElement.textContent = '최소 5자 이상 입력해주세요';
+                validationState.workAddress = false;
+            } else {
+                errorElement.textContent = '';
+                validationState.workAddress = true;
+            }
+
+            updateSubmitButton();
+        });
+
+        // 주소 검색 모달 관련 코드 (직접 입력 방식으로 변경되어 사용하지 않음 - 주석 처리)
+        /*
+        // 주소 검색 모달 열기
+        document.getElementById('searchCurrentAddress').addEventListener('click', () => {
+            currentAddressField = document.getElementById('currentAddress');
+            openAddressModal();
+        });
+
+        document.getElementById('searchWorkAddress').addEventListener('click', () => {
+            currentAddressField = document.getElementById('workAddress');
+            openAddressModal();
+        });
+
+        document.getElementById('searchSpouseWorkAddress').addEventListener('click', () => {
+            currentAddressField = document.getElementById('spouseWorkAddress');
+            openAddressModal();
+        });
+
+        function openAddressModal() {
+            addressModal.style.display = 'flex';
+            addressSearchInput.value = '';
+            searchResults.innerHTML = '<p class="empty-message">주소를 입력하고 검색 버튼을 클릭하세요</p>';
+            addressSearchInput.focus();
+        }
+
+        // 주소 검색 모달 닫기
+        closeModalButton.addEventListener('click', () => {
+            addressModal.style.display = 'none';
+            currentAddressField = null;
+        });
+
+        // 모달 배경 클릭 시 닫기
+        addressModal.addEventListener('click', (e) => {
+            if (e.target === addressModal) {
+                addressModal.style.display = 'none';
+                currentAddressField = null;
+            }
+        });
+
+        // 주소 검색
+        searchButton.addEventListener('click', performSearch);
+        addressSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performSearch();
+            }
+        });
+
+        async function performSearch() {
+            const query = addressSearchInput.value.trim();
+
+            if (!query) {
+                searchResults.innerHTML = '<p class="empty-message">검색어를 입력해주세요</p>';
+                return;
+            }
+
+            searchResults.innerHTML = '<p class="loading-message">검색 중...</p>';
+
+            try {
+                // 실제로는 카카오 주소 API 등을 호출
+                // 여기서는 샘플 데이터로 시뮬레이션
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                const sampleResults = [
+                    {
+                        roadAddress: '서울특별시 강남구 테헤란로 123',
+                        jibunAddress: '서울특별시 강남구 역삼동 456-78'
+                    },
+                    {
+                        roadAddress: '서울특별시 송파구 올림픽로 321',
+                        jibunAddress: '서울특별시 송파구 잠실동 123-45'
+                    },
+                    {
+                        roadAddress: '서울특별시 마포구 월드컵북로 400',
+                        jibunAddress: '서울특별시 마포구 상암동 789-12'
+                    }
+                ];
+
+                if (sampleResults.length === 0) {
+                    searchResults.innerHTML = '<p class="empty-message">검색 결과가 없습니다</p>';
+                } else {
+                    searchResults.innerHTML = sampleResults.map(result => `
+                        <div class="search-result-item" data-address="${result.roadAddress}">
+                            <p class="road-address">${result.roadAddress}</p>
+                            <p class="jibun-address">${result.jibunAddress}</p>
+                        </div>
+                    `).join('');
+
+                    // 결과 항목 클릭 이벤트
+                    document.querySelectorAll('.search-result-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const address = item.dataset.address;
+                            selectAddress(address);
+                        });
+                    });
+                }
+            } catch (error) {
+                searchResults.innerHTML = '<p class="error-message">검색 중 오류가 발생했습니다</p>';
+            }
+        }
+
+        function selectAddress(address) {
+            if (currentAddressField) {
+                currentAddressField.value = address;
+
+                // 검증 상태 업데이트
+                const fieldName = currentAddressField.name;
+                if (fieldName === 'currentAddress') {
+                    validationState.currentAddress = true;
+                } else if (fieldName === 'workAddress') {
+                    validationState.workAddress = true;
+                }
+
+                updateSubmitButton();
+            }
+
+            addressModal.style.display = 'none';
+            currentAddressField = null;
+        }
+        */
+
+        // 제출 버튼 활성화/비활성화
+        function updateSubmitButton() {
+            const isValid =
+                validationState.birthDate &&
+                validationState.gender &&
+                validationState.currentAddress &&
+                validationState.workAddress &&
+                validationState.investmentStyle;
+
+            nextButton.disabled = !isValid;
+        }
+
+        // 폼 제출
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                birthDate: birthDateInput.value,
+                gender: document.getElementById('gender').value,
+                currentAddress: document.getElementById('currentAddress').value,
+                workAddress: document.getElementById('workAddress').value,
+                spouseWorkAddress: document.getElementById('spouseWorkAddress').value || null,
+                investmentStyle: document.getElementById('investmentStyle').value
+            };
+
+            UI.showLoading();
+            nextButton.disabled = true;
+
+            try {
+                // API 호출 시뮬레이션
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 사용자 정보에 기본정보 추가
+                const user = Storage.getUser() || {};
+                user.basicInfo = formData;
+                Storage.setUser(user);
+
+                UI.hideLoading();
+                UI.showToast('기본정보가 저장되었습니다', 'success');
+
+                // 자산정보 입력 화면으로 이동
+                setTimeout(() => {
+                    window.location.href = '05-본인자산정보입력.html';
+                }, 1000);
+            } catch (error) {
+                UI.hideLoading();
+                nextButton.disabled = false;
+                UI.showToast('기본정보 저장 중 오류가 발생했습니다', 'error');
+            }
+        });
+
+        // 페이지 로드 시 인증 확인
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = Storage.getAuthToken();
+            if (!token) {
+                UI.showToast('로그인이 필요합니다', 'error');
+                setTimeout(() => {
+                    window.location.href = '01-로그인.html';
+                }, 1000);
+            }
+
+            // 기존 저장된 기본정보가 있으면 로드
+            const user = Storage.getUser();
+            if (user && user.basicInfo) {
+                const info = user.basicInfo;
+
+                if (info.birthDate) {
+                    birthDateInput.value = info.birthDate;
+                    validationState.birthDate = true;
+                }
+
+                if (info.gender) {
+                    const genderBtn = Array.from(genderButtons).find(btn => btn.dataset.value === info.gender);
+                    if (genderBtn) {
+                        genderBtn.click();
+                    }
+                }
+
+                if (info.currentAddress) {
+                    document.getElementById('currentAddress').value = info.currentAddress;
+                    validationState.currentAddress = true;
+                }
+
+                if (info.workAddress) {
+                    document.getElementById('workAddress').value = info.workAddress;
+                    validationState.workAddress = true;
+                }
+
+                if (info.spouseWorkAddress) {
+                    document.getElementById('spouseWorkAddress').value = info.spouseWorkAddress;
+                }
+
+                if (info.investmentStyle) {
+                    const investBtn = Array.from(investmentButtons).find(btn => btn.dataset.value === info.investmentStyle);
+                    if (investBtn) {
+                        investBtn.click();
+                    }
+                }
+
+                updateSubmitButton();
+            }
+        });
+    </script>
+
+    <style>
+        .page {
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+            padding-bottom: 80px; /* sticky button용 공간 */
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .btn-back {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            color: var(--text-primary);
+            margin-right: var(--spacing-sm);
+        }
+
+        .header-title {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .progress-indicator {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .container {
+            padding: var(--spacing-xl) var(--spacing-md);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xxl);
+        }
+
+        .form-section {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 var(--spacing-sm) 0;
+        }
+
+        .form-help {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: -8px;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .required {
+            color: var(--error-500);
+        }
+
+        .optional {
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .input-with-button .form-input {
+            flex: 1;
+        }
+
+        .btn-search {
+            flex-shrink: 0;
+            padding: 0 var(--spacing-md);
+            height: 48px;
+            background-color: var(--primary-500);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-search:hover {
+            background-color: var(--primary-600);
+        }
+
+        .segment-control {
+            display: flex;
+            gap: var(--spacing-sm);
+            width: 100%;
+        }
+
+        .segment-item {
+            flex: 1;
+            padding: var(--spacing-md);
+            background-color: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .segment-item:hover {
+            border-color: var(--primary-500);
+        }
+
+        .segment-item.active {
+            background-color: var(--primary-500);
+            border-color: var(--primary-500);
+            color: white;
+        }
+
+        .segment-label {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .segment-desc {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .sticky-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: 0;
+            border-radius: 0;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-md);
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-xl);
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .btn-close-modal {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .modal-body {
+            padding: var(--spacing-lg);
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .search-box {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .search-box .form-input {
+            flex: 1;
+        }
+
+        .search-results {
+            min-height: 200px;
+        }
+
+        .search-result-item {
+            padding: var(--spacing-md);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .search-result-item:hover {
+            border-color: var(--primary-500);
+            background-color: var(--bg-secondary);
+        }
+
+        .road-address {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 0 0 var(--spacing-xs) 0;
+        }
+
+        .jibun-address {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .empty-message,
+        .loading-message {
+            text-align: center;
+            padding: var(--spacing-xxl);
+            color: var(--text-secondary);
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                padding: var(--spacing-xxl) var(--spacing-lg);
+            }
+
+            .sticky-bottom {
+                position: static;
+                border-radius: var(--radius-md);
+                box-shadow: none;
+                margin-top: var(--spacing-xl);
+            }
+
+            .page {
+                padding-bottom: 0;
+            }
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,93 @@
+@startuml
+!theme mono
+
+title 입주후지출-계산 플로우 (Cache-Aside 패턴)
+
+actor "사용자" as User
+participant "Frontend" as FE
+participant "API Gateway" as GW
+participant "Calculator\nService" as Calc
+participant "Redis\nCache" as Cache
+participant "User\nService" as UserSvc
+participant "Asset\nService" as AssetSvc
+participant "Housing\nService" as HousingSvc
+participant "Loan\nService" as LoanSvc
+database "Calculator\nDB" as CalcDB
+
+== 입주 후 지출 계산 요청 ==
+User -> FE: 주택 상세에서 "계산하기" 클릭
+FE -> FE: 대출상품 선택 UI 표시
+User -> FE: 대출상품 선택 및 계산 요청
+FE -> GW: POST /calculator/expenses\n(housingId, loanId)
+GW -> Calc: JWT 검증 후 요청 전달
+
+== 캐시 확인 (Cache-Aside) ==
+Calc -> Calc: 캐시 키 생성\ncalc:{userId}:{housingId}:{loanId}:{assetHash}
+Calc -> Cache: GET 캐시 조회
+alt 캐시 히트 (60% 케이스)
+    Cache --> Calc: 캐시된 계산 결과 반환
+    Calc --> GW: 계산 결과 즉시 응답 (0.1초)
+    GW --> FE: 계산 결과
+    FE --> User: 재무 현황, 대출 분석, 입주 후 재무상태 표시
+else 캐시 미스 (40% 케이스)
+    Cache --> Calc: 캐시 없음
+
+    == 다중 서비스 데이터 수집 (병렬 호출) ==
+    note over Calc
+        4개 서비스 병렬 조회로
+        성능 최적화 (5초 → 2초)
+    end note
+
+    par 병렬 데이터 수집
+        Calc -> UserSvc: GET /users/profile\n기본정보 조회 (소득 계산용)
+        UserSvc --> Calc: 생년월일, 성별, 거주지, 직장위치
+    
+        Calc -> AssetSvc: GET /assets\n자산정보 조회
+        AssetSvc --> Calc: 본인/배우자 자산, 대출, 월소득, 월지출
+    
+        Calc -> HousingSvc: GET /housing/{id}\n주택정보 조회
+        HousingSvc --> Calc: 주택유형, 입주희망년월, 가격
+    
+        Calc -> LoanSvc: GET /loans/{id}\n대출상품 조회
+        LoanSvc --> Calc: 대출한도, LTV/DTI/DSR 한도, 금리
+    end
+
+    == 재무 계산 수행 ==
+    Calc -> Calc: 1) 입주희망년월 기준 예상자산 산출\n현재자산 + (월소득-월지출)×개월수 - 현재대출
+    Calc -> Calc: 2) 대출필요금액 산출\n주택가격 - 예상자산
+    Calc -> Calc: 3) LTV/DTI/DSR 계산\n- LTV = (대출필요금액/주택가격)×100\n- DTI = (연간대출원리금/연소득)×100\n- DSR = (연간총부채원리금/연소득)×100
+    Calc -> Calc: 4) 대출상품 기준 충족여부 판단\n계산값 vs 대출상품 한도
+    Calc -> Calc: 5) 입주 후 예상자산/월지출 계산\n- 입주후자산 = 예상자산 - 대출필요금액\n- 입주후월지출 = 월지출 + 월대출상환액
+
+    == 계산 결과 저장 및 캐싱 ==
+    Calc -> CalcDB: INSERT 계산 결과 저장\n(userId, housingId, loanId, 계산결과)
+    CalcDB --> Calc: resultId
+
+    Calc -> Cache: SET 계산 결과 캐싱\nTTL: 1시간
+    Cache --> Calc: 캐싱 완료
+
+    Calc --> GW: 계산 결과 응답 (5초)
+    GW --> FE: 계산 결과
+    FE --> User: 재무 현황, 대출 분석, 입주 후 재무상태 표시
+end
+
+== 계산 결과 표시 내용 ==
+note right of User
+**재무 현황**
+- 입주희망년월 기준 예상자산
+- 대출필요 금액
+
+**대출 분석**
+- 실행 대출이름
+- 계산된 LTV/DTI/DSR
+- 대출상품 기준 충족여부 (✅/❌)
+- 충족 시: "이 대출상품을 이용할 수 있습니다"
+- 미충족 시: "기준 미충족" + 상세 사유
+
+**입주 후 재무상태**
+- 예상 자산
+- 예상 월지출액
+- 여유자금 (월소득 - 월지출)
+end note
+
+@enduml

@@ -1,0 +1,296 @@
+@startuml 자산정보-수정-및-이벤트발행
+!theme mono
+
+title 자산정보 조회/수정 및 이벤트 발행 플로우 (UFR-ASST-030)
+
+actor "사용자" as User
+participant "프론트엔드" as Frontend
+participant "API Gateway" as Gateway
+participant "Asset Service" as AssetService
+database "Asset DB" as AssetDB
+queue "Message Queue" as MQ
+
+== 자산정보 관리 화면 진입 ==
+User -> Frontend: 로그인 후\n자산정보 관리 화면 접근
+Frontend -> Gateway: GET /api/assets/user/{userId}/summary
+note right: JWT 토큰 포함
+Gateway -> AssetService: GET /assets/user/{userId}/summary
+
+AssetService -> AssetDB: SELECT owner_type,\n  item_type,\n  SUM(amount) as total\nFROM asset_items\nWHERE user_id = {userId}\nGROUP BY owner_type, item_type
+AssetDB --> AssetService: 카테고리별 총액 데이터
+
+AssetService -> AssetDB: SELECT * FROM asset_items\nWHERE user_id = {userId}\nORDER BY owner_type, item_type,\n  created_at
+AssetDB --> AssetService: 전체 자산 항목 목록
+
+AssetService -> AssetService: 재무 요약 정보 계산\n- 본인 순자산 = 자산 - 대출\n- 배우자 순자산 = 자산 - 대출\n- 가구 총 순자산\n- 월 가용자금 = 월소득 - 월지출
+
+AssetService -> AssetDB: SELECT updated_at\nFROM asset_items\nWHERE user_id = {userId}\nORDER BY updated_at DESC\nLIMIT 1
+AssetDB --> AssetService: 최근 수정일시
+
+AssetService --> Gateway: 200 OK
+note right
+  {
+    hasSpouse: true,
+    self: {
+      assets: [{id, name, amount}, ...],
+      loans: [...],
+      incomes: [...],
+      expenses: [...],
+      totalAssets: 55000000,
+      totalLoans: 0,
+      totalIncome: 3000000,
+      totalExpense: 1500000,
+      netAssets: 55000000
+    },
+    spouse: {
+      assets: [...],
+      loans: [...],
+      incomes: [...],
+      expenses: [...],
+      totalAssets: 20000000,
+      totalLoans: 0,
+      totalIncome: 2500000,
+      totalExpense: 1000000,
+      netAssets: 20000000
+    },
+    summary: {
+      totalNetAssets: 75000000,
+      totalMonthlyIncome: 5500000,
+      totalMonthlyExpense: 2500000,
+      monthlyAvailableFunds: 3000000
+    },
+    lastUpdatedAt: "2025-01-15T10:30:00Z"
+  }
+end note
+
+Gateway --> Frontend: 자산정보 데이터
+Frontend --> User: 자산정보 관리 화면 표시\n- 본인/배우자 탭\n- 카테고리별 목록\n- 재무 요약 정보
+
+== 본인/배우자 탭 전환 ==
+User -> Frontend: 배우자 탭 클릭
+Frontend --> User: 배우자 자산정보 표시
+
+== 자산 항목 추가 ==
+User -> Frontend: 자산 추가 버튼 클릭
+Frontend --> User: 자산 입력 폼 표시
+User -> Frontend: 자산이름, 자산금액 입력
+note right: 예: 주식, 1000만원
+Frontend -> Frontend: 3초 debounce 타이머 시작
+Frontend -> Frontend: debounce 타이머 완료
+
+Frontend -> Gateway: POST /api/assets/items
+note right
+  {
+    userId: "user-id",
+    ownerType: "SELF",
+    itemType: "ASSET",
+    name: "주식",
+    amount: 10000000
+  }
+end note
+
+Gateway -> AssetService: POST /assets/items
+AssetService -> AssetService: 입력 검증
+AssetService -> AssetDB: INSERT INTO asset_items
+AssetDB --> AssetService: 저장 완료
+AssetService -> AssetDB: SELECT SUM(amount)\nWHERE owner_type = 'SELF'\nAND item_type = 'ASSET'
+AssetDB --> AssetService: 총 자산액 (65000000)
+
+AssetService -> AssetService: 재무 요약 정보 재계산
+
+AssetService -> MQ: Publish AssetUpdated Event
+note right
+  Event: AssetUpdated
+  {
+    eventId: "evt-uuid",
+    eventType: "ASSET_UPDATED",
+    timestamp: "2025-01-15T10:35:00Z",
+    userId: "user-id",
+    changeType: "ITEM_ADDED",
+    ownerType: "SELF",
+    itemType: "ASSET",
+    summary: {
+      totalNetAssets: 85000000,
+      totalMonthlyIncome: 5500000,
+      totalMonthlyExpense: 2500000,
+      monthlyAvailableFunds: 3000000
+    }
+  }
+end note
+
+MQ --> AssetService: 이벤트 발행 성공
+
+AssetService --> Gateway: 201 Created
+note right
+  {
+    id: "item-id",
+    totalAssets: 65000000,
+    netAssets: 65000000,
+    summary: {
+      totalNetAssets: 85000000,
+      monthlyAvailableFunds: 3000000
+    }
+  }
+end note
+
+Gateway --> Frontend: 저장 성공 응답
+Frontend --> User: 자산 카드 추가\n총액 및 재무 요약 업데이트\n최근 수정일시 업데이트
+
+note over MQ
+  Calculator 서비스가
+  AssetUpdated 이벤트를 구독하여
+  재계산 필요 플래그 설정
+end note
+
+== 자산 항목 수정 ==
+User -> Frontend: 주식 카드의 편집 버튼 클릭
+Frontend --> User: 수정 폼 표시 (기존 값)
+User -> Frontend: 금액 수정 (1500만원)
+Frontend -> Frontend: 3초 debounce 타이머 시작
+Frontend -> Frontend: debounce 타이머 완료
+
+Frontend -> Gateway: PUT /api/assets/items/{itemId}
+note right
+  {
+    name: "주식",
+    amount: 15000000
+  }
+end note
+
+Gateway -> AssetService: PUT /assets/items/{itemId}
+AssetService -> AssetService: 입력 검증
+AssetService -> AssetDB: UPDATE asset_items\nSET amount = 15000000,\n    updated_at = NOW()\nWHERE id = {itemId}
+AssetDB --> AssetService: 수정 완료
+AssetService -> AssetDB: SELECT SUM(amount)\nWHERE owner_type = 'SELF'\nAND item_type = 'ASSET'
+AssetDB --> AssetService: 총 자산액 (70000000)
+
+AssetService -> AssetService: 재무 요약 정보 재계산
+
+AssetService -> MQ: Publish AssetUpdated Event
+note right
+  Event: AssetUpdated
+  {
+    eventId: "evt-uuid",
+    eventType: "ASSET_UPDATED",
+    timestamp: "2025-01-15T10:40:00Z",
+    userId: "user-id",
+    changeType: "ITEM_MODIFIED",
+    ownerType: "SELF",
+    itemType: "ASSET",
+    itemId: "item-id",
+    previousAmount: 10000000,
+    newAmount: 15000000,
+    summary: {
+      totalNetAssets: 90000000,
+      totalMonthlyIncome: 5500000,
+      totalMonthlyExpense: 2500000,
+      monthlyAvailableFunds: 3000000
+    }
+  }
+end note
+
+MQ --> AssetService: 이벤트 발행 성공
+
+AssetService --> Gateway: 200 OK
+note right
+  {
+    totalAssets: 70000000,
+    netAssets: 70000000,
+    summary: {
+      totalNetAssets: 90000000,
+      monthlyAvailableFunds: 3000000
+    }
+  }
+end note
+
+Gateway --> Frontend: 수정 성공 응답
+Frontend --> User: 카드 업데이트\n총액 및 재무 요약 업데이트\n최근 수정일시 업데이트
+
+== 자산 항목 삭제 ==
+User -> Frontend: 주식 카드의 삭제 버튼 클릭
+Frontend --> User: 삭제 확인 다이얼로그\n"이 항목을 삭제하시겠습니까?"
+User -> Frontend: 확인 클릭
+
+Frontend -> Gateway: DELETE /api/assets/items/{itemId}
+Gateway -> AssetService: DELETE /assets/items/{itemId}
+
+AssetService -> AssetDB: SELECT * FROM asset_items\nWHERE id = {itemId}
+AssetDB --> AssetService: 삭제 전 항목 정보
+
+AssetService -> AssetDB: DELETE FROM asset_items\nWHERE id = {itemId}\nAND user_id = {userId}
+AssetDB --> AssetService: 삭제 완료
+
+AssetService -> AssetDB: SELECT SUM(amount)\nWHERE owner_type = 'SELF'\nAND item_type = 'ASSET'
+AssetDB --> AssetService: 총 자산액 (55000000)
+
+AssetService -> AssetService: 재무 요약 정보 재계산
+
+AssetService -> MQ: Publish AssetUpdated Event
+note right
+  Event: AssetUpdated
+  {
+    eventId: "evt-uuid",
+    eventType: "ASSET_UPDATED",
+    timestamp: "2025-01-15T10:45:00Z",
+    userId: "user-id",
+    changeType: "ITEM_DELETED",
+    ownerType: "SELF",
+    itemType: "ASSET",
+    itemId: "item-id",
+    deletedAmount: 15000000,
+    summary: {
+      totalNetAssets: 75000000,
+      totalMonthlyIncome: 5500000,
+      totalMonthlyExpense: 2500000,
+      monthlyAvailableFunds: 3000000
+    }
+  }
+end note
+
+MQ --> AssetService: 이벤트 발행 성공
+
+AssetService --> Gateway: 200 OK
+note right
+  {
+    totalAssets: 55000000,
+    netAssets: 55000000,
+    summary: {
+      totalNetAssets: 75000000,
+      monthlyAvailableFunds: 3000000
+    }
+  }
+end note
+
+Gateway --> Frontend: 삭제 성공 응답
+Frontend --> User: 카드 제거\n총액 및 재무 요약 업데이트\n"자산정보가 업데이트되었습니다"
+
+== 재무 요약 정보 실시간 표시 ==
+note over Frontend, User
+  화면 우측 패널에 재무 요약 정보 상시 표시
+  - 본인 순자산
+  - 배우자 순자산
+  - 가구 총 순자산
+  - 월 총 소득
+  - 월 총 지출
+  - 월 가용자금 (소득 - 지출)
+  - 최근 수정일시
+
+  항목 추가/수정/삭제 시 실시간 업데이트
+end note
+
+== Calculator 서비스 연동 ==
+note over MQ
+  Calculator 서비스는
+  AssetUpdated 이벤트를 수신하여:
+
+  1. 저장된 계산 결과에
+     "재계산 필요" 플래그 설정
+
+  2. 사용자가 다음 계산 시
+     최신 자산정보로 자동 반영
+
+  3. 자산 변경 이력 기록
+     (추후 분석용)
+end note
+
+@enduml

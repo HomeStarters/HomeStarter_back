@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="내집마련 도우미 플랫폼 - 배우자자산정보입력">
+    <title>배우자자산정보입력 - 내집마련 도우미</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+    <div class="page">
+        <!-- 헤더 -->
+        <header class="header">
+            <button class="btn-back" onclick="history.back()" aria-label="뒤로 가기">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <h1 class="header-title">배우자 자산정보</h1>
+            <div class="save-status" id="saveStatus">
+                <span class="saving" style="display: none;">
+                    <span class="spinner-small"></span> 저장 중...
+                </span>
+                <span class="saved" style="display: none;">✓ 저장됨</span>
+            </div>
+            <div class="progress-indicator">4/5</div>
+        </header>
+
+        <!-- 배우자 없음 체크박스 -->
+        <div class="no-spouse-section">
+            <label class="checkbox-label">
+                <input
+                    type="checkbox"
+                    id="noSpouse"
+                    class="checkbox"
+                >
+                <span class="checkbox-text">배우자 없음 (입력 건너뛰기)</span>
+            </label>
+        </div>
+
+        <!-- 탭 네비게이션 -->
+        <nav class="tabs-nav" id="tabsNav">
+            <button class="tab-item active" data-tab="assets" role="tab" aria-selected="true">자산</button>
+            <button class="tab-item" data-tab="loans" role="tab" aria-selected="false">대출</button>
+            <button class="tab-item" data-tab="income" role="tab" aria-selected="false">월소득</button>
+            <button class="tab-item" data-tab="expense" role="tab" aria-selected="false">월지출</button>
+        </nav>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container" id="mainContainer">
+            <!-- 자산 탭 -->
+            <div class="tab-content active" id="assets-tab" role="tabpanel">
+                <p class="tab-guide">배우자의 자산을 모두 등록해주세요</p>
+                <div class="cards-list" id="assetsList">
+                    <div class="empty-state">
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="40" fill="var(--bg-secondary)"/>
+                            <path d="M30 50h40M50 30v40" stroke="var(--text-secondary)" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        <p>아직 등록된 자산이 없습니다</p>
+                        <button class="btn btn-secondary" onclick="openBottomSheet('assets')">자산 추가</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 대출 탭 -->
+            <div class="tab-content" id="loans-tab" role="tabpanel">
+                <p class="tab-guide">배우자의 대출을 모두 등록해주세요</p>
+                <div class="cards-list" id="loansList">
+                    <div class="empty-state">
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="40" fill="var(--bg-secondary)"/>
+                            <path d="M30 50h40M50 30v40" stroke="var(--text-secondary)" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        <p>아직 등록된 대출이 없습니다</p>
+                        <button class="btn btn-secondary" onclick="openBottomSheet('loans')">대출 추가</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 월소득 탭 -->
+            <div class="tab-content" id="income-tab" role="tabpanel">
+                <p class="tab-guide">배우자의 월소득을 모두 등록해주세요</p>
+                <div class="cards-list" id="incomeList">
+                    <div class="empty-state">
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="40" fill="var(--bg-secondary)"/>
+                            <path d="M30 50h40M50 30v40" stroke="var(--text-secondary)" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        <p>아직 등록된 월소득이 없습니다</p>
+                        <button class="btn btn-secondary" onclick="openBottomSheet('income')">월소득 추가</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 월지출 탭 -->
+            <div class="tab-content" id="expense-tab" role="tabpanel">
+                <p class="tab-guide">배우자의 월지출을 모두 등록해주세요</p>
+                <div class="cards-list" id="expenseList">
+                    <div class="empty-state">
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="40" fill="var(--bg-secondary)"/>
+                            <path d="M30 50h40M50 30v40" stroke="var(--text-secondary)" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        <p>아직 등록된 월지출이 없습니다</p>
+                        <button class="btn btn-secondary" onclick="openBottomSheet('expense')">월지출 추가</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 총액 표시 (Sticky Footer) -->
+        <div class="total-footer" id="totalFooter">
+            <div class="total-label">총 자산</div>
+            <div class="total-amount" id="totalAmount">0원</div>
+        </div>
+
+        <!-- 다음 버튼 -->
+        <button class="btn btn-primary btn-full sticky-cta" id="nextButton">다음</button>
+
+        <!-- FAB (Floating Action Button) -->
+        <button class="fab" id="fab" onclick="openBottomSheet()" aria-label="항목 추가">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- 하단 시트 (Bottom Sheet) -->
+    <div class="bottom-sheet" id="bottomSheet">
+        <div class="bottom-sheet-content">
+            <div class="bottom-sheet-header">
+                <h2 class="bottom-sheet-title" id="sheetTitle">자산 추가</h2>
+                <button class="btn-close-sheet" id="closeSheet" aria-label="닫기">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="itemForm" class="bottom-sheet-form">
+                <div class="form-group">
+                    <label for="itemName" class="form-label" id="itemNameLabel">자산 이름</label>
+                    <input
+                        type="text"
+                        id="itemName"
+                        class="form-input"
+                        placeholder="예: 주택청약저축"
+                        maxlength="30"
+                        required
+                    >
+                    <div class="char-counter"><span id="charCount">0</span>/30</div>
+                </div>
+                <div class="form-group">
+                    <label for="itemAmount" class="form-label" id="itemAmountLabel">자산 금액</label>
+                    <div class="amount-input-wrapper">
+                        <input
+                            type="text"
+                            id="itemAmount"
+                            class="form-input amount-input"
+                            placeholder="0"
+                            inputmode="numeric"
+                            required
+                        >
+                        <span class="amount-unit">원</span>
+                    </div>
+                </div>
+                <div class="bottom-sheet-buttons">
+                    <button type="button" class="btn btn-secondary btn-full" onclick="closeBottomSheet()">취소</button>
+                    <button type="submit" class="btn btn-primary btn-full">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="common.js"></script>
+    <script>
+        // 현재 활성 탭
+        let currentTab = 'assets';
+
+        // 현재 편집 중인 항목 ID
+        let editingItemId = null;
+
+        // 자동저장 타이머
+        let saveTimer = null;
+
+        // 배우자 없음 체크박스
+        const noSpouseCheckbox = document.getElementById('noSpouse');
+        const tabsNav = document.getElementById('tabsNav');
+        const mainContainer = document.getElementById('mainContainer');
+        const totalFooter = document.getElementById('totalFooter');
+        const fab = document.getElementById('fab');
+
+        noSpouseCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+
+            if (isChecked) {
+                // 배우자 없음 선택 시
+                tabsNav.style.display = 'none';
+                mainContainer.style.display = 'none';
+                totalFooter.style.display = 'none';
+                fab.style.display = 'none';
+
+                // 모든 배우자 자산 데이터 삭제
+                ['assets', 'loans', 'income', 'expense'].forEach(type => {
+                    Storage.setAssets(`spouse_${type}`, []);
+                });
+            } else {
+                // 배우자 있음 선택 시
+                tabsNav.style.display = 'flex';
+                mainContainer.style.display = 'block';
+                totalFooter.style.display = 'flex';
+                fab.style.display = 'flex';
+            }
+        });
+
+        // 탭 전환
+        const tabButtons = document.querySelectorAll('.tab-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.dataset.tab;
+                switchTab(tabName);
+            });
+        });
+
+        function switchTab(tabName) {
+            // 모든 탭 비활성화
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+            });
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // 선택된 탭 활성화
+            const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+            const activeContent = document.getElementById(`${tabName}-tab`);
+
+            if (activeButton && activeContent) {
+                activeButton.classList.add('active');
+                activeButton.setAttribute('aria-selected', 'true');
+                activeContent.classList.add('active');
+                currentTab = tabName;
+                updateTotalDisplay();
+            }
+        }
+
+        // 하단 시트 열기
+        function openBottomSheet(type = null, itemId = null) {
+            const bottomSheet = document.getElementById('bottomSheet');
+            const sheetTitle = document.getElementById('sheetTitle');
+            const itemNameLabel = document.getElementById('itemNameLabel');
+            const itemAmountLabel = document.getElementById('itemAmountLabel');
+            const itemForm = document.getElementById('itemForm');
+
+            const tabType = type || currentTab;
+            editingItemId = itemId;
+
+            // 타이틀 및 레이블 설정
+            const labels = {
+                assets: { title: '자산', name: '자산 이름', amount: '자산 금액', placeholder: '예: 주택청약저축' },
+                loans: { title: '대출', name: '대출 이름', amount: '대출 금액', placeholder: '예: 학자금대출' },
+                income: { title: '월소득', name: '소득 이름', amount: '소득 금액', placeholder: '예: 급여' },
+                expense: { title: '월지출', name: '지출 이름', amount: '지출 금액', placeholder: '예: 관리비' }
+            };
+
+            const label = labels[tabType];
+            sheetTitle.textContent = itemId ? `${label.title} 수정` : `${label.title} 추가`;
+            itemNameLabel.textContent = label.name;
+            itemAmountLabel.textContent = label.amount;
+            document.getElementById('itemName').placeholder = label.placeholder;
+
+            // 기존 데이터 로드 (수정 모드)
+            if (itemId) {
+                const assets = Storage.getAssets(`spouse_${tabType}`) || [];
+                const item = assets.find(a => a.id === itemId);
+                if (item) {
+                    document.getElementById('itemName').value = item.name;
+                    document.getElementById('itemAmount').value = Utils.formatCurrency(item.amount);
+                    updateCharCount();
+                }
+            } else {
+                itemForm.reset();
+                updateCharCount();
+            }
+
+            bottomSheet.classList.add('active');
+        }
+
+        // 하단 시트 닫기
+        function closeBottomSheet() {
+            const bottomSheet = document.getElementById('bottomSheet');
+            bottomSheet.classList.remove('active');
+            editingItemId = null;
+            document.getElementById('itemForm').reset();
+        }
+
+        document.getElementById('closeSheet').addEventListener('click', closeBottomSheet);
+
+        // 하단 시트 배경 클릭 시 닫기
+        document.getElementById('bottomSheet').addEventListener('click', (e) => {
+            if (e.target.id === 'bottomSheet') {
+                closeBottomSheet();
+            }
+        });
+
+        // 글자 수 카운터
+        const itemNameInput = document.getElementById('itemName');
+        const charCount = document.getElementById('charCount');
+
+        itemNameInput.addEventListener('input', updateCharCount);
+
+        function updateCharCount() {
+            charCount.textContent = itemNameInput.value.length;
+        }
+
+        // 금액 입력 자동 포맷
+        const itemAmountInput = document.getElementById('itemAmount');
+
+        itemAmountInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+            if (value) {
+                e.target.value = Utils.formatCurrency(value);
+            }
+        });
+
+        // 항목 추가/수정 폼 제출
+        document.getElementById('itemForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('itemName').value.trim();
+            const amountStr = document.getElementById('itemAmount').value.replace(/[^0-9]/g, '');
+            const amount = parseInt(amountStr) || 0;
+
+            if (!name || amount === 0) {
+                UI.showToast('모든 항목을 입력해주세요', 'error');
+                return;
+            }
+
+            // 배우자 자산 데이터 가져오기 (spouse_ prefix)
+            let assets = Storage.getAssets(`spouse_${currentTab}`) || [];
+
+            if (editingItemId) {
+                // 수정
+                const index = assets.findIndex(a => a.id === editingItemId);
+                if (index !== -1) {
+                    assets[index] = { ...assets[index], name, amount };
+                }
+            } else {
+                // 추가
+                const newItem = {
+                    id: 'item_' + Date.now(),
+                    name,
+                    amount,
+                    type: `spouse_${currentTab}`
+                };
+                assets.push(newItem);
+            }
+
+            // 저장 (spouse_ prefix로 저장)
+            Storage.setAssets(`spouse_${currentTab}`, assets);
+
+            // UI 업데이트
+            renderAssetsList(currentTab);
+            updateTotalDisplay();
+
+            // 자동저장 표시
+            showSaveStatus();
+
+            closeBottomSheet();
+            UI.showToast(editingItemId ? '항목이 수정되었습니다' : '항목이 추가되었습니다', 'success');
+        });
+
+        // 자산 목록 렌더링
+        function renderAssetsList(type) {
+            const listId = `${type}List`;
+            const list = document.getElementById(listId);
+            const assets = Storage.getAssets(`spouse_${type}`) || [];
+
+            if (assets.length === 0) {
+                const labels = {
+                    assets: '자산',
+                    loans: '대출',
+                    income: '월소득',
+                    expense: '월지출'
+                };
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="40" fill="var(--bg-secondary)"/>
+                            <path d="M30 50h40M50 30v40" stroke="var(--text-secondary)" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        <p>아직 등록된 ${labels[type]}이 없습니다</p>
+                        <button class="btn btn-secondary" onclick="openBottomSheet('${type}')">${labels[type]} 추가</button>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = assets.map(item => `
+                    <div class="asset-card" data-id="${item.id}">
+                        <div class="asset-card-content">
+                            <h3 class="asset-name">${item.name}</h3>
+                            <div class="asset-amount">${Utils.formatCurrency(item.amount)}원</div>
+                        </div>
+                        <div class="asset-card-actions">
+                            <button class="btn-icon" onclick="openBottomSheet('${type}', '${item.id}')" aria-label="수정">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M14 2l4 4-10 10H4v-4L14 2z" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="deleteAsset('${type}', '${item.id}')" aria-label="삭제">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M3 5h14M8 3h4M5 5v12h10V5" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 자산 삭제
+        function deleteAsset(type, id) {
+            UI.confirm('삭제하시겠습니까?', () => {
+                let assets = Storage.getAssets(`spouse_${type}`) || [];
+                assets = assets.filter(a => a.id !== id);
+                Storage.setAssets(`spouse_${type}`, assets);
+
+                renderAssetsList(type);
+                updateTotalDisplay();
+                showSaveStatus();
+
+                UI.showToast('항목이 삭제되었습니다', 'success');
+            });
+        }
+
+        // 총액 표시 업데이트
+        function updateTotalDisplay() {
+            const footer = document.getElementById('totalFooter');
+            const totalAmount = document.getElementById('totalAmount');
+
+            const labels = {
+                assets: '총 자산',
+                loans: '총 대출',
+                income: '총 월소득',
+                expense: '총 월지출'
+            };
+
+            document.querySelector('.total-label').textContent = labels[currentTab];
+
+            const assets = Storage.getAssets(`spouse_${currentTab}`) || [];
+            const total = assets.reduce((sum, item) => sum + item.amount, 0);
+            totalAmount.textContent = Utils.formatCurrency(total) + '원';
+        }
+
+        // 자동저장 상태 표시
+        function showSaveStatus() {
+            const saveStatus = document.getElementById('saveStatus');
+            const saving = saveStatus.querySelector('.saving');
+            const saved = saveStatus.querySelector('.saved');
+
+            // "저장 중..." 표시
+            saving.style.display = 'inline-flex';
+            saved.style.display = 'none';
+
+            // 3초 후 "저장됨" 표시
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                saving.style.display = 'none';
+                saved.style.display = 'inline';
+
+                // 2초 후 숨김
+                setTimeout(() => {
+                    saved.style.display = 'none';
+                }, 2000);
+            }, 1000);
+        }
+
+        // 다음 버튼
+        document.getElementById('nextButton').addEventListener('click', () => {
+            // 대시보드로 이동
+            window.location.href = '00-대시보드.html';
+        });
+
+        // 페이지 로드 시
+        window.addEventListener('DOMContentLoaded', () => {
+            // 인증 확인
+            const token = Storage.getAuthToken();
+            if (!token) {
+                UI.showToast('로그인이 필요합니다', 'error');
+                setTimeout(() => {
+                    window.location.href = '01-로그인.html';
+                }, 1000);
+                return;
+            }
+
+            // 모든 탭의 데이터 렌더링
+            ['assets', 'loans', 'income', 'expense'].forEach(type => {
+                renderAssetsList(type);
+            });
+
+            updateTotalDisplay();
+        });
+    </script>
+
+    <style>
+        .page {
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+            padding-bottom: 140px; /* total footer + button */
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .btn-back {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            color: var(--text-primary);
+            margin-right: var(--spacing-sm);
+        }
+
+        .header-title {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .save-status {
+            margin-right: var(--spacing-md);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .save-status .saving {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .spinner-small {
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--primary-500);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        .save-status .saved {
+            color: var(--success-500);
+        }
+
+        .progress-indicator {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* 배우자 없음 섹션 */
+        .no-spouse-section {
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .checkbox:checked {
+            background-color: var(--primary-500);
+            border-color: var(--primary-500);
+        }
+
+        .checkbox-text {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* 탭 */
+        .tabs-nav {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 57px;
+            z-index: 99;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .tabs-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-item {
+            flex: 1;
+            min-width: 80px;
+            padding: var(--spacing-md);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-item.active {
+            color: var(--primary-500);
+            border-bottom-color: var(--primary-500);
+        }
+
+        .container {
+            padding: var(--spacing-lg) var(--spacing-md);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-guide {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* 카드 목록 */
+        .cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .asset-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md);
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .asset-card-content {
+            flex: 1;
+        }
+
+        .asset-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 var(--spacing-xs) 0;
+        }
+
+        .asset-amount {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-500);
+        }
+
+        .asset-card-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .btn-icon:hover {
+            color: var(--primary-500);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xxl) var(--spacing-md);
+        }
+
+        .empty-state svg {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* Total Footer */
+        .total-footer {
+            position: fixed;
+            bottom: 56px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: white;
+            border-top: 1px solid var(--border-color);
+            z-index: 90;
+        }
+
+        .total-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .total-amount {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-500);
+        }
+
+        /* Sticky CTA */
+        .sticky-cta {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: 0;
+            border-radius: 0;
+            z-index: 90;
+            height: 56px;
+        }
+
+        /* FAB */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: var(--spacing-md);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary-500);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            z-index: 85;
+        }
+
+        .fab:hover {
+            background: var(--primary-600);
+            box-shadow: 0 6px 16px rgba(0, 102, 255, 0.4);
+        }
+
+        /* Bottom Sheet */
+        .bottom-sheet {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            display: none;
+            align-items: flex-end;
+        }
+
+        .bottom-sheet.active {
+            display: flex;
+        }
+
+        .bottom-sheet-content {
+            background: white;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .bottom-sheet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .bottom-sheet-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .btn-close-sheet {
+            background: none;
+            border: none;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .bottom-sheet-form {
+            padding: var(--spacing-lg);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .char-counter {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: var(--spacing-xs);
+        }
+
+        .amount-input-wrapper {
+            position: relative;
+        }
+
+        .amount-input {
+            padding-right: 40px;
+        }
+
+        .amount-unit {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .bottom-sheet-buttons {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        @media (min-width: 768px) {
+            .sticky-cta,
+            .total-footer,
+            .fab {
+                position: static;
+            }
+
+            .page {
+                padding-bottom: 0;
+            }
+
+            .total-footer {
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-lg);
+                margin: var(--spacing-lg) var(--spacing-md) 0;
+            }
+
+            .sticky-cta {
+                max-width: 600px;
+                margin: var(--spacing-lg) auto 0;
+                border-radius: var(--radius-md);
+            }
+
+            .fab {
+                display: none;
+            }
+        }
+    </style>
+</body>
+</html>

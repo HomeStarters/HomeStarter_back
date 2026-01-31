@@ -1,0 +1,866 @@
+openapi: 3.0.3
+info:
+  title: Asset Service API
+  description: |-
+    내집마련 도우미 플랫폼 - 자산정보 관리 서비스 API
+
+    본인 및 배우자의 자산, 대출, 월소득, 월지출 정보를 관리하는 서비스입니다.
+    복수 항목 관리를 통해 상세한 재무 정보를 입력하고 조회할 수 있습니다.
+  version: 1.0.0
+  contact:
+    name: Backend Development Team
+    email: backend@home-starter.com
+
+servers:
+  - url: https://virtserver.swaggerhub.com/home-starter/asset-service/1.0.0
+    description: SwaggerHub Mock Server
+  - url: http://localhost:8082/api/v1
+    description: Local Development Server
+  - url: https://api-dev.home-starter.com/asset/v1
+    description: Development Server
+  - url: https://api.home-starter.com/asset/v1
+    description: Production Server
+
+tags:
+  - name: Self Assets
+    description: 본인 자산정보 관리
+  - name: Spouse Assets
+    description: 배우자 자산정보 관리
+  - name: Assets Management
+    description: 자산정보 조회/수정/삭제
+
+paths:
+  /assets/self:
+    post:
+      tags:
+        - Self Assets
+      summary: 본인 자산정보 입력
+      description: |-
+        본인의 자산, 대출, 월소득, 월지출 정보를 입력합니다.
+        각 카테고리별로 복수 항목을 등록할 수 있습니다.
+      operationId: createSelfAssets
+      x-user-story: UFR-ASST-010
+      x-controller: SelfAssetController
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetRequest'
+            example:
+              assets:
+                - name: 예금
+                  amount: 50000000
+                - name: 적금
+                  amount: 30000000
+              loans:
+                - name: 신용대출
+                  amount: 10000000
+              monthlyIncomes:
+                - name: 급여
+                  amount: 5000000
+                - name: 부수입
+                  amount: 500000
+              monthlyExpenses:
+                - name: 생활비
+                  amount: 2000000
+                - name: 통신비
+                  amount: 100000
+      responses:
+        '201':
+          description: 본인 자산정보 입력 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+              example:
+                userId: user-123
+                ownerType: SELF
+                assets:
+                  - id: asset-1
+                    name: 예금
+                    amount: 50000000
+                  - id: asset-2
+                    name: 적금
+                    amount: 30000000
+                loans:
+                  - id: loan-1
+                    name: 신용대출
+                    amount: 10000000
+                monthlyIncomes:
+                  - id: income-1
+                    name: 급여
+                    amount: 5000000
+                  - id: income-2
+                    name: 부수입
+                    amount: 500000
+                monthlyExpenses:
+                  - id: expense-1
+                    name: 생활비
+                    amount: 2000000
+                  - id: expense-2
+                    name: 통신비
+                    amount: 100000
+                totalAssets: 80000000
+                totalLoans: 10000000
+                totalMonthlyIncome: 5500000
+                totalMonthlyExpense: 2100000
+                netAssets: 70000000
+                monthlyAvailableFunds: 3400000
+                createdAt: '2025-01-15T10:30:00Z'
+                updatedAt: '2025-01-15T10:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: 본인 자산정보가 이미 존재함
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: ASSET_ALREADY_EXISTS
+                message: 본인 자산정보가 이미 등록되어 있습니다. 수정을 원하시면 PUT /assets/{id}를 사용하세요.
+                timestamp: '2025-01-15T10:30:00Z'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /assets/spouse:
+    post:
+      tags:
+        - Spouse Assets
+      summary: 배우자 자산정보 입력
+      description: |-
+        배우자의 자산, 대출, 월소득, 월지출 정보를 입력합니다.
+        각 카테고리별로 복수 항목을 등록할 수 있습니다.
+        배우자 없음 체크 시 모든 값이 0으로 설정됩니다.
+      operationId: createSpouseAssets
+      x-user-story: UFR-ASST-020
+      x-controller: SpouseAssetController
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetRequest'
+            examples:
+              withSpouse:
+                summary: 배우자 있음
+                value:
+                  assets:
+                    - name: 예금
+                      amount: 40000000
+                  loans:
+                    - name: 학자금대출
+                      amount: 5000000
+                  monthlyIncomes:
+                    - name: 급여
+                      amount: 4000000
+                  monthlyExpenses:
+                    - name: 생활비
+                      amount: 1500000
+              noSpouse:
+                summary: 배우자 없음
+                value:
+                  assets: []
+                  loans: []
+                  monthlyIncomes: []
+                  monthlyExpenses: []
+      responses:
+        '201':
+          description: 배우자 자산정보 입력 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+              example:
+                userId: user-123
+                ownerType: SPOUSE
+                assets:
+                  - id: asset-3
+                    name: 예금
+                    amount: 40000000
+                loans:
+                  - id: loan-2
+                    name: 학자금대출
+                    amount: 5000000
+                monthlyIncomes:
+                  - id: income-3
+                    name: 급여
+                    amount: 4000000
+                monthlyExpenses:
+                  - id: expense-3
+                    name: 생활비
+                    amount: 1500000
+                totalAssets: 40000000
+                totalLoans: 5000000
+                totalMonthlyIncome: 4000000
+                totalMonthlyExpense: 1500000
+                netAssets: 35000000
+                monthlyAvailableFunds: 2500000
+                createdAt: '2025-01-15T11:00:00Z'
+                updatedAt: '2025-01-15T11:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: 배우자 자산정보가 이미 존재함
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: ASSET_ALREADY_EXISTS
+                message: 배우자 자산정보가 이미 등록되어 있습니다. 수정을 원하시면 PUT /assets/{id}를 사용하세요.
+                timestamp: '2025-01-15T11:00:00Z'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /assets:
+    get:
+      tags:
+        - Assets Management
+      summary: 자산정보 조회
+      description: |-
+        본인 및 배우자의 모든 자산정보를 조회합니다.
+        ownerType 파라미터로 본인/배우자를 필터링할 수 있습니다.
+      operationId: getAssets
+      x-user-story: UFR-ASST-030
+      x-controller: AssetController
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ownerType
+          in: query
+          description: 소유자 유형 필터 (SELF=본인, SPOUSE=배우자)
+          required: false
+          schema:
+            type: string
+            enum:
+              - SELF
+              - SPOUSE
+          example: SELF
+      responses:
+        '200':
+          description: 자산정보 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssetResponse'
+                  combinedSummary:
+                    $ref: '#/components/schemas/CombinedAssetSummary'
+              example:
+                assets:
+                  - userId: user-123
+                    ownerType: SELF
+                    assets:
+                      - id: asset-1
+                        name: 예금
+                        amount: 50000000
+                    loans:
+                      - id: loan-1
+                        name: 신용대출
+                        amount: 10000000
+                    monthlyIncomes:
+                      - id: income-1
+                        name: 급여
+                        amount: 5000000
+                    monthlyExpenses:
+                      - id: expense-1
+                        name: 생활비
+                        amount: 2000000
+                    totalAssets: 50000000
+                    totalLoans: 10000000
+                    totalMonthlyIncome: 5000000
+                    totalMonthlyExpense: 2000000
+                    netAssets: 40000000
+                    monthlyAvailableFunds: 3000000
+                    createdAt: '2025-01-15T10:30:00Z'
+                    updatedAt: '2025-01-15T10:30:00Z'
+                  - userId: user-123
+                    ownerType: SPOUSE
+                    assets:
+                      - id: asset-3
+                        name: 예금
+                        amount: 40000000
+                    loans:
+                      - id: loan-2
+                        name: 학자금대출
+                        amount: 5000000
+                    monthlyIncomes:
+                      - id: income-3
+                        name: 급여
+                        amount: 4000000
+                    monthlyExpenses:
+                      - id: expense-3
+                        name: 생활비
+                        amount: 1500000
+                    totalAssets: 40000000
+                    totalLoans: 5000000
+                    totalMonthlyIncome: 4000000
+                    totalMonthlyExpense: 1500000
+                    netAssets: 35000000
+                    monthlyAvailableFunds: 2500000
+                    createdAt: '2025-01-15T11:00:00Z'
+                    updatedAt: '2025-01-15T11:00:00Z'
+                combinedSummary:
+                  totalAssets: 90000000
+                  totalLoans: 15000000
+                  totalMonthlyIncome: 9000000
+                  totalMonthlyExpense: 3500000
+                  netAssets: 75000000
+                  monthlyAvailableFunds: 5500000
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: 자산정보 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: ASSET_NOT_FOUND
+                message: 등록된 자산정보가 없습니다.
+                timestamp: '2025-01-15T12:00:00Z'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /assets/{id}:
+    put:
+      tags:
+        - Assets Management
+      summary: 자산정보 수정
+      description: |-
+        특정 자산정보를 수정합니다.
+        전체 항목을 교체하는 방식입니다.
+        수정 시 Calculator 서비스에 변경 이벤트를 전달하여 재계산을 트리거합니다.
+      operationId: updateAsset
+      x-user-story: UFR-ASST-030
+      x-controller: AssetController
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: 자산정보 ID (userId와 ownerType의 조합)
+          required: true
+          schema:
+            type: string
+          example: user-123-SELF
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAssetRequest'
+            example:
+              assets:
+                - name: 예금
+                  amount: 60000000
+                - name: 적금
+                  amount: 35000000
+              loans:
+                - name: 신용대출
+                  amount: 8000000
+              monthlyIncomes:
+                - name: 급여
+                  amount: 5500000
+                - name: 부수입
+                  amount: 500000
+              monthlyExpenses:
+                - name: 생활비
+                  amount: 2200000
+                - name: 통신비
+                  amount: 100000
+                - name: 보험료
+                  amount: 300000
+      responses:
+        '200':
+          description: 자산정보 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+              example:
+                userId: user-123
+                ownerType: SELF
+                assets:
+                  - id: asset-1
+                    name: 예금
+                    amount: 60000000
+                  - id: asset-2
+                    name: 적금
+                    amount: 35000000
+                loans:
+                  - id: loan-1
+                    name: 신용대출
+                    amount: 8000000
+                monthlyIncomes:
+                  - id: income-1
+                    name: 급여
+                    amount: 5500000
+                  - id: income-2
+                    name: 부수입
+                    amount: 500000
+                monthlyExpenses:
+                  - id: expense-1
+                    name: 생활비
+                    amount: 2200000
+                  - id: expense-2
+                    name: 통신비
+                    amount: 100000
+                  - id: expense-3
+                    name: 보험료
+                    amount: 300000
+                totalAssets: 95000000
+                totalLoans: 8000000
+                totalMonthlyIncome: 6000000
+                totalMonthlyExpense: 2600000
+                netAssets: 87000000
+                monthlyAvailableFunds: 3400000
+                createdAt: '2025-01-15T10:30:00Z'
+                updatedAt: '2025-01-15T14:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 권한 없음 (다른 사용자의 자산정보)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: FORBIDDEN
+                message: 해당 자산정보에 대한 권한이 없습니다.
+                timestamp: '2025-01-15T14:30:00Z'
+        '404':
+          description: 자산정보를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: ASSET_NOT_FOUND
+                message: 해당 자산정보를 찾을 수 없습니다.
+                timestamp: '2025-01-15T14:30:00Z'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Assets Management
+      summary: 자산정보 삭제
+      description: |-
+        특정 자산정보를 삭제합니다.
+        삭제 시 Calculator 서비스에 변경 이벤트를 전달합니다.
+      operationId: deleteAsset
+      x-user-story: UFR-ASST-030
+      x-controller: AssetController
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: 자산정보 ID (userId와 ownerType의 조합)
+          required: true
+          schema:
+            type: string
+          example: user-123-SELF
+      responses:
+        '204':
+          description: 자산정보 삭제 성공 (응답 본문 없음)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 권한 없음 (다른 사용자의 자산정보)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: FORBIDDEN
+                message: 해당 자산정보에 대한 권한이 없습니다.
+                timestamp: '2025-01-15T15:00:00Z'
+        '404':
+          description: 자산정보를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: ASSET_NOT_FOUND
+                message: 해당 자산정보를 찾을 수 없습니다.
+                timestamp: '2025-01-15T15:00:00Z'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 토큰 기반 인증
+
+  schemas:
+    AssetItem:
+      type: object
+      required:
+        - name
+        - amount
+      properties:
+        id:
+          type: string
+          description: 자산 항목 ID (응답 시에만 포함)
+          example: asset-1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 자산 항목 이름
+          example: 예금
+        amount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 자산 금액 (원 단위)
+          example: 50000000
+
+    LoanItem:
+      type: object
+      required:
+        - name
+        - amount
+      properties:
+        id:
+          type: string
+          description: 대출 항목 ID (응답 시에만 포함)
+          example: loan-1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 대출 항목 이름
+          example: 신용대출
+        amount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 대출 금액 (원 단위)
+          example: 10000000
+
+    IncomeItem:
+      type: object
+      required:
+        - name
+        - amount
+      properties:
+        id:
+          type: string
+          description: 월소득 항목 ID (응답 시에만 포함)
+          example: income-1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 월소득 항목 이름
+          example: 급여
+        amount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 월소득 금액 (원 단위)
+          example: 5000000
+
+    ExpenseItem:
+      type: object
+      required:
+        - name
+        - amount
+      properties:
+        id:
+          type: string
+          description: 월지출 항목 ID (응답 시에만 포함)
+          example: expense-1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 월지출 항목 이름
+          example: 생활비
+        amount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 월지출 금액 (원 단위)
+          example: 2000000
+
+    CreateAssetRequest:
+      type: object
+      properties:
+        assets:
+          type: array
+          description: 자산 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/AssetItem'
+          default: []
+        loans:
+          type: array
+          description: 대출 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/LoanItem'
+          default: []
+        monthlyIncomes:
+          type: array
+          description: 월소득 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/IncomeItem'
+          default: []
+        monthlyExpenses:
+          type: array
+          description: 월지출 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/ExpenseItem'
+          default: []
+      description: |-
+        자산정보 입력 요청
+        최소 1개 이상의 자산 또는 소득 항목이 필수입니다.
+
+    UpdateAssetRequest:
+      type: object
+      properties:
+        assets:
+          type: array
+          description: 자산 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/AssetItem'
+          default: []
+        loans:
+          type: array
+          description: 대출 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/LoanItem'
+          default: []
+        monthlyIncomes:
+          type: array
+          description: 월소득 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/IncomeItem'
+          default: []
+        monthlyExpenses:
+          type: array
+          description: 월지출 목록 (복수 항목 가능)
+          items:
+            $ref: '#/components/schemas/ExpenseItem'
+          default: []
+      description: 자산정보 수정 요청 (전체 교체 방식)
+
+    AssetResponse:
+      type: object
+      required:
+        - userId
+        - ownerType
+        - totalAssets
+        - totalLoans
+        - totalMonthlyIncome
+        - totalMonthlyExpense
+        - netAssets
+        - monthlyAvailableFunds
+        - createdAt
+        - updatedAt
+      properties:
+        userId:
+          type: string
+          description: 사용자 ID
+          example: user-123
+        ownerType:
+          type: string
+          enum:
+            - SELF
+            - SPOUSE
+          description: 소유자 유형 (SELF=본인, SPOUSE=배우자)
+          example: SELF
+        assets:
+          type: array
+          description: 자산 목록
+          items:
+            $ref: '#/components/schemas/AssetItem'
+        loans:
+          type: array
+          description: 대출 목록
+          items:
+            $ref: '#/components/schemas/LoanItem'
+        monthlyIncomes:
+          type: array
+          description: 월소득 목록
+          items:
+            $ref: '#/components/schemas/IncomeItem'
+        monthlyExpenses:
+          type: array
+          description: 월지출 목록
+          items:
+            $ref: '#/components/schemas/ExpenseItem'
+        totalAssets:
+          type: integer
+          format: int64
+          description: 총 자산액 (자동 계산)
+          example: 80000000
+        totalLoans:
+          type: integer
+          format: int64
+          description: 총 대출액 (자동 계산)
+          example: 10000000
+        totalMonthlyIncome:
+          type: integer
+          format: int64
+          description: 총 월소득 (자동 계산)
+          example: 5500000
+        totalMonthlyExpense:
+          type: integer
+          format: int64
+          description: 총 월지출 (자동 계산)
+          example: 2100000
+        netAssets:
+          type: integer
+          format: int64
+          description: 순자산 (총 자산 - 총 대출, 자동 계산)
+          example: 70000000
+        monthlyAvailableFunds:
+          type: integer
+          format: int64
+          description: 월 가용자금 (총 월소득 - 총 월지출, 자동 계산)
+          example: 3400000
+        createdAt:
+          type: string
+          format: date-time
+          description: 생성일시
+          example: '2025-01-15T10:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          description: 최종 수정일시
+          example: '2025-01-15T10:30:00Z'
+
+    CombinedAssetSummary:
+      type: object
+      required:
+        - totalAssets
+        - totalLoans
+        - totalMonthlyIncome
+        - totalMonthlyExpense
+        - netAssets
+        - monthlyAvailableFunds
+      properties:
+        totalAssets:
+          type: integer
+          format: int64
+          description: 가구 전체 총 자산액 (본인 + 배우자)
+          example: 120000000
+        totalLoans:
+          type: integer
+          format: int64
+          description: 가구 전체 총 대출액 (본인 + 배우자)
+          example: 15000000
+        totalMonthlyIncome:
+          type: integer
+          format: int64
+          description: 가구 전체 총 월소득 (본인 + 배우자)
+          example: 9500000
+        totalMonthlyExpense:
+          type: integer
+          format: int64
+          description: 가구 전체 총 월지출 (본인 + 배우자)
+          example: 3600000
+        netAssets:
+          type: integer
+          format: int64
+          description: 가구 전체 순자산 (총 자산 - 총 대출)
+          example: 105000000
+        monthlyAvailableFunds:
+          type: integer
+          format: int64
+          description: 가구 전체 월 가용자금 (총 월소득 - 총 월지출)
+          example: 5900000
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+        - timestamp
+      properties:
+        code:
+          type: string
+          description: 오류 코드
+          example: ASSET_NOT_FOUND
+        message:
+          type: string
+          description: 오류 메시지
+          example: 해당 자산정보를 찾을 수 없습니다.
+        timestamp:
+          type: string
+          format: date-time
+          description: 오류 발생 시각
+          example: '2025-01-15T12:00:00Z'
+        details:
+          type: object
+          description: 추가 오류 상세 정보 (선택)
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validationError:
+              summary: 입력 검증 오류
+              value:
+                code: VALIDATION_ERROR
+                message: 입력 값이 유효하지 않습니다.
+                timestamp: '2025-01-15T12:00:00Z'
+                details:
+                  field: assets[0].name
+                  error: 항목명은 1자 이상 50자 이하여야 합니다.
+            minimumRequirement:
+              summary: 최소 요구사항 미충족
+              value:
+                code: MINIMUM_REQUIREMENT_NOT_MET
+                message: 최소 1개 이상의 자산 또는 소득 항목이 필요합니다.
+                timestamp: '2025-01-15T12:00:00Z'
+
+    Unauthorized:
+      description: 인증 실패
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: 인증이 필요합니다. 로그인 후 다시 시도해주세요.
+            timestamp: '2025-01-15T12:00:00Z'
+
+    InternalServerError:
+      description: 서버 내부 오류
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INTERNAL_SERVER_ERROR
+            message: 서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.
+            timestamp: '2025-01-15T12:00:00Z'

@@ -1,0 +1,85 @@
+@startuml user-프로필조회
+!theme mono
+
+title User 서비스 내부 시퀀스 - 프로필 조회 (UFR-USER-050 조회)
+
+participant "Controller" as Controller
+participant "AuthService" as AuthService
+participant "UserService" as Service
+participant "UserRepository" as Repository
+database "User DB" as DB
+
+== 프로필 조회 API ==
+Controller -> Controller: GET /api/users/profile 요청 수신
+note right
+  Authorization: Bearer {token}
+end note
+
+Controller -> AuthService: validateToken(token)
+AuthService -> AuthService: JWT 토큰 검증
+note right
+  - 토큰 서명 검증
+  - 만료 시간 확인
+  - 토큰에서 userId 추출
+end note
+
+alt 토큰 유효하지 않음
+    AuthService --> Controller: UnauthorizedException
+    Controller --> Controller: 401 Unauthorized 응답
+else 토큰 유효
+    AuthService --> Controller: userId
+
+    Controller -> Service: getUserProfile(userId)
+    Service -> Repository: findById(userId)
+    Repository -> DB: SELECT * FROM users WHERE id = {userId}
+    DB --> Repository: User Entity
+    Repository --> Service: User
+
+    alt 사용자 없음
+        Service --> Controller: NotFoundException("사용자를 찾을 수 없습니다")
+        Controller --> Controller: 404 Not Found 응답
+    else 사용자 존재
+        Service -> Repository: findProfileByUserId(userId)
+        Repository -> DB: SELECT * FROM user_profiles\nWHERE user_id = {userId}
+        DB --> Repository: UserProfile Entity
+        Repository --> Service: UserProfile
+
+        alt 프로필 없음
+            Service --> Controller: ProfileResponse (빈 프로필)
+            note right
+              {
+                userId: "user-id",
+                hasProfile: false,
+                message: "기본정보를 입력해주세요"
+              }
+            end note
+            Controller --> Controller: 200 OK 응답
+        else 프로필 존재
+            Service -> Service: ProfileResponse 생성
+            note right
+              User 정보와 UserProfile 정보 결합
+            end note
+
+            Service --> Controller: ProfileResponse
+            note right
+              {
+                userId: "user-id",
+                name: "홍길동",
+                email: "hong@example.com",
+                phoneNumber: "010-1234-5678",
+                age: 28,
+                maritalStatus: "MARRIED",
+                numberOfChildren: 0,
+                hasPet: true,
+                currentResidence: "서울시 강남구",
+                createdAt: "2025-01-15T10:00:00Z",
+                updatedAt: "2025-01-15T10:00:00Z"
+              }
+            end note
+
+            Controller --> Controller: 200 OK 응답
+        end
+    end
+end
+
+@enduml

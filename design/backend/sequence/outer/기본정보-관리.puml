@@ -1,0 +1,80 @@
+@startuml 기본정보-관리
+!theme mono
+
+title 기본정보 관리 플로우
+
+actor "사용자" as User
+participant "Frontend" as FE
+participant "API Gateway" as GW
+participant "User Service" as US
+database "User DB" as DB
+
+== UFR-USER-040: 기본정보 입력 ==
+note over User: 회원가입 직후 기본정보 입력
+
+User -> FE: 기본정보 입력\n(나이, 결혼여부, 자녀수, 반려동물, 거주지)
+activate FE
+FE -> GW: POST /api/users/profile\n(Authorization: Bearer {token})
+activate GW
+GW -> GW: JWT 토큰 검증
+alt 토큰 유효하지 않음
+  GW --> FE: 401 Unauthorized
+  FE --> User: 로그인 필요 메시지
+else 토큰 유효
+  GW -> US: 기본정보 등록 요청
+  activate US
+  US -> DB: 사용자 프로필 저장\n(나이, 결혼여부, 자녀수,\n반려동물, 거주지)
+  activate DB
+  DB --> US: 저장 완료
+  deactivate DB
+  US --> GW: 201 Created\n(프로필 정보)
+  deactivate US
+  GW --> FE: 등록 성공
+  deactivate GW
+  FE --> User: 등록 완료 메시지\n메인 화면 이동
+  deactivate FE
+end
+
+== UFR-USER-050: 기본정보 수정 ==
+User -> FE: 프로필 조회 요청
+activate FE
+FE -> GW: GET /api/users/profile\n(Authorization: Bearer {token})
+activate GW
+GW -> GW: JWT 토큰 검증
+GW -> US: 프로필 조회 요청
+activate US
+US -> DB: 사용자 프로필 조회
+activate DB
+DB --> US: 프로필 정보
+deactivate DB
+US --> GW: 200 OK\n(프로필 정보)
+deactivate US
+GW --> FE: 프로필 정보
+deactivate GW
+FE --> User: 프로필 정보 표시
+deactivate FE
+
+User -> FE: 정보 수정\n(나이, 결혼여부, 자녀수, 반려동물, 거주지)
+activate FE
+FE -> GW: PUT /api/users/profile\n(Authorization: Bearer {token})
+activate GW
+GW -> GW: JWT 토큰 검증
+alt 토큰 유효하지 않음
+  GW --> FE: 401 Unauthorized
+  FE --> User: 로그인 필요 메시지
+else 토큰 유효
+  GW -> US: 프로필 수정 요청
+  activate US
+  US -> DB: 프로필 정보 업데이트
+  activate DB
+  DB --> US: 업데이트 완료
+  deactivate DB
+  US --> GW: 200 OK\n(수정된 프로필 정보)
+  deactivate US
+  GW --> FE: 수정 성공
+  deactivate GW
+  FE --> User: 수정 완료 메시지\n업데이트된 정보 표시
+  deactivate FE
+end
+
+@enduml
