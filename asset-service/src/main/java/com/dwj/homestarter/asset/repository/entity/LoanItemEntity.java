@@ -1,11 +1,13 @@
 package com.dwj.homestarter.asset.repository.entity;
 
 import com.dwj.homestarter.asset.domain.LoanItem;
+import com.dwj.homestarter.asset.domain.RepaymentType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -47,6 +49,25 @@ public class LoanItemEntity {
     private Long amount;
 
     /**
+     * 금리 (연 %)
+     */
+    @Column(name = "interest_rate", nullable = false)
+    private Double interestRate;
+
+    /**
+     * 상환 유형 (원금균등, 원리금균등, 만기일시, 체증식)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "repayment_type", nullable = false, length = 50)
+    private RepaymentType repaymentType;
+
+    /**
+     * 만기일
+     */
+    @Column(name = "expiration_date", nullable = false)
+    private LocalDate expirationDate;
+
+    /**
      * 생성 시간
      */
     @CreationTimestamp
@@ -70,6 +91,9 @@ public class LoanItemEntity {
                 .id(this.id)
                 .name(this.name)
                 .amount(this.amount)
+                .interestRate(this.interestRate)
+                .repaymentType(this.repaymentType)
+                .expirationDate(this.expirationDate)
                 .build();
     }
 
@@ -86,6 +110,9 @@ public class LoanItemEntity {
                 .assetId(assetId)
                 .name(item.getName())
                 .amount(item.getAmount())
+                .interestRate(item.getInterestRate())
+                .repaymentType(item.getRepaymentType())
+                .expirationDate(item.getExpirationDate())
                 .build();
     }
 }

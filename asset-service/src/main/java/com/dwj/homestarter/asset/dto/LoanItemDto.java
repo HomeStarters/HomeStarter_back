@@ -1,6 +1,10 @@
 package com.dwj.homestarter.asset.dto;
 
 import com.dwj.homestarter.asset.domain.LoanItem;
+import com.dwj.homestarter.asset.domain.RepaymentType;
+import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -9,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -40,6 +45,24 @@ public class LoanItemDto {
     private Long amount;
 
     /**
+     * 금리 (연 %)
+     */
+    @NotBlank(message = "금리는 필수입니다")
+    private Double interestRate;
+
+    /**
+     * 상환 유형 (원금균등, 원리금균등, 만기일시, 체증식)
+     */
+    @NotNull(message = "상환 유형은 필수입니다")
+    private RepaymentType repaymentType;
+
+    /**
+     * 만기일
+     */
+    @NotBlank(message = "만기일은 필수입니다")
+    private LocalDate expirationDate;
+
+    /**
      * 도메인 객체로 변환
      *
      * @return LoanItem 도메인 객체
@@ -49,6 +72,9 @@ public class LoanItemDto {
                 .id(id != null ? id : UUID.randomUUID().toString())
                 .name(name)
                 .amount(amount)
+                .interestRate(interestRate)
+                .repaymentType(repaymentType)
+                .expirationDate(expirationDate)
                 .build();
     }
 
@@ -63,6 +89,9 @@ public class LoanItemDto {
                 .id(item.getId())
                 .name(item.getName())
                 .amount(item.getAmount())
+                .interestRate(item.getInterestRate())
+                .repaymentType(item.getRepaymentType())
+                .expirationDate(item.getExpirationDate())
                 .build();
     }
 }
