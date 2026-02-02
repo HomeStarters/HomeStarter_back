@@ -47,7 +47,7 @@ public class LoanItemDto {
     /**
      * 금리 (연 %)
      */
-    @NotBlank(message = "금리는 필수입니다")
+    @NotNull(message = "금리는 필수입니다")
     private Double interestRate;
 
     /**
@@ -59,7 +59,7 @@ public class LoanItemDto {
     /**
      * 만기일
      */
-    @NotBlank(message = "만기일은 필수입니다")
+    @NotNull(message = "만기일은 필수입니다")
     private LocalDate expirationDate;
 
     /**

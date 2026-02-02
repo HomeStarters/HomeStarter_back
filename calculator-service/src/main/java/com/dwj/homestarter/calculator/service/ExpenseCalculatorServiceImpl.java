@@ -261,20 +261,35 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
 
     /**
      * AssetListResponse → AssetDto 변환
-     * combinedSummary에서 합산 데이터를 추출
+     * combinedSummary에서 합산 데이터를 추출하고, 개별 대출 항목을 수집
      */
     private AssetDto convertAsset(AssetListResponse response) {
         AssetListResponse.CombinedAssetSummaryDto summary = response.getCombinedSummary();
         String userId = null;
+        List<AssetDto.LoanItemInfo> loanItems = new java.util.ArrayList<>();
+
         if (response.getAssets() != null && !response.getAssets().isEmpty()) {
             userId = response.getAssets().get(0).getUserId();
+            for (AssetListResponse.AssetResponse asset : response.getAssets()) {
+                if (asset.getLoans() != null) {
+                    for (AssetListResponse.LoanItemInfo loan : asset.getLoans()) {
+                        loanItems.add(AssetDto.LoanItemInfo.builder()
+                                .amount(loan.getAmount())
+                                .interestRate(loan.getInterestRate())
+                                .expirationDate(loan.getExpirationDate())
+                                .build());
+                    }
+                }
+            }
         }
+
         return AssetDto.builder()
                 .userId(userId)
                 .totalAssets(summary.getTotalAssets())
                 .totalLoans(summary.getTotalLoans())
                 .monthlyIncome(summary.getTotalMonthlyIncome())
                 .monthlyExpenses(summary.getTotalMonthlyExpense())
+                .loanItems(loanItems)
                 .build();
     }
 

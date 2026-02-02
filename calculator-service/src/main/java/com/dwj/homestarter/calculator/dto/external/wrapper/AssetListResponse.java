@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -24,12 +25,28 @@ public class AssetListResponse {
         private String assetId;
         private String userId;
         private String ownerType;
+        private List<LoanItemInfo> loans;
         private Long totalAssets;
         private Long totalLoans;
         private Long totalMonthlyIncome;
         private Long totalMonthlyExpense;
         private Long netAssets;
         private Long monthlyAvailableFunds;
+    }
+
+    /**
+     * 대출 항목 정보
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LoanItemInfo {
+        private String id;
+        private String name;
+        private Long amount;
+        private Double interestRate;
+        private String repaymentType;
+        private LocalDate expirationDate;
     }
 
     @Data
