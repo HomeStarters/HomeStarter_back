@@ -48,8 +48,8 @@ public class CalculatorDomain {
         // 5. DTI 계산
         Double dti = calculateDTI(monthlyPayment, asset.getMonthlyIncome());
 
-        // 6. DSR 계산
-        Long existingLoanPayment = calculateExistingLoanPayment(asset.getTotalLoans());
+        // 6. DSR 계산 (입주 예정일 기준으로 기존 대출 잔여 상환액 계산)
+        Long existingLoanPayment = calculateExistingLoanPayment(asset.getLoanItems(), housing.getMoveInDate());
         Double dsr = calculateDSR(monthlyPayment, asset.getMonthlyIncome(), existingLoanPayment);
 
         // 7. 적격성 판단
@@ -186,18 +186,42 @@ public class CalculatorDomain {
     }
 
     /**
-     * 기존 대출 월 상환액 추정
-     * 단순화: 총 대출액을 20년(240개월) 균등 분할
+     * 기존 대출 월 상환액 계산
+     * 각 대출 항목의 금리와 만기일을 기반으로 원리금균등상환 방식으로 월 상환액을 계산
+     * 잔여 개월 수는 입주 예정일 기준으로 산정
      *
-     * @param totalLoans 총 대출액
-     * @return 기존 대출 월 상환액
+     * @param loanItems  개별 대출 항목 목록
+     * @param moveInDate 입주 예정일
+     * @return 기존 대출 총 월 상환액
      */
-    private Long calculateExistingLoanPayment(Long totalLoans) {
-        if (totalLoans == 0) {
+    private Long calculateExistingLoanPayment(List<AssetDto.LoanItemInfo> loanItems, LocalDate moveInDate) {
+        if (loanItems == null || loanItems.isEmpty()) {
             return 0L;
         }
-        // 평균 대출 기간 20년(240개월) 가정
-        return totalLoans / 240;
+
+        long totalMonthlyPayment = 0L;
+
+        for (AssetDto.LoanItemInfo item : loanItems) {
+            if (item.getAmount() == null || item.getAmount() <= 0) {
+                continue;
+            }
+
+            // 잔여 개월 수 계산 (만기일 - 입주 예정일)
+            long remainingMonths = ChronoUnit.MONTHS.between(moveInDate, item.getExpirationDate());
+            if (remainingMonths <= 0) {
+                // 입주 예정일 기준 만기가 지난 대출은 제외
+                continue;
+            }
+
+            // 원리금균등상환 방식으로 월 상환액 계산
+            totalMonthlyPayment += calculateMonthlyPayment(
+                    item.getAmount(),
+                    item.getInterestRate(),
+                    (int) remainingMonths
+            );
+        }
+
+        return totalMonthlyPayment;
     }
 
     /**
