@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: housing-service
+  namespace: homestarter-ns
+spec:
+  type: ClusterIP
+  selector:
+    app: housing-service
+  ports:
+    - port: 80
+      targetPort: 8084
+      protocol: TCP

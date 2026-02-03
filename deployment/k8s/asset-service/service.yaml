@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: asset-service
+  namespace: homestarter-ns
+spec:
+  type: ClusterIP
+  selector:
+    app: asset-service
+  ports:
+    - port: 80
+      targetPort: 8082
+      protocol: TCP

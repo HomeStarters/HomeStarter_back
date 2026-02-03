@@ -1,0 +1,67 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homestarter
+  namespace: homestarter-ns
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: homestarter-api.172.30.1.205.nip.io
+      http:
+        paths:
+          - path: /users
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service
+                port:
+                  number: 80
+          - path: /api/v1/assets
+            pathType: Prefix
+            backend:
+              service:
+                name: asset-service
+                port:
+                  number: 80
+          - path: /housings
+            pathType: Prefix
+            backend:
+              service:
+                name: housing-service
+                port:
+                  number: 80
+          - path: /api/v1/loans
+            pathType: Prefix
+            backend:
+              service:
+                name: loan-service
+                port:
+                  number: 80
+          - path: /api/v1/admin/loans
+            pathType: Prefix
+            backend:
+              service:
+                name: loan-service
+                port:
+                  number: 80
+          - path: /calculator
+            pathType: Prefix
+            backend:
+              service:
+                name: calculator-service
+                port:
+                  number: 80
+          - path: /roadmaps
+            pathType: Prefix
+            backend:
+              service:
+                name: roadmap-service
+                port:
+                  number: 80
+          - path: /lifecycle-events
+            pathType: Prefix
+            backend:
+              service:
+                name: roadmap-service
+                port:
+                  number: 80

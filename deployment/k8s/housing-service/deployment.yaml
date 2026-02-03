@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: housing-service
+  namespace: homestarter-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: housing-service
+  template:
+    metadata:
+      labels:
+        app: housing-service
+    spec:
+      imagePullSecrets:
+        - name: homestarter
+      containers:
+        - name: housing-service
+          image: docker.io/daewoongjeon/housing-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: cm-common
+            - configMapRef:
+                name: cm-housing-service
+            - secretRef:
+                name: secret-common
+            - secretRef:
+                name: secret-housing-service
+          resources:
+            requests:
+              cpu: 256m
+              memory: 256Mi
+            limits:
+              cpu: 256m
+              memory: 256Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8084
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8084
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            failureThreshold: 3
