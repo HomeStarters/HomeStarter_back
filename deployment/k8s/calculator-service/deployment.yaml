@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calculator-service
+  namespace: homestarter-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calculator-service
+  template:
+    metadata:
+      labels:
+        app: calculator-service
+    spec:
+      imagePullSecrets:
+        - name: homestarter
+      containers:
+        - name: calculator-service
+          image: docker.io/daewoongjeon/calculator-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: cm-common
+            - configMapRef:
+                name: cm-calculator-service
+            - secretRef:
+                name: secret-common
+            - secretRef:
+                name: secret-calculator-service
+          resources:
+            requests:
+              cpu: 256m
+              memory: 256Mi
+            limits:
+              cpu: 256m
+              memory: 256Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8085
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8085
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            failureThreshold: 3
