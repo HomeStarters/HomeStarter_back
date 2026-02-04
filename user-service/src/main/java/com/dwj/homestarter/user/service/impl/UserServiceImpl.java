@@ -199,7 +199,8 @@ public class UserServiceImpl implements UserService {
                 request.getSpouseWorkplaceAddress(),
                 request.getBirthDate(),
                 request.getGender(),
-                request.getInvestmentPropensity()
+                request.getInvestmentPropensity(),
+                request.getWithholdingTaxSalary()
         );
 
 //        // 프로필 업데이트 (JPA 더티 체킹 활용)

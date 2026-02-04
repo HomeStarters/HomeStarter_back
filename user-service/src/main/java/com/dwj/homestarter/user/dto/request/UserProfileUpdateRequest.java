@@ -5,6 +5,8 @@ import com.dwj.homestarter.user.repository.entity.InvestmentPropensity;
 import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -52,6 +54,13 @@ public class UserProfileUpdateRequest {
      */
     @Size(min = 5, max = 50, message = "주소는 5자 이상 50자 이하여야 합니다")
     private String spouseWorkplaceAddress;
+
+    /**
+     * 원천징수연봉 (원)
+     */
+    @NotNull(message = "원천징수 연봉은 필수입니다")
+    @PositiveOrZero(message = "금액은 0 이상이어야 합니다")
+    private Long withholdingTaxSalary;
 
 //    /**
 //     * 현재 거주지 주소
