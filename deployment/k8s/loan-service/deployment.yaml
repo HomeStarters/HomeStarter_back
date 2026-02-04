@@ -35,8 +35,8 @@ spec:
               cpu: 256m
               memory: 256Mi
             limits:
-              cpu: 256m
-              memory: 256Mi
+              cpu: 512m
+              memory: 1024Mi
           startupProbe:
             httpGet:
               path: /actuator/health
