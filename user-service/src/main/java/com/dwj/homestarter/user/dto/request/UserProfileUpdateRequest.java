@@ -58,7 +58,6 @@ public class UserProfileUpdateRequest {
     /**
      * 원천징수연봉 (원)
      */
-    @NotNull(message = "원천징수 연봉은 필수입니다")
     @PositiveOrZero(message = "금액은 0 이상이어야 합니다")
     private Long withholdingTaxSalary;
 

@@ -74,7 +74,7 @@ public class UserProfileEntity {
     /**
      * 원천징수연봉
      */
-    @Column(name = "withholding_tax_salary", nullable = false)
+    @Column(name = "withholding_tax_salary")
     private Long withholdingTaxSalary;
 
 //    /**
