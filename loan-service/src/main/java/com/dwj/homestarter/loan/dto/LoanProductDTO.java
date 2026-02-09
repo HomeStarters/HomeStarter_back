@@ -37,20 +37,35 @@ public class LoanProductDTO {
      */
     private Long loanLimit;
 
-    /**
-     * LTV 한도 (%)
-     */
-    private Double ltvLimit;
-
-    /**
-     * DTI 한도 (%)
-     */
-    private Double dtiLimit;
+//    /**
+//     * LTV 한도 (%)
+//     */
+//    private Double ltvLimit;
+//
+//    /**
+//     * DTI 한도 (%)
+//     */
+//    private Double dtiLimit;
 
     /**
      * DSR 한도 (%)
      */
     private Double dsrLimit;
+
+    /**
+     * LTV 적용 여부
+     */
+    private Boolean isApplyLtv;
+
+    /**
+     * DTI 적용 여부
+     */
+    private Boolean isApplyDti;
+
+    /**
+     * DSR 적용 여부
+     */
+    private Boolean isApplyDsr;
 
     /**
      * 금리 (연 %)
@@ -106,9 +121,12 @@ public class LoanProductDTO {
                 .id(entity.getId())
                 .name(entity.getName())
                 .loanLimit(entity.getLoanLimit())
-                .ltvLimit(entity.getLtvLimit())
-                .dtiLimit(entity.getDtiLimit())
+//                .ltvLimit(entity.getLtvLimit())
+//                .dtiLimit(entity.getDtiLimit())
                 .dsrLimit(entity.getDsrLimit())
+                .isApplyLtv(entity.getIsApplyLtv())
+                .isApplyDti(entity.getIsApplyDti())
+                .isApplyDsr(entity.getIsApplyDsr())
                 .interestRate(entity.getInterestRate())
                 .targetHousing(entity.getTargetHousing())
                 .incomeRequirement(entity.getIncomeRequirement())

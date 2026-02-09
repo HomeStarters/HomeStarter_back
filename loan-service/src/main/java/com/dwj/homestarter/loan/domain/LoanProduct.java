@@ -42,23 +42,44 @@ public class LoanProduct {
     @Column(nullable = false)
     private Long loanLimit;
 
-    /**
-     * LTV 한도 (%)
-     */
-    @Column(nullable = false)
-    private Double ltvLimit;
-
-    /**
-     * DTI 한도 (%)
-     */
-    @Column(nullable = false)
-    private Double dtiLimit;
+//    /**
+//     * LTV 한도 (%)
+//     */
+//    @Column(nullable = false)
+//    private Double ltvLimit;
+//
+//    /**
+//     * DTI 한도 (%)
+//     */
+//    @Column(nullable = false)
+//    private Double dtiLimit;
 
     /**
      * DSR 한도 (%)
      */
     @Column(nullable = false)
     private Double dsrLimit;
+
+    /**
+     * LTV 적용 여부
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isApplyLtv = true;
+
+    /**
+     * DTI 적용 여부
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isApplyDti = true;
+
+    /**
+     * DSR 적용 여부
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isApplyDsr = true;
 
     /**
      * 금리 (연 %)
@@ -130,9 +151,10 @@ public class LoanProduct {
      *
      * @param name 대출이름
      * @param loanLimit 대출한도
-     * @param ltvLimit LTV 한도
-     * @param dtiLimit DTI 한도
      * @param dsrLimit DSR 한도
+     * @param isApplyLtv LTV 적용 여부
+     * @param isApplyDti DTI 적용 여부
+     * @param isApplyDsr DSR 적용 여부
      * @param interestRate 금리
      * @param targetHousing 대상주택
      * @param incomeRequirement 소득요건
@@ -140,14 +162,18 @@ public class LoanProduct {
      * @param remarks 비고
      * @param active 활성화 여부
      */
-    public void update(String name, Long loanLimit, Double ltvLimit, Double dtiLimit,
-                      Double dsrLimit, Double interestRate, String targetHousing,
+    public void update(String name, Long loanLimit,
+                      Double dsrLimit, boolean isApplyLtv, boolean isApplyDti,
+                      boolean isApplyDsr, Double interestRate, String targetHousing,
                       String incomeRequirement, String applicantRequirement,
                       String remarks, Boolean active) {
         this.name = name;
         this.loanLimit = loanLimit;
-        this.ltvLimit = ltvLimit;
-        this.dtiLimit = dtiLimit;
+//        this.ltvLimit = ltvLimit;
+//        this.dtiLimit = dtiLimit;
+        this.isApplyLtv = isApplyLtv;
+        this.isApplyDti = isApplyDti;
+        this.isApplyDsr = isApplyDsr;
         this.dsrLimit = dsrLimit;
         this.interestRate = interestRate;
         this.targetHousing = targetHousing;

@@ -35,21 +35,21 @@ public class CreateLoanProductRequest {
     @Min(value = 0, message = "대출한도는 0 이상이어야 합니다")
     private Long loanLimit;
 
-    /**
-     * LTV 한도 (%)
-     */
-    @NotNull(message = "LTV 한도는 필수입니다")
-    @DecimalMin(value = "0.0", message = "LTV 한도는 0 이상이어야 합니다")
-    @DecimalMax(value = "100.0", message = "LTV 한도는 100 이하여야 합니다")
-    private Double ltvLimit;
-
-    /**
-     * DTI 한도 (%)
-     */
-    @NotNull(message = "DTI 한도는 필수입니다")
-    @DecimalMin(value = "0.0", message = "DTI 한도는 0 이상이어야 합니다")
-    @DecimalMax(value = "100.0", message = "DTI 한도는 100 이하여야 합니다")
-    private Double dtiLimit;
+//    /**
+//     * LTV 한도 (%)
+//     */
+//    @NotNull(message = "LTV 한도는 필수입니다")
+//    @DecimalMin(value = "0.0", message = "LTV 한도는 0 이상이어야 합니다")
+//    @DecimalMax(value = "100.0", message = "LTV 한도는 100 이하여야 합니다")
+//    private Double ltvLimit;
+//
+//    /**
+//     * DTI 한도 (%)
+//     */
+//    @NotNull(message = "DTI 한도는 필수입니다")
+//    @DecimalMin(value = "0.0", message = "DTI 한도는 0 이상이어야 합니다")
+//    @DecimalMax(value = "100.0", message = "DTI 한도는 100 이하여야 합니다")
+//    private Double dtiLimit;
 
     /**
      * DSR 한도 (%)
@@ -100,9 +100,12 @@ public class CreateLoanProductRequest {
         return LoanProduct.builder()
                 .name(this.name)
                 .loanLimit(this.loanLimit)
-                .ltvLimit(this.ltvLimit)
-                .dtiLimit(this.dtiLimit)
+//                .ltvLimit(this.ltvLimit)
+//                .dtiLimit(this.dtiLimit)
                 .dsrLimit(this.dsrLimit)
+                .isApplyLtv(true)
+                .isApplyDti(true)
+                .isApplyDsr(true)
                 .interestRate(this.interestRate)
                 .targetHousing(this.targetHousing)
                 .incomeRequirement(this.incomeRequirement)
