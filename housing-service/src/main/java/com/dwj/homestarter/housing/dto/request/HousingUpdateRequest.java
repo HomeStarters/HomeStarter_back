@@ -1,6 +1,7 @@
 package com.dwj.homestarter.housing.dto.request;
 
 import com.dwj.homestarter.housing.domain.enums.HousingType;
+import com.dwj.homestarter.housing.domain.enums.RegionCode;
 import com.dwj.homestarter.housing.domain.model.ComplexInfo;
 import com.dwj.homestarter.housing.domain.model.LivingEnvironment;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -53,6 +54,9 @@ public class HousingUpdateRequest {
 //    @Valid
 //    @Schema(description = "주소 정보")
 //    private AddressRequest address;
+
+    @Schema(description = "지역 코드", example = "OHA")
+    private RegionCode regionCode;
 
     @Schema(description = "단지 정보")
     private ComplexInfo complexInfo;

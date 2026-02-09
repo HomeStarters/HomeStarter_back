@@ -44,6 +44,9 @@ public class HousingResponse {
 //    @Schema(description = "주소 정보")
 //    private AddressResponse address;
 
+    @Schema(description = "지역 특성 정보")
+    private RegionalCharacteristicResponse regionalCharacteristic;
+
     @Schema(description = "단지 정보")
     private ComplexInfo complexInfo;
 

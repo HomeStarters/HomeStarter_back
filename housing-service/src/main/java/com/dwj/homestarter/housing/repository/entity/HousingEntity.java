@@ -20,7 +20,8 @@ import java.util.List;
 @Table(name = "housings",
         indexes = {
             @Index(name = "idx_user_id", columnList = "user_id"),
-            @Index(name = "idx_user_goal", columnList = "user_id, is_goal")
+            @Index(name = "idx_user_goal", columnList = "user_id, is_goal"),
+            @Index(name = "idx_region_code", columnList = "region_code")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -78,6 +79,14 @@ public class HousingEntity {
      */
     @Column(name = "address")
     private String address;
+
+    /**
+     * 지역 특성 정보 (N:1 관계)
+     * Housing 삭제 시 지역특성은 영향 없음 (마스터 데이터)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "region_code", referencedColumnName = "region_code")
+    private RegionalCharacteristicEntity regionalCharacteristic;
 
     /**
      * 단지 정보 (1:1 관계)
@@ -189,6 +198,13 @@ public class HousingEntity {
         this.moveInDate = moveInDate;
         this.completionDate = completionDate;
         this.address = address;
+    }
+
+    /**
+     * 지역 특성 정보 설정
+     */
+    public void setRegionalCharacteristic(RegionalCharacteristicEntity regionalCharacteristic) {
+        this.regionalCharacteristic = regionalCharacteristic;
     }
 
     /**

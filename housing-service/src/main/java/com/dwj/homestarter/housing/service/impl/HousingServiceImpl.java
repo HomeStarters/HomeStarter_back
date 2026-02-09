@@ -9,6 +9,7 @@ import com.dwj.homestarter.housing.dto.response.*;
 import com.dwj.homestarter.housing.dto.response.HousingDeleteResponse;
 import com.dwj.homestarter.housing.repository.entity.*;
 import com.dwj.homestarter.housing.repository.jpa.HousingRepository;
+import com.dwj.homestarter.housing.repository.jpa.RegionalCharacteristicRepository;
 import com.dwj.homestarter.housing.service.HousingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,11 +33,21 @@ import java.util.stream.Collectors;
 public class HousingServiceImpl implements HousingService {
 
     private final HousingRepository housingRepository;
+    private final RegionalCharacteristicRepository regionalCharacteristicRepository;
 
     @Override
     @Transactional
     public HousingResponse createHousing(String userId, HousingCreateRequest request) {
         log.info("주택 생성 요청: userId={}, housingName={}", userId, request.getHousingName());
+
+        // 지역 특성 조회 (선택적)
+        RegionalCharacteristicEntity regionalCharacteristic = null;
+        if (request.getRegionCode() != null) {
+            regionalCharacteristic = regionalCharacteristicRepository
+                    .findByRegionCode(request.getRegionCode())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "유효하지 않은 지역코드입니다: " + request.getRegionCode()));
+        }
 
         // Entity 변환 및 저장
         HousingEntity housing = HousingEntity.builder()
@@ -47,6 +58,7 @@ public class HousingServiceImpl implements HousingService {
                 .moveInDate(request.getMoveInDate())
                 .completionDate(request.getCompletionDate())
                 .address(request.getAddress())
+                .regionalCharacteristic(regionalCharacteristic)
                 .isGoal(false)
                 .transportations(new ArrayList<>())
                 .build();
@@ -122,6 +134,17 @@ public class HousingServiceImpl implements HousingService {
                 request.getCompletionDate(),
                 request.getAddress()
         );
+
+        // 지역 특성 업데이트
+        if (request.getRegionCode() != null) {
+            RegionalCharacteristicEntity regionalCharacteristic = regionalCharacteristicRepository
+                    .findByRegionCode(request.getRegionCode())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "유효하지 않은 지역코드입니다: " + request.getRegionCode()));
+            housing.setRegionalCharacteristic(regionalCharacteristic);
+        } else {
+            housing.setRegionalCharacteristic(null);
+        }
 
         // 단지 정보 업데이트 (1:1 관계) - 기존 데이터 유무 확인 후 처리
         if (request.getComplexInfo() != null) {
@@ -345,6 +368,7 @@ public class HousingServiceImpl implements HousingService {
                 .moveInDate(entity.getMoveInDate())
                 .completionDate(entity.getCompletionDate())
                 .address(entity.getAddress())
+                .regionalCharacteristic(convertToRegionalCharacteristicResponse(entity.getRegionalCharacteristic()))
                 .complexInfo(convertToComplexInfo(entity.getComplexInfo()))
                 .livingEnvironment(convertToLivingEnvironment(entity.getLivingEnvironment()))
                 .isGoal(entity.getIsGoal())
@@ -357,12 +381,15 @@ public class HousingServiceImpl implements HousingService {
     }
 
     private HousingListItem convertToHousingListItem(HousingEntity entity) {
+        RegionalCharacteristicEntity regionalChar = entity.getRegionalCharacteristic();
         return HousingListItem.builder()
                 .id(entity.getId())
                 .housingName(entity.getHousingName())
                 .housingType(entity.getHousingType())
                 .price(entity.getPrice())
                 .fullAddress(entity.getAddress())
+                .regionCode(regionalChar != null ? regionalChar.getRegionCode() : null)
+                .regionDescription(regionalChar != null ? regionalChar.getRegionDescription() : null)
                 .isGoal(entity.getIsGoal())
                 .createdAt(entity.getCreatedAt())
                 .build();
@@ -402,6 +429,21 @@ public class HousingServiceImpl implements HousingService {
                 .selfAfter6pm(entity.getSelfAfter6pm())
                 .spouseBefore9am(entity.getSpouseBefore9am())
                 .spouseAfter6pm(entity.getSpouseAfter6pm())
+                .build();
+    }
+
+    /**
+     * RegionalCharacteristicEntity → RegionalCharacteristicResponse 변환
+     */
+    private RegionalCharacteristicResponse convertToRegionalCharacteristicResponse(RegionalCharacteristicEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        return RegionalCharacteristicResponse.builder()
+                .regionCode(entity.getRegionCode())
+                .regionDescription(entity.getRegionDescription())
+                .ltv(entity.getLtv())
+                .dti(entity.getDti())
                 .build();
     }
 }

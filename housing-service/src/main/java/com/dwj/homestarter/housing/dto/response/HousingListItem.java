@@ -1,6 +1,7 @@
 package com.dwj.homestarter.housing.dto.response;
 
 import com.dwj.homestarter.housing.domain.enums.HousingType;
+import com.dwj.homestarter.housing.domain.enums.RegionCode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,12 @@ public class HousingListItem {
 
     @Schema(description = "전체 주소")
     private String fullAddress;
+
+    @Schema(description = "지역 코드", example = "OHA")
+    private RegionCode regionCode;
+
+    @Schema(description = "지역 설명", example = "투기과열지구")
+    private String regionDescription;
 
     @Schema(description = "최종목표 주택 여부")
     private Boolean isGoal;
