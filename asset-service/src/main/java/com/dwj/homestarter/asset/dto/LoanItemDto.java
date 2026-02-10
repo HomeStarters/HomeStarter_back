@@ -81,6 +81,7 @@ public class LoanItemDto {
                 .interestRate(interestRate)
                 .repaymentType(repaymentType)
                 .expirationDate(expirationDate)
+                .isExcludingCalculation(isExcludingCalculation != null ? isExcludingCalculation : false)
                 .build();
     }
 
@@ -98,6 +99,7 @@ public class LoanItemDto {
                 .interestRate(item.getInterestRate())
                 .repaymentType(item.getRepaymentType())
                 .expirationDate(item.getExpirationDate())
+                .isExcludingCalculation(item.getIsExcludingCalculation())
                 .build();
     }
 }

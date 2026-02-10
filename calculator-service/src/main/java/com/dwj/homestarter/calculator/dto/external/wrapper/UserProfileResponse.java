@@ -23,6 +23,7 @@ public class UserProfileResponse {
     private String currentAddress;
     private String userWorkplaceAddress;
     private String spouseWorkplaceAddress;
+    private Long withholdingTaxSalary;
     private String investmentPropensity;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

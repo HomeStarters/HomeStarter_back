@@ -60,6 +60,24 @@ public class CreateLoanProductRequest {
     private Double dsrLimit;
 
     /**
+     * LTV 적용 여부
+     */
+    @NotNull(message = "LTV 적용 여부는 필수입니다")
+    private Boolean isApplyLtv;
+
+    /**
+     * DTI 적용 여부
+     */
+    @NotNull(message = "DTI 적용 여부는 필수입니다")
+    private Boolean isApplyDti;
+
+    /**
+     * DSR 적용 여부
+     */
+    @NotNull(message = "DSR 적용 여부는 필수입니다")
+    private Boolean isApplyDsr;
+
+    /**
      * 금리 (연 %)
      */
     @NotNull(message = "금리는 필수입니다")
@@ -103,9 +121,9 @@ public class CreateLoanProductRequest {
 //                .ltvLimit(this.ltvLimit)
 //                .dtiLimit(this.dtiLimit)
                 .dsrLimit(this.dsrLimit)
-                .isApplyLtv(true)
-                .isApplyDti(true)
-                .isApplyDsr(true)
+                .isApplyLtv(this.isApplyLtv)
+                .isApplyDti(this.isApplyDti)
+                .isApplyDsr(this.isApplyDsr)
                 .interestRate(this.interestRate)
                 .targetHousing(this.targetHousing)
                 .incomeRequirement(this.incomeRequirement)
