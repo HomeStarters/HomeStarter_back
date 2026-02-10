@@ -6,6 +6,7 @@ import com.dwj.homestarter.calculator.domain.ExternalDataBundle;
 import com.dwj.homestarter.calculator.dto.external.AssetDto;
 import com.dwj.homestarter.calculator.dto.external.HousingDto;
 import com.dwj.homestarter.calculator.dto.external.LoanProductDto;
+import com.dwj.homestarter.calculator.dto.external.RegionalCharacteristicDto;
 import com.dwj.homestarter.calculator.dto.external.UserProfileDto;
 import com.dwj.homestarter.calculator.dto.external.wrapper.*;
 import com.dwj.homestarter.calculator.dto.request.HousingExpensesRequest;
@@ -256,6 +257,7 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                 .gender(response.getGender())
                 .residence(response.getCurrentAddress())
                 .workLocation(response.getUserWorkplaceAddress())
+                .withholdingTaxSalary(response.getWithholdingTaxSalary())
                 .build();
     }
 
@@ -277,6 +279,7 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                                 .amount(loan.getAmount())
                                 .interestRate(loan.getInterestRate())
                                 .expirationDate(loan.getExpirationDate())
+                                .isExcludingCalculation(loan.isExcludingCalculation())
                                 .build());
                     }
                 }
@@ -304,12 +307,25 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
             moveInDate = ym.atDay(1);
         }
 
+        // regionalCharacteristic 변환
+        RegionalCharacteristicDto regionalCharacteristic = null;
+        if (response.getRegionalCharacteristic() != null) {
+            HousingResponse.RegionalCharacteristicResponse rc = response.getRegionalCharacteristic();
+            regionalCharacteristic = RegionalCharacteristicDto.builder()
+                    .regionCode(rc.getRegionCode())
+                    .regionDescription(rc.getRegionDescription())
+                    .ltv(rc.getLtv() != null ? rc.getLtv().doubleValue() : null)
+                    .dti(rc.getDti() != null ? rc.getDti().doubleValue() : null)
+                    .build();
+        }
+
         return HousingDto.builder()
                 .housingId(String.valueOf(response.getId()))
                 .name(response.getHousingName())
                 .type(response.getHousingType() != null ? response.getHousingType() : null)
                 .price(response.getPrice() != null ? response.getPrice().longValue() : 0L)
                 .moveInDate(moveInDate)
+                .regionalCharacteristic(regionalCharacteristic)
                 .build();
     }
 
@@ -320,9 +336,12 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
         return LoanProductDto.builder()
                 .loanProductId(String.valueOf(data.getId()))
                 .name(data.getName())
-                .ltvLimit(data.getLtvLimit())
-                .dtiLimit(data.getDtiLimit())
+//                .ltvLimit(data.getLtvLimit())
+//                .dtiLimit(data.getDtiLimit())
                 .dsrLimit(data.getDsrLimit())
+                .isApplyLtv(data.getIsApplyLtv())
+                .isApplyDti(data.getIsApplyDti())
+                .isApplyDsr(data.getIsApplyDsr())
                 .interestRate(data.getInterestRate())
                 .maxAmount(data.getLoanLimit())
                 .build();
@@ -344,6 +363,18 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
             }
         }
 
+        // 지역특성에서 LTV/DTI 한도 가져오기 (비율 → 백분율 변환)
+        Double ltvLimit = null;
+        Double dtiLimit = null;
+        RegionalCharacteristicDto rc = dataBundle.getHousing().getRegionalCharacteristic();
+        if (rc != null) {
+            if (rc.getLtv() != null) {
+                ltvLimit = rc.getLtv() * 100;
+            }
+            if (rc.getDti() != null) {
+                dtiLimit = rc.getDti() * 100;
+            }
+        }
 
         return CalculationResultEntity.builder()
                 .id(UUID.randomUUID().toString())
@@ -361,8 +392,8 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                 .ltv(calcResult.getLtv())
                 .dti(calcResult.getDti())
                 .dsr(calcResult.getDsr())
-                .ltvLimit(dataBundle.getLoan().getLtvLimit())
-                .dtiLimit(dataBundle.getLoan().getDtiLimit())
+                .ltvLimit(ltvLimit)
+                .dtiLimit(dtiLimit)
                 .dsrLimit(dataBundle.getLoan().getDsrLimit())
                 .isEligible(calcResult.getIsEligible())
                 .ineligibilityReasons(ineligibilityReasonsJson)

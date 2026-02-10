@@ -41,4 +41,9 @@ public class UserProfileDto {
      * 근무지
      */
     private String workLocation;
+
+    /**
+     * 원천징수 소득
+     */
+    private Long withholdingTaxSalary;
 }

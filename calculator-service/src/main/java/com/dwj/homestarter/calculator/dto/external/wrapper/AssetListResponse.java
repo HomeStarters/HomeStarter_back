@@ -47,6 +47,7 @@ public class AssetListResponse {
         private Double interestRate;
         private String repaymentType;
         private LocalDate expirationDate;
+        private boolean isExcludingCalculation;
     }
 
     @Data

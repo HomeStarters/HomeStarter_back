@@ -59,5 +59,6 @@ public class AssetDto {
         private Long amount;
         private Double interestRate;
         private LocalDate expirationDate;
+        private boolean isExcludingCalculation;
     }
 }

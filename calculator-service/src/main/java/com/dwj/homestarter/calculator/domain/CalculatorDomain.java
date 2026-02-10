@@ -32,7 +32,7 @@ public class CalculatorDomain {
     public CalculationResult calculate(UserProfileDto user, AssetDto asset, HousingDto housing,
                                         LoanProductDto loan, Long loanAmount, Integer loanTerm) {
 
-        // 1. 예상자산 계산
+        // 1. 예상자산 계산 (isExcludingCalculation=true인 대출액을 totalAssets에 합산)
         Long estimatedAssets = calculateEstimatedAssets(asset, housing);
 
         // 2. 대출필요금액 계산
@@ -45,15 +45,17 @@ public class CalculatorDomain {
         Double ltv = calculateLTV(loanAmount, housing.getPrice());
 //        Double ltv = calculateLTV(loanRequired, housing.getPrice());
 
-        // 5. DTI 계산
-        Double dti = calculateDTI(monthlyPayment, asset.getMonthlyIncome());
+        // 5. DTI 계산 (원천징수 소득 기준)
+        Long annualIncomeForRatio = user.getWithholdingTaxSalary();
+        Long monthlyIncomeForRatio = annualIncomeForRatio != null ? annualIncomeForRatio / 12 : 0L;
+        Double dti = calculateDTI(monthlyPayment, monthlyIncomeForRatio);
 
-        // 6. DSR 계산 (입주 예정일 기준으로 기존 대출 잔여 상환액 계산)
+        // 6. DSR 계산 (원천징수 소득 기준, 입주 예정일 기준으로 기존 대출 잔여 상환액 계산)
         Long existingLoanPayment = calculateExistingLoanPayment(asset.getLoanItems(), housing.getMoveInDate());
-        Double dsr = calculateDSR(monthlyPayment, asset.getMonthlyIncome(), existingLoanPayment);
+        Double dsr = calculateDSR(monthlyPayment, monthlyIncomeForRatio, existingLoanPayment);
 
-        // 7. 적격성 판단
-        EligibilityResult eligibilityResult = checkEligibility(ltv, dti, dsr, loan, loanAmount);
+        // 7. 적격성 판단 (지역특성의 LTV/DTI 기준 적용)
+        EligibilityResult eligibilityResult = checkEligibility(ltv, dti, dsr, loan, housing, loanAmount);
 
         // 8. 입주 후 재무상태 계산
         AfterMoveInResult afterMoveIn = calculateAfterMoveIn(asset, housing, monthlyPayment,
@@ -77,7 +79,8 @@ public class CalculatorDomain {
 
     /**
      * 예상자산 계산
-     * estimatedAssets = currentAssets + (monthlyIncome - monthlyExpense) × months - totalLoans
+     * estimatedAssets = currentAssets + excludedLoanAmount + (monthlyIncome - monthlyExpense) × months
+     * - isExcludingCalculation=true인 대출액은 계산에서 제외되어야 하므로 totalAssets에 다시 합산
      *
      * @param asset   자산 정보
      * @param housing 주택 정보
@@ -90,7 +93,17 @@ public class CalculatorDomain {
         }
 
         long monthlySavings = asset.getMonthlyIncome() - asset.getMonthlyExpenses();
-        long currentAssets = asset.getTotalAssets();
+
+        // isExcludingCalculation=true인 대출액 합산 (계산에서 제외해야 하는 대출이므로 자산에 다시 더함)
+        long excludedLoanAmount = 0L;
+        if (asset.getLoanItems() != null) {
+            excludedLoanAmount = asset.getLoanItems().stream()
+                    .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
+                    .mapToLong(loan -> loan.getAmount() != null ? loan.getAmount() : 0L)
+                    .sum();
+        }
+
+        long currentAssets = asset.getTotalAssets() + excludedLoanAmount;
 //        long currentAssets = asset.getTotalAssets() - asset.getTotalLoans();
 
         return currentAssets + (monthlySavings * months);
@@ -227,35 +240,68 @@ public class CalculatorDomain {
     /**
      * 적격성 판단
      * isEligible = (LTV ≤ ltvLimit) AND (DTI ≤ dtiLimit) AND (DSR ≤ dsrLimit) AND (loanRequired ≤ maxAmount)
+     * - LTV/DTI 한도는 주택의 지역특성(regionalCharacteristic)에서 가져옴
+     * - DSR 한도는 대출상품에서 가져옴
      *
      * @param ltv          계산된 LTV
      * @param dti          계산된 DTI
      * @param dsr          계산된 DSR
      * @param loan         대출상품 정보
-     * @param loanAmount 대출필요금액
+     * @param housing      주택 정보 (지역특성 포함)
+     * @param loanAmount   대출금액
      * @return 적격성 결과
      */
     private EligibilityResult checkEligibility(Double ltv, Double dti, Double dsr,
-                                                LoanProductDto loan, Long loanAmount) {
+                                                LoanProductDto loan, HousingDto housing, Long loanAmount) {
         List<String> reasons = new ArrayList<>();
         boolean isEligible = true;
 
-        if (ltv > loan.getLtvLimit()) {
-            isEligible = false;
-            reasons.add(String.format("LTV 초과 (%.2f%% > %.2f%%)", ltv, loan.getLtvLimit()));
+        // 지역특성에서 LTV/DTI 한도 가져오기 (비율 → 백분율 변환)
+        Double ltvLimit = null;
+        Double dtiLimit = null;
+        if (housing.getRegionalCharacteristic() != null) {
+            if (housing.getRegionalCharacteristic().getLtv() != null) {
+                ltvLimit = housing.getRegionalCharacteristic().getLtv() * 100;
+            }
+            if (housing.getRegionalCharacteristic().getDti() != null) {
+                dtiLimit = housing.getRegionalCharacteristic().getDti() * 100;
+            }
         }
 
-        if (dti > loan.getDtiLimit()) {
-            isEligible = false;
-            reasons.add(String.format("DTI 초과 (%.2f%% > %.2f%%)", dti, loan.getDtiLimit()));
+        // LTV 검증: 대출상품 적용여부 + 지역특성 한도
+        if (Boolean.TRUE.equals(loan.getIsApplyLtv())) {
+            if (ltvLimit != null && ltv > ltvLimit) {
+                isEligible = false;
+                reasons.add(String.format("LTV 초과 (%.2f%% > %.2f%%)", ltv, ltvLimit));
+            }
         }
 
-        if (dsr > loan.getDsrLimit()) {
-            isEligible = false;
-            reasons.add(String.format("DSR 초과 (%.2f%% > %.2f%%)", dsr, loan.getDsrLimit()));
+        // DTI 검증: 대출상품 적용여부 + 지역특성 한도
+        if (Boolean.TRUE.equals(loan.getIsApplyDti())) {
+            if (dti == 0.0) {
+                isEligible = false;
+                reasons.add("원천징수 소득 없음 (프로필 입력 페이지에서 입력 필요)");
+            }
+            else if (dtiLimit != null && dti > dtiLimit) {
+                isEligible = false;
+                reasons.add(String.format("DTI 초과 (%.2f%% > %.2f%%)", dti, dtiLimit));
+            }
         }
 
-        if (loanAmount > loan.getMaxAmount()) {
+        // DSR 검증: 대출상품 한도 기준
+        if (Boolean.TRUE.equals(loan.getIsApplyDsr())) {
+            if (dsr == 0.0) {
+                isEligible = false;
+                reasons.add("원천징수 소득 없음 (프로필 입력 페이지에서 입력 필요)");
+            }
+            else if (loan.getDsrLimit() != null && dsr > loan.getDsrLimit()) {
+                isEligible = false;
+                reasons.add(String.format("DSR 초과 (%.2f%% > %.2f%%)", dsr, loan.getDsrLimit()));
+            }
+        }
+
+        // 최대 대출금액 검증
+        if (loan.getMaxAmount() != null && loanAmount > loan.getMaxAmount()) {
             isEligible = false;
             reasons.add(String.format("최대 대출 금액 초과 (%,d원 > %,d원)", loanAmount, loan.getMaxAmount()));
         }

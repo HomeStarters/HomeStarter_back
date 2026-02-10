@@ -41,4 +41,9 @@ public class HousingDto {
      * 입주 예정일
      */
     private LocalDate moveInDate;
+
+    /**
+     * 지역 특성 정보 (LTV/DTI 규제)
+     */
+    private RegionalCharacteristicDto regionalCharacteristic;
 }
