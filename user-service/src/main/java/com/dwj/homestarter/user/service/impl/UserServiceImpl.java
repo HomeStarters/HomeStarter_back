@@ -176,6 +176,7 @@ public class UserServiceImpl implements UserService {
                 .currentAddress(profile.getCurrentAddress())
                 .userWorkplaceAddress(profile.getUserWorkplaceAddress())
                 .spouseWorkplaceAddress(profile.getSpouseWorkplaceAddress())
+                .withholdingTaxSalary(profile.getWithholdingTaxSalary())
 //                .currentAddress(toAddressResponse(profile.getCurrentAddress()))
 //                .userWorkplaceAddress(toAddressResponse(profile.getUserWorkplaceAddress()))
 //                .spouseWorkplaceAddress(toAddressResponse(profile.getSpouseWorkplaceAddress()))
