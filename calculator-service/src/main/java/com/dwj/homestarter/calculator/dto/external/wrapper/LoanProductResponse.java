@@ -24,9 +24,12 @@ public class LoanProductResponse {
         private Long id;
         private String name;
         private Long loanLimit;
-        private Double ltvLimit;
-        private Double dtiLimit;
+//        private Double ltvLimit;
+//        private Double dtiLimit;
         private Double dsrLimit;
+        private Boolean isApplyLtv;
+        private Boolean isApplyDti;
+        private Boolean isApplyDsr;
         private Double interestRate;
         private String targetHousing;
         private String incomeRequirement;

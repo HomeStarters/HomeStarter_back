@@ -25,20 +25,35 @@ public class LoanProductDto {
      */
     private String name;
 
-    /**
-     * LTV 한도 (%)
-     */
-    private Double ltvLimit;
-
-    /**
-     * DTI 한도 (%)
-     */
-    private Double dtiLimit;
+//    /**
+//     * LTV 한도 (%)
+//     */
+//    private Double ltvLimit;
+//
+//    /**
+//     * DTI 한도 (%)
+//     */
+//    private Double dtiLimit;
 
     /**
      * DSR 한도 (%)
      */
     private Double dsrLimit;
+
+    /**
+     * LTV 적용 여부
+     */
+    private Boolean isApplyLtv;
+
+    /**
+     * DTI 적용 여부
+     */
+    private Boolean isApplyDti;
+
+    /**
+     * DSR 적용 여부
+     */
+    private Boolean isApplyDsr;
 
     /**
      * 금리 (%)
