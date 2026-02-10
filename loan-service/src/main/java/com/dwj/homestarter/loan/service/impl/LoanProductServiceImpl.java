@@ -142,8 +142,7 @@ public class LoanProductServiceImpl implements LoanProductService {
     @Transactional
     public LoanProductResponse createLoanProduct(CreateLoanProductRequest request) {
         // 데이터 검증
-        validateLoanProductData(request.getName(), request.getLoanLimit(), request.getLtvLimit(),
-                request.getDtiLimit(), request.getDsrLimit(), request.getInterestRate());
+        validateLoanProductData(request.getName(), request.getLoanLimit(), request.getDsrLimit(), request.getInterestRate());
 
         // Entity 생성 및 저장
         LoanProduct product = request.toEntity();
@@ -165,13 +164,12 @@ public class LoanProductServiceImpl implements LoanProductService {
                 .orElseThrow(() -> new NotFoundException("대출상품을 찾을 수 없습니다"));
 
         // 데이터 검증
-        validateLoanProductData(request.getName(), request.getLoanLimit(), request.getLtvLimit(),
-                request.getDtiLimit(), request.getDsrLimit(), request.getInterestRate());
+        validateLoanProductData(request.getName(), request.getLoanLimit(), request.getDsrLimit(), request.getInterestRate());
 
         // 업데이트
-        product.update(request.getName(), request.getLoanLimit(), request.getLtvLimit(),
-                request.getDtiLimit(), request.getDsrLimit(), request.getInterestRate(),
-                request.getTargetHousing(), request.getIncomeRequirement(),
+        product.update(request.getName(), request.getLoanLimit(), request.getDsrLimit(),
+                request.getIsApplyLtv(), request.getIsApplyDti(), request.getIsApplyDsr(),
+                request.getInterestRate(), request.getTargetHousing(), request.getIncomeRequirement(),
                 request.getApplicantRequirement(), request.getRemarks(), request.getActive());
 
         LoanProduct updatedProduct = loanProductRepository.save(product);
@@ -211,25 +209,22 @@ public class LoanProductServiceImpl implements LoanProductService {
      *
      * @param name 대출이름
      * @param loanLimit 대출한도
-     * @param ltvLimit LTV 한도
-     * @param dtiLimit DTI 한도
      * @param dsrLimit DSR 한도
      * @param interestRate 금리
      */
-    private void validateLoanProductData(String name, Long loanLimit, Double ltvLimit,
-                                        Double dtiLimit, Double dsrLimit, Double interestRate) {
+    private void validateLoanProductData(String name, Long loanLimit, Double dsrLimit, Double interestRate) {
         if (!StringUtils.hasText(name)) {
             throw new ValidationException("대출이름은 필수입니다");
         }
         if (loanLimit == null || loanLimit < 0) {
             throw new ValidationException("대출한도는 0 이상이어야 합니다");
         }
-        if (ltvLimit == null || ltvLimit < 0 || ltvLimit > 100) {
-            throw new ValidationException("LTV 한도는 0-100 사이여야 합니다");
-        }
-        if (dtiLimit == null || dtiLimit < 0 || dtiLimit > 100) {
-            throw new ValidationException("DTI 한도는 0-100 사이여야 합니다");
-        }
+//        if (ltvLimit == null || ltvLimit < 0 || ltvLimit > 100) {
+//            throw new ValidationException("LTV 한도는 0-100 사이여야 합니다");
+//        }
+//        if (dtiLimit == null || dtiLimit < 0 || dtiLimit > 100) {
+//            throw new ValidationException("DTI 한도는 0-100 사이여야 합니다");
+//        }
         if (dsrLimit == null || dsrLimit < 0 || dsrLimit > 100) {
             throw new ValidationException("DSR 한도는 0-100 사이여야 합니다");
         }

@@ -16,9 +16,16 @@ spring:
       max-lifetime: 1800000
       leak-detection-threshold: 60000
 
+  # SQL Initialization
+  sql:
+    init:
+      mode: always
+      platform: postgresql
+
   # JPA Configuration
   jpa:
     show-sql: ${SHOW_SQL:true}
+    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true

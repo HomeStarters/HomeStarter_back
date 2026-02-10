@@ -71,6 +71,12 @@ public class UserProfileEntity {
     @Column(name = "spouse_workplace_address", length = 50)
     private String spouseWorkplaceAddress;
 
+    /**
+     * 원천징수연봉
+     */
+    @Column(name = "withholding_tax_salary")
+    private Long withholdingTaxSalary;
+
 //    /**
 //     * 현재 거주지 주소
 //     */
@@ -140,13 +146,15 @@ public class UserProfileEntity {
      * @param investmentPropensity 투자 성향
      * @param birthDate 생년월일
      * @param gender 성별
+     * @param withholdingTaxSalary 원천징수 연봉
      */
     public void updateProfile(String currentAddress,
                               String userWorkplaceAddress,
                               String spouseWorkplaceAddress,
                               LocalDate birthDate,
                               Gender gender,
-                             InvestmentPropensity investmentPropensity) {
+                             InvestmentPropensity investmentPropensity,
+                              Long withholdingTaxSalary) {
         if (currentAddress != null) {
             this.currentAddress = currentAddress;
         }
@@ -164,6 +172,9 @@ public class UserProfileEntity {
         }
         if (investmentPropensity != null) {
             this.investmentPropensity = investmentPropensity;
+        }
+        if (withholdingTaxSalary != null) {
+            this.withholdingTaxSalary = withholdingTaxSalary;
         }
     }
 }

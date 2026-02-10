@@ -2,6 +2,7 @@ package com.dwj.homestarter.user.dto.response;
 
 import com.dwj.homestarter.user.repository.entity.Gender;
 import com.dwj.homestarter.user.repository.entity.InvestmentPropensity;
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -66,6 +67,11 @@ public class UserProfileResponse {
      * 배우자 직장 주소
      */
     private String spouseWorkplaceAddress;
+
+    /**
+     * 원천징수연봉
+     */
+    private Long withholdingTaxSalary;
 
 //    /**
 //     * 현재 거주지 주소

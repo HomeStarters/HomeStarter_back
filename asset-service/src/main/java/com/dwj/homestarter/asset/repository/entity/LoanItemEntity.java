@@ -68,6 +68,13 @@ public class LoanItemEntity {
     private LocalDate expirationDate;
 
     /**
+     * 계산제외 여부
+     */
+    @Column(name = "is_excluding_calculation", nullable = false)
+    @Builder.Default
+    private Boolean isExcludingCalculation = false;
+
+    /**
      * 생성 시간
      */
     @CreationTimestamp
@@ -94,6 +101,7 @@ public class LoanItemEntity {
                 .interestRate(this.interestRate)
                 .repaymentType(this.repaymentType)
                 .expirationDate(this.expirationDate)
+                .isExcludingCalculation(this.isExcludingCalculation)
                 .build();
     }
 
@@ -113,6 +121,7 @@ public class LoanItemEntity {
                 .interestRate(item.getInterestRate())
                 .repaymentType(item.getRepaymentType())
                 .expirationDate(item.getExpirationDate())
+                .isExcludingCalculation(item.getIsExcludingCalculation())
                 .build();
     }
 }

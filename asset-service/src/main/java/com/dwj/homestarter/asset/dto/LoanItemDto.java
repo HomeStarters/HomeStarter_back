@@ -63,6 +63,12 @@ public class LoanItemDto {
     private LocalDate expirationDate;
 
     /**
+     * 계산제외 여부
+     */
+    @NotNull(message = "계산제외 여부는 필수입니다")
+    private Boolean isExcludingCalculation;
+
+    /**
      * 도메인 객체로 변환
      *
      * @return LoanItem 도메인 객체
@@ -75,6 +81,7 @@ public class LoanItemDto {
                 .interestRate(interestRate)
                 .repaymentType(repaymentType)
                 .expirationDate(expirationDate)
+                .isExcludingCalculation(isExcludingCalculation != null ? isExcludingCalculation : false)
                 .build();
     }
 
@@ -92,6 +99,7 @@ public class LoanItemDto {
                 .interestRate(item.getInterestRate())
                 .repaymentType(item.getRepaymentType())
                 .expirationDate(item.getExpirationDate())
+                .isExcludingCalculation(item.getIsExcludingCalculation())
                 .build();
     }
 }

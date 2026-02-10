@@ -49,4 +49,9 @@ public class LoanItem {
      * 만기일
      */
     private LocalDate expirationDate;
+
+    /**
+     * 계산제외 여부
+     */
+    private Boolean isExcludingCalculation;
 }
