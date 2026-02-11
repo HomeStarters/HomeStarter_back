@@ -17,6 +17,11 @@ import java.util.List;
 public class CalculationResult {
 
     /**
+     * 현재자산 (원)
+     */
+    private Long currentAssets;
+
+    /**
      * 예상자산 (원)
      */
     private Long estimatedAssets;

@@ -386,7 +386,7 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                 .loanProductName(dataBundle.getLoan().getName())
                 .loanAmount(request.getLoanAmount())
                 .loanTerm(request.getLoanTerm())
-                .currentAssets(dataBundle.getAsset().getTotalAssets() - dataBundle.getAsset().getTotalLoans())
+                .currentAssets(calcResult.getCurrentAssets())
                 .estimatedAssets(calcResult.getEstimatedAssets())
                 .loanRequired(calcResult.getLoanRequired())
                 .ltv(calcResult.getLtv())
