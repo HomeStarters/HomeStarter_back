@@ -317,6 +317,13 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                     .ltv(rc.getLtv() != null ? rc.getLtv().doubleValue() : null)
                     .dti(rc.getDti() != null ? rc.getDti().doubleValue() : null)
                     .build();
+        } else {
+            regionalCharacteristic = RegionalCharacteristicDto.builder()    // default는 비규제지역
+                    .regionCode("G")
+                    .regionDescription("일반지역")
+                    .ltv(0.7)
+                    .dti(0.6)
+                    .build();
         }
 
         return HousingDto.builder()
