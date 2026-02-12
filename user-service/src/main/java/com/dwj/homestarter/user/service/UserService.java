@@ -1,8 +1,10 @@
 package com.dwj.homestarter.user.service;
 
+import com.dwj.homestarter.user.dto.request.TokenRefreshRequest;
 import com.dwj.homestarter.user.dto.request.UserLoginRequest;
 import com.dwj.homestarter.user.dto.request.UserProfileUpdateRequest;
 import com.dwj.homestarter.user.dto.request.UserRegisterRequest;
+import com.dwj.homestarter.user.dto.response.TokenRefreshResponse;
 import com.dwj.homestarter.user.dto.response.UserLoginResponse;
 import com.dwj.homestarter.user.dto.response.UserProfileResponse;
 import com.dwj.homestarter.user.dto.response.UserRegisterResponse;
@@ -32,6 +34,14 @@ public interface UserService {
      * @return 로그인 응답 DTO (JWT 토큰 포함)
      */
     UserLoginResponse login(UserLoginRequest request);
+
+    /**
+     * 토큰 갱신 처리
+     *
+     * @param request 토큰 갱신 요청 DTO
+     * @return 토큰 갱신 응답 DTO (새 JWT 토큰 포함)
+     */
+    TokenRefreshResponse refreshToken(TokenRefreshRequest request);
 
     /**
      * 로그아웃 처리 및 토큰 무효화
