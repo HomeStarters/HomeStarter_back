@@ -33,7 +33,16 @@ public class CalculatorDomain {
                                         LoanProductDto loan, Long loanAmount, Integer loanTerm) {
 
         // 1. 예상자산 계산 (isExcludingCalculation=true인 대출액을 totalAssets에 합산)
-        Long estimatedAssets = calculateEstimatedAssets(asset, housing);
+        // isExcludingCalculation=true인 대출액 합산 (계산에서 제외해야 하는 대출이므로 자산에 다시 더함)
+        long excludedLoanAmount = 0L;
+        if (asset.getLoanItems() != null) {
+            excludedLoanAmount = asset.getLoanItems().stream()
+                    .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
+                    .mapToLong(loanElement -> loanElement.getAmount() != null ? loanElement.getAmount() : 0L)
+                    .sum();
+        }
+        long currentAssets = asset.getTotalAssets() + excludedLoanAmount;
+        Long estimatedAssets = calculateEstimatedAssets(asset, housing, currentAssets);
 
         // 2. 대출필요금액 계산
         Long loanRequired = calculateLoanRequired(housing, estimatedAssets);
@@ -62,6 +71,7 @@ public class CalculatorDomain {
                 estimatedAssets, loanAmount);
 
         return CalculationResult.builder()
+                .currentAssets(currentAssets)
                 .estimatedAssets(estimatedAssets)
                 .loanRequired(loanRequired)
                 .ltv(ltv)
@@ -86,7 +96,7 @@ public class CalculatorDomain {
      * @param housing 주택 정보
      * @return 예상자산
      */
-    private Long calculateEstimatedAssets(AssetDto asset, HousingDto housing) {
+    private Long calculateEstimatedAssets(AssetDto asset, HousingDto housing, long currentAssets) {
         long months = ChronoUnit.MONTHS.between(LocalDate.now(), housing.getMoveInDate());
         if (months < 0) {
             months = 0;
@@ -94,17 +104,17 @@ public class CalculatorDomain {
 
         long monthlySavings = asset.getMonthlyIncome() - asset.getMonthlyExpenses();
 
-        // isExcludingCalculation=true인 대출액 합산 (계산에서 제외해야 하는 대출이므로 자산에 다시 더함)
-        long excludedLoanAmount = 0L;
-        if (asset.getLoanItems() != null) {
-            excludedLoanAmount = asset.getLoanItems().stream()
-                    .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
-                    .mapToLong(loan -> loan.getAmount() != null ? loan.getAmount() : 0L)
-                    .sum();
-        }
-
-        long currentAssets = asset.getTotalAssets() + excludedLoanAmount;
-//        long currentAssets = asset.getTotalAssets() - asset.getTotalLoans();
+//        // isExcludingCalculation=true인 대출액 합산 (계산에서 제외해야 하는 대출이므로 자산에 다시 더함)
+//        long excludedLoanAmount = 0L;
+//        if (asset.getLoanItems() != null) {
+//            excludedLoanAmount = asset.getLoanItems().stream()
+//                    .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
+//                    .mapToLong(loan -> loan.getAmount() != null ? loan.getAmount() : 0L)
+//                    .sum();
+//        }
+//
+//        long currentAssets = asset.getTotalAssets() + excludedLoanAmount;
+////        long currentAssets = asset.getTotalAssets() - asset.getTotalLoans();
 
         return currentAssets + (monthlySavings * months);
     }
