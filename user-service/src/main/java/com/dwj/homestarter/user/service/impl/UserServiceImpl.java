@@ -6,6 +6,7 @@ import com.dwj.homestarter.common.exception.UnauthorizedException;
 import com.dwj.homestarter.common.exception.ValidationException;
 import com.dwj.homestarter.user.dto.request.*;
 import com.dwj.homestarter.user.dto.response.*;
+import io.jsonwebtoken.ExpiredJwtException;
 import com.dwj.homestarter.user.repository.entity.*;
 import com.dwj.homestarter.user.repository.jpa.UserProfileRepository;
 import com.dwj.homestarter.user.repository.jpa.UserRepository;
@@ -37,6 +38,7 @@ public class UserServiceImpl implements UserService {
 
     private static final String LOGIN_FAIL_KEY_PREFIX = "login:fail:";
     private static final String TOKEN_BLACKLIST_KEY_PREFIX = "token:blacklist:";
+    private static final String REFRESH_TOKEN_BLACKLIST_KEY_PREFIX = "refresh:blacklist:";
     private static final int MAX_LOGIN_ATTEMPTS = 5;
     private static final Duration LOGIN_LOCK_DURATION = Duration.ofMinutes(30);
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$");
@@ -154,6 +156,49 @@ public class UserServiceImpl implements UserService {
         }
 
         log.info("User logged out successfully: {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public TokenRefreshResponse refreshToken(TokenRefreshRequest request) {
+        String refreshToken = request.getRefreshToken();
+
+        // 리프레시 토큰 블랙리스트 확인
+        String blacklistKey = REFRESH_TOKEN_BLACKLIST_KEY_PREFIX + refreshToken;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(blacklistKey))) {
+            throw new UnauthorizedException("AUTH_003", "이미 사용된 리프레시 토큰입니다");
+        }
+
+        // 리프레시 토큰 유효성 검증
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new UnauthorizedException("AUTH_004", "유효하지 않거나 만료된 리프레시 토큰입니다");
+        }
+
+        // 리프레시 토큰에서 사용자 ID 추출
+        String userId = jwtTokenProvider.getUserId(refreshToken);
+
+        // 사용자 조회
+        UserEntity user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다"));
+
+        // 기존 리프레시 토큰을 블랙리스트에 추가 (토큰 재사용 방지)
+        long expirationTime = jwtTokenProvider.getExpirationDate(refreshToken).getTime() - System.currentTimeMillis();
+        if (expirationTime > 0) {
+            redisTemplate.opsForValue().set(blacklistKey, userId, Duration.ofMillis(expirationTime));
+        }
+
+        // 새로운 토큰 생성
+        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUserId(), user.getName(), user.getRole());
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUserId());
+
+        log.info("Token refreshed successfully for user: {}", userId);
+
+        return TokenRefreshResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .tokenType("Bearer")
+                .expiresIn((int) jwtTokenProvider.getAccessTokenValidity())
+                .build();
     }
 
     @Override

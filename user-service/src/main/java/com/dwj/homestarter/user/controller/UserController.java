@@ -1,9 +1,11 @@
 package com.dwj.homestarter.user.controller;
 
 import com.dwj.homestarter.common.dto.ApiResponse;
+import com.dwj.homestarter.user.dto.request.TokenRefreshRequest;
 import com.dwj.homestarter.user.dto.request.UserLoginRequest;
 import com.dwj.homestarter.user.dto.request.UserProfileUpdateRequest;
 import com.dwj.homestarter.user.dto.request.UserRegisterRequest;
+import com.dwj.homestarter.user.dto.response.TokenRefreshResponse;
 import com.dwj.homestarter.user.dto.response.UserLoginResponse;
 import com.dwj.homestarter.user.dto.response.UserProfileResponse;
 import com.dwj.homestarter.user.dto.response.UserRegisterResponse;
@@ -62,6 +64,19 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserLoginResponse>> loginUser(@Valid @RequestBody UserLoginRequest request) {
         UserLoginResponse response = userService.login(request);
         return ResponseEntity.ok(ApiResponse.success("로그인에 성공했습니다", response));
+    }
+
+    /**
+     * 토큰 갱신
+     *
+     * @param request 토큰 갱신 요청 DTO
+     * @return 토큰 갱신 응답 (새 JWT 토큰 포함)
+     */
+    @Operation(summary = "토큰 갱신", description = "리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급합니다")
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        TokenRefreshResponse response = userService.refreshToken(request);
+        return ResponseEntity.ok(ApiResponse.success("토큰이 갱신되었습니다", response));
     }
 
     /**

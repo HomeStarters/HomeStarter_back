@@ -76,11 +76,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/users/register",
                                 "/users/login",
+                                "/users/refresh",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/actuator/health",
-                                "/actuator/info"
+                                "/actuator/**"
                         ).permitAll()
 
                         // 그 외 모든 요청은 인증 필요
