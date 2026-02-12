@@ -2,6 +2,15 @@ spring:
   application:
     name: loan-service
 
+  # 메모리 최적화
+  main:
+    lazy-initialization: true
+
+  # 메모리 최적화
+  servlet:
+    multipart:
+      enabled: false
+
   # Database Configuration
   datasource:
     url: jdbc:${DB_KIND:postgresql}://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:loan_db}
@@ -9,8 +18,8 @@ spring:
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: 5  # 메모리 최적화
+      minimum-idle: 2 # 메모리 최적화
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -19,15 +28,29 @@ spring:
   # JPA Configuration
   jpa:
     show-sql: ${SHOW_SQL:true}
+    open-in-view: false # 메모리 최적화
     properties:
       hibernate:
-        format_sql: true
-        use_sql_comments: true
+        format_sql: false  # 메모리 최적화
+        use_sql_comments: false  # 메모리 최적화
+        generate_statistics: false  # 메모리 최적화
         default_schema: loan_service
         hbm2ddl:
           create_namespaces: true
+        # 메모리 최적화
+        jdbc:
+          batch_size: 20
     hibernate:
       ddl-auto: ${DDL_AUTO:update}
+
+  # 메모리 최적화
+  jackson:
+    default-property-inclusion: non_null
+
+    autoconfigure:
+      exclude:
+        - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
+        - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 
   # Redis Configuration
   data:
@@ -47,6 +70,12 @@ spring:
 # Server Configuration
 server:
   port: ${SERVER_PORT:8083}
+  # 메모리 최적화
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 5
+    accept-count: 20
 
 # JWT Configuration
 jwt:
@@ -63,11 +92,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info  # 메모리 최적화
       base-path: /actuator
   endpoint:
     health:
-      show-details: always
+      show-details: never # 메모리 최적화
       show-components: always
   health:
     livenessState:
