@@ -54,8 +54,8 @@ public class SecurityConfig {
                         // Health check
                         .requestMatchers("/health").permitAll()
                         // All other requests require authentication
-                        .anyRequest().permitAll()
-//                        .anyRequest().authenticated()
+//                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

@@ -48,8 +48,8 @@ public class SecurityConfig {
                         // Health check
                         .requestMatchers("/health").permitAll()
                         // All other requests require authentication
-//                        .anyRequest().authenticated()
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
+//                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisTemplate),
                                 UsernamePasswordAuthenticationFilter.class)
