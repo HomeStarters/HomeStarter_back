@@ -33,10 +33,10 @@ spec:
           resources:
             requests:
               cpu: 256m
-              memory: 256Mi
+              memory: 512Mi
             limits:
               cpu: 256m
-              memory: 256Mi
+              memory: 512Mi
           startupProbe:
             httpGet:
               path: /actuator/health
