@@ -12,3 +12,4 @@ data:
   SHOW_SQL: "true"
   REDIS_DATABASE: "2"
   LOG_FILE_PATH: "logs/user-service.log"
+  CORS_ALLOWED_ORIGINS: "http://localhost:*,http://121.129.45.98:8080"
