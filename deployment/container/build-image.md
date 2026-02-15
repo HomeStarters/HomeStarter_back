@@ -78,37 +78,37 @@ DOCKER_FILE=deployment/container/Dockerfile-backend
 docker build --platform linux/amd64 \
   --build-arg BUILD_LIB_DIR="user-service/build/libs" \
   --build-arg ARTIFACTORY_FILE="user-service.jar" \
-  -f ${DOCKER_FILE} -t user-service:latest .
+  -f ${DOCKER_FILE} -t daewoongjeon/user-service:latest .
 
 # asset-service
 docker build --platform linux/amd64 \
   --build-arg BUILD_LIB_DIR="asset-service/build/libs" \
   --build-arg ARTIFACTORY_FILE="asset-service.jar" \
-  -f ${DOCKER_FILE} -t asset-service:latest .
+  -f ${DOCKER_FILE} -t daewoongjeon/asset-service:latest .
 
 # loan-service
 docker build --platform linux/amd64 \
   --build-arg BUILD_LIB_DIR="loan-service/build/libs" \
   --build-arg ARTIFACTORY_FILE="loan-service.jar" \
-  -f ${DOCKER_FILE} -t loan-service:latest .
+  -f ${DOCKER_FILE} -t daewoongjeon/loan-service:latest .
 
 # housing-service
 docker build --platform linux/amd64 \
   --build-arg BUILD_LIB_DIR="housing-service/build/libs" \
   --build-arg ARTIFACTORY_FILE="housing-service.jar" \
-  -f ${DOCKER_FILE} -t housing-service:latest .
+  -f ${DOCKER_FILE} -t daewoongjeon/housing-service:latest .
 
 # calculator-service
 docker build --platform linux/amd64 \
   --build-arg BUILD_LIB_DIR="calculator-service/build/libs" \
   --build-arg ARTIFACTORY_FILE="calculator-service.jar" \
-  -f ${DOCKER_FILE} -t calculator-service:latest .
+  -f ${DOCKER_FILE} -t daewoongjeon/calculator-service:latest .
 
 # roadmap-service
 docker build --platform linux/amd64 \
   --build-arg BUILD_LIB_DIR="roadmap-service/build/libs" \
   --build-arg ARTIFACTORY_FILE="roadmap-service.jar" \
-  -f ${DOCKER_FILE} -t roadmap-service:latest .
+  -f ${DOCKER_FILE} -t daewoongjeon/roadmap-service:latest .
 ```
 
 ## 5. 이미지 빌드 결과
