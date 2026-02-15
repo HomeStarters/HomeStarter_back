@@ -18,3 +18,4 @@ data:
   CALCULATOR_SERVICE_URL: "http://calculator-service"
   LLM_API_URL: "https://api.openai.com"
   LOG_FILE_PATH: "logs/roadmap-service.log"
+  CORS_ALLOWED_ORIGINS: "http://localhost:*,http://121.129.45.98:8080"
