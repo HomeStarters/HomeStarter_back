@@ -43,7 +43,7 @@ public class LoanProductController {
      * @return 대출상품 목록
      */
     @Operation(summary = "대출상품 목록 조회", description = "필터링, 정렬, 검색, 페이징을 지원하는 대출상품 목록 조회")
-    @GetMapping
+    @GetMapping({"", "/"})
     public ResponseEntity<LoanProductListResponse> getLoanProducts(
             @Parameter(description = "주택유형 필터") @RequestParam(required = false) String housingType,
             @Parameter(description = "정렬 기준 (createdAt, interestRate, loanLimit)") @RequestParam(defaultValue = "createdAt") String sortBy,
