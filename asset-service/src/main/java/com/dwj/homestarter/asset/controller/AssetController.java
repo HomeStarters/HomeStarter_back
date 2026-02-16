@@ -76,7 +76,7 @@ public class AssetController {
      * @param ownerType     소유자 유형 필터 (SELF=본인, SPOUSE=배우자)
      * @return 자산정보 목록 및 가구 전체 합산 정보
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     @Operation(
             summary = "자산정보 조회",
             description = "본인 및 배우자의 모든 자산정보를 조회합니다. ownerType 파라미터로 본인/배우자를 필터링할 수 있습니다.",

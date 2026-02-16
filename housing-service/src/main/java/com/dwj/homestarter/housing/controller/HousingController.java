@@ -57,7 +57,7 @@ public class HousingController {
     /**
      * 주택 목록 조회
      */
-    @GetMapping
+    @GetMapping({"", "/"})
     @Operation(summary = "주택 목록 조회", description = "사용자의 주택 목록을 조회합니다 (페이징)", operationId = "getHousings")
     public ResponseEntity<ApiResponse<HousingListResponse>> getHousings(
             @AuthenticationPrincipal UserPrincipal principal,
