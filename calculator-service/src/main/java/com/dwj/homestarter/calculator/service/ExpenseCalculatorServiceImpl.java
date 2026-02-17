@@ -280,6 +280,8 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                                 .interestRate(loan.getInterestRate())
                                 .expirationDate(loan.getExpirationDate())
                                 .isExcludingCalculation(loan.isExcludingCalculation())
+                                .executedAmount(loan.getExecutedAmount())
+                                .repaymentPeriod(loan.getRepaymentPeriod())
                                 .build());
                     }
                 }

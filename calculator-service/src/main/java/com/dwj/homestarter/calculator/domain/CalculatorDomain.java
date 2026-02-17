@@ -225,7 +225,7 @@ public class CalculatorDomain {
         long totalMonthlyPayment = 0L;
 
         for (AssetDto.LoanItemInfo item : loanItems) {
-            if (item.getAmount() == null || item.getAmount() <= 0) {
+            if (item.getAmount() == null || item.getAmount() <= 0 || item.isExcludingCalculation()) {
                 continue;
             }
 
@@ -236,11 +236,19 @@ public class CalculatorDomain {
                 continue;
             }
 
+            // 대출실행 금액이 있으면 사용, 없으면 대출 잔액 사용
+            Long principalAmount = (item.getExecutedAmount() != null && item.getExecutedAmount() > 0)
+                    ? item.getExecutedAmount() : item.getAmount();
+
+            // 상환기간이 있으면 사용, 없으면 잔여 개월 수 사용
+            int termMonths = (item.getRepaymentPeriod() != null && item.getRepaymentPeriod() > 0)
+                    ? item.getRepaymentPeriod() : (int) remainingMonths;
+
             // 원리금균등상환 방식으로 월 상환액 계산
             totalMonthlyPayment += calculateMonthlyPayment(
-                    item.getAmount(),
+                    principalAmount,
                     item.getInterestRate(),
-                    (int) remainingMonths
+                    termMonths
             );
         }
 
