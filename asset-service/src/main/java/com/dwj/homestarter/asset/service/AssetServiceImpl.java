@@ -7,6 +7,11 @@ import com.dwj.homestarter.asset.dto.request.UpdateAssetRequest;
 import com.dwj.homestarter.asset.dto.response.AssetListResponse;
 import com.dwj.homestarter.asset.dto.response.AssetResponse;
 import com.dwj.homestarter.asset.dto.response.CombinedAssetSummaryDto;
+import com.dwj.homestarter.asset.dto.response.HouseholdAssetResponse;
+import com.dwj.homestarter.asset.dto.response.HouseholdMemberAssetResponse;
+import com.dwj.homestarter.asset.client.UserServiceClient;
+import com.dwj.homestarter.asset.client.dto.HouseholdMemberInfo;
+import com.dwj.homestarter.asset.client.dto.HouseholdMembersData;
 import com.dwj.homestarter.asset.event.AssetEventPublisher;
 import com.dwj.homestarter.asset.repository.entity.*;
 import com.dwj.homestarter.asset.repository.jpa.*;
@@ -17,9 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +41,7 @@ public class AssetServiceImpl implements AssetService {
     private final ExpenseItemRepository expenseItemRepository;
     private final ValidationService validationService;
     private final AssetEventPublisher assetEventPublisher;
+    private final UserServiceClient userServiceClient;
 
     @Override
     @Transactional
@@ -256,6 +260,95 @@ public class AssetServiceImpl implements AssetService {
         log.info("사용자 ID로 자산정보 직접 생성 완료 - assetId: {}, userId: {}, ownerType: {}", assetId, userId, ownerType);
 
         return buildAssetResponse(asset, request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HouseholdAssetResponse getHouseholdAssets(String userId, String token) {
+        log.info("가구원 전체 자산정보 조회 시작 - userId: {}", userId);
+
+        // 1. user-service에서 가구원 목록 조회
+        Optional<HouseholdMembersData> householdData = userServiceClient.getHouseholdMembers(token);
+
+        // 2. 가구에 미가입인 경우 본인 자산만 반환
+        if (householdData.isEmpty() || householdData.get().getMembers() == null
+                || householdData.get().getMembers().isEmpty()) {
+            log.info("가구 미가입 사용자 - 본인 자산만 반환. userId: {}", userId);
+            return buildSoloHouseholdResponse(userId);
+        }
+
+        HouseholdMembersData data = householdData.get();
+        List<HouseholdMemberInfo> memberInfos = data.getMembers();
+        List<String> memberUserIds = memberInfos.stream()
+                .map(HouseholdMemberInfo::getUserId)
+                .collect(Collectors.toList());
+
+        // 3. 가구원 전체 userId로 자산 일괄 조회
+        List<AssetEntity> allAssets = assetRepository.findByUserIdIn(memberUserIds);
+
+        // 4. userId 기준으로 그룹핑
+        Map<String, List<AssetEntity>> assetsByUser = allAssets.stream()
+                .collect(Collectors.groupingBy(AssetEntity::getUserId));
+
+        // 5. 가구원별 응답 조립
+        List<HouseholdMemberAssetResponse> memberResponses = memberInfos.stream()
+                .map(member -> {
+                    List<AssetEntity> memberAssets = assetsByUser.getOrDefault(member.getUserId(), List.of());
+                    List<AssetResponse> assetResponses = memberAssets.stream()
+                            .map(this::buildAssetResponseFromEntity)
+                            .collect(Collectors.toList());
+                    CombinedAssetSummaryDto memberSummary = calculateCombinedSummary(memberAssets);
+
+                    return HouseholdMemberAssetResponse.builder()
+                            .userId(member.getUserId())
+                            .userName(member.getName())
+                            .role(member.getRole())
+                            .assets(AssetListResponse.builder()
+                                    .assets(assetResponses)
+                                    .combinedSummary(memberSummary)
+                                    .build())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        // 6. 가구 전체 합산
+        CombinedAssetSummaryDto householdSummary = calculateCombinedSummary(allAssets);
+
+        log.info("가구원 전체 자산정보 조회 완료 - householdId: {}, 가구원 수: {}",
+                data.getHouseholdId(), memberInfos.size());
+
+        return HouseholdAssetResponse.builder()
+                .householdId(data.getHouseholdId())
+                .members(memberResponses)
+                .householdSummary(householdSummary)
+                .build();
+    }
+
+    /**
+     * 가구 미가입 사용자의 단독 응답 생성
+     */
+    private HouseholdAssetResponse buildSoloHouseholdResponse(String userId) {
+        List<AssetEntity> userAssets = assetRepository.findByUserId(userId);
+        List<AssetResponse> assetResponses = userAssets.stream()
+                .map(this::buildAssetResponseFromEntity)
+                .collect(Collectors.toList());
+        CombinedAssetSummaryDto summary = calculateCombinedSummary(userAssets);
+
+        HouseholdMemberAssetResponse selfMember = HouseholdMemberAssetResponse.builder()
+                .userId(userId)
+                .userName(null)
+                .role("OWNER")
+                .assets(AssetListResponse.builder()
+                        .assets(assetResponses)
+                        .combinedSummary(summary)
+                        .build())
+                .build();
+
+        return HouseholdAssetResponse.builder()
+                .householdId(null)
+                .members(List.of(selfMember))
+                .householdSummary(summary)
+                .build();
     }
 
     /**

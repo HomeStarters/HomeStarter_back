@@ -6,11 +6,13 @@ import com.dwj.homestarter.asset.dto.request.CreateAssetRequest;
 import com.dwj.homestarter.asset.dto.request.UpdateAssetRequest;
 import com.dwj.homestarter.asset.dto.response.AssetListResponse;
 import com.dwj.homestarter.asset.dto.response.AssetResponse;
+import com.dwj.homestarter.asset.dto.response.HouseholdAssetResponse;
 import com.dwj.homestarter.asset.service.AssetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -93,6 +95,37 @@ public class AssetController {
         AssetListResponse response = assetService.getAssets(userPrincipal.getUserId(), type);
 
         log.info("자산정보 조회 완료 - userId: {}, 조회된 자산 수: {}", userPrincipal.getUserId(), response.getAssets().size());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 가구원 전체 자산정보 조회
+     * user-service에서 같은 가구에 속한 가구원 목록을 조회한 후,
+     * 각 가구원의 자산정보를 일괄 조회하여 반환합니다.
+     * 가구에 미가입인 경우 본인 자산만 반환합니다.
+     *
+     * @param userPrincipal 인증된 사용자 정보
+     * @param request       HTTP 요청 (Authorization 헤더 추출용)
+     * @return 가구 전체 자산정보
+     */
+    @GetMapping("/household")
+    @Operation(
+            summary = "가구원 전체 자산정보 조회",
+            description = "같은 가구에 속한 모든 가구원의 자산정보를 조회합니다. 가구에 미가입인 경우 본인 자산만 반환합니다.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    public ResponseEntity<HouseholdAssetResponse> getHouseholdAssets(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            HttpServletRequest request) {
+
+        log.info("가구원 전체 자산정보 조회 요청 - userId: {}", userPrincipal.getUserId());
+
+        String token = request.getHeader("Authorization");
+        HouseholdAssetResponse response = assetService.getHouseholdAssets(userPrincipal.getUserId(), token);
+
+        log.info("가구원 전체 자산정보 조회 완료 - userId: {}, 가구원 수: {}",
+                userPrincipal.getUserId(), response.getMembers().size());
 
         return ResponseEntity.ok(response);
     }

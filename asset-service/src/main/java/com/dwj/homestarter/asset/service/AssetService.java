@@ -6,6 +6,7 @@ import com.dwj.homestarter.asset.dto.request.CreateAssetRequest;
 import com.dwj.homestarter.asset.dto.request.UpdateAssetRequest;
 import com.dwj.homestarter.asset.dto.response.AssetListResponse;
 import com.dwj.homestarter.asset.dto.response.AssetResponse;
+import com.dwj.homestarter.asset.dto.response.HouseholdAssetResponse;
 
 /**
  * 자산정보 관리 서비스 인터페이스
@@ -87,4 +88,14 @@ public interface AssetService {
      * @param userId    사용자 ID
      */
     void deleteAssetItem(String assetType, String itemId, String userId);
+
+    /**
+     * 가구원 전체 자산정보 조회
+     * user-service에서 가구원 목록을 조회한 뒤, 가구원별 자산정보를 일괄 조회
+     *
+     * @param userId 현재 사용자 ID
+     * @param token  JWT 토큰 (user-service 호출용)
+     * @return 가구 전체 자산 응답
+     */
+    HouseholdAssetResponse getHouseholdAssets(String userId, String token);
 }
