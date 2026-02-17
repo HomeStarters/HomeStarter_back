@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -69,6 +70,18 @@ public class LoanItemDto {
     private Boolean isExcludingCalculation;
 
     /**
+     * 대출실행 금액 (원)
+     */
+    @PositiveOrZero(message = "대출실행 금액은 0 이상이어야 합니다")
+    private Long executedAmount;
+
+    /**
+     * 상환기간 (개월)
+     */
+    @Positive(message = "상환기간은 1 이상이어야 합니다")
+    private Integer repaymentPeriod;
+
+    /**
      * 도메인 객체로 변환
      *
      * @return LoanItem 도메인 객체
@@ -82,6 +95,8 @@ public class LoanItemDto {
                 .repaymentType(repaymentType)
                 .expirationDate(expirationDate)
                 .isExcludingCalculation(isExcludingCalculation != null ? isExcludingCalculation : false)
+                .executedAmount(executedAmount)
+                .repaymentPeriod(repaymentPeriod)
                 .build();
     }
 
@@ -100,6 +115,8 @@ public class LoanItemDto {
                 .repaymentType(item.getRepaymentType())
                 .expirationDate(item.getExpirationDate())
                 .isExcludingCalculation(item.getIsExcludingCalculation())
+                .executedAmount(item.getExecutedAmount())
+                .repaymentPeriod(item.getRepaymentPeriod())
                 .build();
     }
 }
