@@ -56,10 +56,10 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
-    autoconfigure:
-      exclude:
-        - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
-        - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 
   # Redis 설정
   data:
@@ -95,6 +95,12 @@ spring:
       enable-auto-commit: false
       properties:
         spring.json.trusted.packages: "*"
+
+# Service URLs
+service:
+  user:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
+    timeout: ${USER_SERVICE_TIMEOUT:3000}
 
 # JWT
 jwt:
