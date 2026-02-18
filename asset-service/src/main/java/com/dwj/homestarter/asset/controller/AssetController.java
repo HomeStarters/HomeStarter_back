@@ -100,6 +100,31 @@ public class AssetController {
     }
 
     /**
+     * 특정 사용자의 자산정보 조회 (서비스 간 내부 호출용)
+     *
+     * @param userId 조회할 사용자 ID
+     * @return 자산정보 목록 및 가구 전체 합산 정보
+     */
+    @GetMapping("/user/{userId}")
+    @Operation(
+            summary = "특정 사용자 자산정보 조회",
+            description = "사용자 ID로 해당 사용자의 자산정보를 조회합니다 (서비스 간 내부 호출용)",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    public ResponseEntity<AssetListResponse> getAssetsByUserId(
+            @Parameter(description = "조회할 사용자 ID")
+            @PathVariable String userId) {
+
+        log.info("특정 사용자 자산정보 조회 요청 - userId: {}", userId);
+
+        AssetListResponse response = assetService.getAssets(userId, null);
+
+        log.info("특정 사용자 자산정보 조회 완료 - userId: {}, 조회된 자산 수: {}", userId, response.getAssets().size());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * 가구원 전체 자산정보 조회
      * user-service에서 같은 가구에 속한 가구원 목록을 조회한 후,
      * 각 가구원의 자산정보를 일괄 조회하여 반환합니다.

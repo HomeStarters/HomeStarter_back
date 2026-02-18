@@ -4,6 +4,7 @@ import com.dwj.homestarter.calculator.dto.external.AssetDto;
 import com.dwj.homestarter.calculator.dto.external.HousingDto;
 import com.dwj.homestarter.calculator.dto.external.LoanProductDto;
 import com.dwj.homestarter.calculator.dto.external.UserProfileDto;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -15,34 +16,50 @@ import java.util.List;
  * 계산기 도메인
  * 핵심 재무 계산 로직 및 비즈니스 규칙 캡슐화
  */
+@Slf4j
 @Component
 public class CalculatorDomain {
 
     /**
-     * 입주 후 지출 계산
+     * 입주 후 지출 계산 (가구원 통합 계산 지원)
      *
-     * @param user        사용자 프로필
-     * @param asset       자산 정보
-     * @param housing     주택 정보
-     * @param loan        대출상품 정보
-     * @param loanAmount  대출 금액
-     * @param loanTerm    대출 기간 (개월)
+     * @param dataBundle 외부 데이터 번들 (사용자, 자산, 주택, 대출상품, 가구원 데이터 포함)
+     * @param loanAmount 대출 금액
+     * @param loanTerm   대출 기간 (개월)
      * @return 계산 결과
      */
-    public CalculationResult calculate(UserProfileDto user, AssetDto asset, HousingDto housing,
-                                        LoanProductDto loan, Long loanAmount, Integer loanTerm) {
+    public CalculationResult calculate(ExternalDataBundle dataBundle, Long loanAmount, Integer loanTerm) {
+        UserProfileDto user = dataBundle.getUser();
+        AssetDto asset = dataBundle.getAsset();
+        HousingDto housing = dataBundle.getHousing();
+        LoanProductDto loan = dataBundle.getLoan();
+        List<ExternalDataBundle.HouseholdMemberData> householdMembers = dataBundle.getHouseholdMembers();
 
-        // 1. 예상자산 계산 (isExcludingCalculation=true인 대출액을 totalAssets에 합산)
-        // isExcludingCalculation=true인 대출액 합산 (계산에서 제외해야 하는 대출이므로 자산에 다시 더함)
-        long excludedLoanAmount = 0L;
-        if (asset.getLoanItems() != null) {
-            excludedLoanAmount = asset.getLoanItems().stream()
-                    .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
-                    .mapToLong(loanElement -> loanElement.getAmount() != null ? loanElement.getAmount() : 0L)
-                    .sum();
+        boolean hasHouseholdMembers = householdMembers != null && !householdMembers.isEmpty();
+
+        // 1. 본인 자산 계산 (isExcludingCalculation=true인 대출액을 totalAssets에 합산)
+        long selfExcludedLoanAmount = calculateExcludedLoanAmount(asset.getLoanItems());
+        long currentAssets = asset.getTotalAssets() + selfExcludedLoanAmount;
+
+        // 가구원 자산 합산
+        if (hasHouseholdMembers) {
+            for (ExternalDataBundle.HouseholdMemberData member : householdMembers) {
+                currentAssets += (member.getTotalAssets() != null ? member.getTotalAssets() : 0L)
+                        + (member.getExcludedLoanAmount() != null ? member.getExcludedLoanAmount() : 0L);
+            }
         }
-        long currentAssets = asset.getTotalAssets() + excludedLoanAmount;
-        Long estimatedAssets = calculateEstimatedAssets(asset, housing, currentAssets);
+
+        // 합산 월소득/월지출 계산
+        long totalMonthlyIncome = asset.getMonthlyIncome();
+        long totalMonthlyExpenses = asset.getMonthlyExpenses();
+        if (hasHouseholdMembers) {
+            for (ExternalDataBundle.HouseholdMemberData member : householdMembers) {
+                totalMonthlyIncome += (member.getTotalMonthlyIncome() != null ? member.getTotalMonthlyIncome() : 0L);
+                totalMonthlyExpenses += (member.getTotalMonthlyExpense() != null ? member.getTotalMonthlyExpense() : 0L);
+            }
+        }
+
+        Long estimatedAssets = calculateEstimatedAssets(housing, currentAssets, totalMonthlyIncome, totalMonthlyExpenses);
 
         // 2. 대출필요금액 계산
         Long loanRequired = calculateLoanRequired(housing, estimatedAssets);
@@ -52,23 +69,32 @@ public class CalculatorDomain {
 
         // 4. LTV 계산
         Double ltv = calculateLTV(loanAmount, housing.getPrice());
-//        Double ltv = calculateLTV(loanRequired, housing.getPrice());
 
-        // 5. DTI 계산 (원천징수 소득 기준)
-        Long annualIncomeForRatio = user.getWithholdingTaxSalary();
-        Long monthlyIncomeForRatio = annualIncomeForRatio != null ? annualIncomeForRatio / 12 : 0L;
+        // 5. DTI 계산 (본인 + 가구원 원천징수 소득 합산)
+        Long totalAnnualIncome = user.getWithholdingTaxSalary() != null ? user.getWithholdingTaxSalary() : 0L;
+        if (hasHouseholdMembers) {
+            for (ExternalDataBundle.HouseholdMemberData member : householdMembers) {
+                totalAnnualIncome += (member.getWithholdingTaxSalary() != null ? member.getWithholdingTaxSalary() : 0L);
+            }
+        }
+        Long monthlyIncomeForRatio = totalAnnualIncome / 12;
         Double dti = calculateDTI(monthlyPayment, monthlyIncomeForRatio);
 
-        // 6. DSR 계산 (원천징수 소득 기준, 입주 예정일 기준으로 기존 대출 잔여 상환액 계산)
+        // 6. DSR 계산 (본인 + 가구원의 지출계산 대상 대출에 대한 월 원리금 상환액 합산)
         Long existingLoanPayment = calculateExistingLoanPayment(asset.getLoanItems(), housing.getMoveInDate());
+        if (hasHouseholdMembers) {
+            for (ExternalDataBundle.HouseholdMemberData member : householdMembers) {
+                existingLoanPayment += calculateExistingLoanPayment(member.getLoanItems(), housing.getMoveInDate());
+            }
+        }
         Double dsr = calculateDSR(monthlyPayment, monthlyIncomeForRatio, existingLoanPayment);
 
         // 7. 적격성 판단 (지역특성의 LTV/DTI 기준 적용)
         EligibilityResult eligibilityResult = checkEligibility(ltv, dti, dsr, loan, housing, loanAmount);
 
-        // 8. 입주 후 재무상태 계산
-        AfterMoveInResult afterMoveIn = calculateAfterMoveIn(asset, housing, monthlyPayment,
-                estimatedAssets, loanAmount);
+        // 8. 입주 후 재무상태 계산 (본인 + 가구원 통합)
+        AfterMoveInResult afterMoveIn = calculateAfterMoveIn(housing, monthlyPayment,
+                estimatedAssets, loanAmount, totalMonthlyIncome, totalMonthlyExpenses);
 
         return CalculationResult.builder()
                 .currentAssets(currentAssets)
@@ -88,34 +114,39 @@ public class CalculatorDomain {
     }
 
     /**
-     * 예상자산 계산
-     * estimatedAssets = currentAssets + excludedLoanAmount + (monthlyIncome - monthlyExpense) × months
-     * - isExcludingCalculation=true인 대출액은 계산에서 제외되어야 하므로 totalAssets에 다시 합산
+     * 계산제외 대출액 합산
      *
-     * @param asset   자산 정보
-     * @param housing 주택 정보
+     * @param loanItems 대출 항목 목록
+     * @return 계산제외 대출액 합계
+     */
+    private long calculateExcludedLoanAmount(List<AssetDto.LoanItemInfo> loanItems) {
+        if (loanItems == null) {
+            return 0L;
+        }
+        return loanItems.stream()
+                .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
+                .mapToLong(loanElement -> loanElement.getAmount() != null ? loanElement.getAmount() : 0L)
+                .sum();
+    }
+
+    /**
+     * 예상자산 계산
+     * estimatedAssets = currentAssets + (monthlyIncome - monthlyExpense) × months
+     *
+     * @param housing              주택 정보
+     * @param currentAssets        현재 자산 (본인+가구원 합산)
+     * @param totalMonthlyIncome   합산 월소득
+     * @param totalMonthlyExpenses 합산 월지출
      * @return 예상자산
      */
-    private Long calculateEstimatedAssets(AssetDto asset, HousingDto housing, long currentAssets) {
+    private Long calculateEstimatedAssets(HousingDto housing, long currentAssets,
+                                           long totalMonthlyIncome, long totalMonthlyExpenses) {
         long months = ChronoUnit.MONTHS.between(LocalDate.now(), housing.getMoveInDate());
         if (months < 0) {
             months = 0;
         }
 
-        long monthlySavings = asset.getMonthlyIncome() - asset.getMonthlyExpenses();
-
-//        // isExcludingCalculation=true인 대출액 합산 (계산에서 제외해야 하는 대출이므로 자산에 다시 더함)
-//        long excludedLoanAmount = 0L;
-//        if (asset.getLoanItems() != null) {
-//            excludedLoanAmount = asset.getLoanItems().stream()
-//                    .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
-//                    .mapToLong(loan -> loan.getAmount() != null ? loan.getAmount() : 0L)
-//                    .sum();
-//        }
-//
-//        long currentAssets = asset.getTotalAssets() + excludedLoanAmount;
-////        long currentAssets = asset.getTotalAssets() - asset.getTotalLoans();
-
+        long monthlySavings = totalMonthlyIncome - totalMonthlyExpenses;
         return currentAssets + (monthlySavings * months);
     }
 
@@ -245,11 +276,14 @@ public class CalculatorDomain {
                     ? item.getRepaymentPeriod() : (int) remainingMonths;
 
             // 원리금균등상환 방식으로 월 상환액 계산
+            log.info("월 상환액 계산 시작 - 대출실행: {}, 금리: {}, 상환기간: {}",
+                    principalAmount, item.getInterestRate(), termMonths);
             totalMonthlyPayment += calculateMonthlyPayment(
                     principalAmount,
                     item.getInterestRate(),
                     termMonths
             );
+            log.info("월 상환액 총합 : {}", totalMonthlyPayment);
         }
 
         return totalMonthlyPayment;
@@ -331,29 +365,30 @@ public class CalculatorDomain {
     }
 
     /**
-     * 입주 후 재무상태 계산
-     * afterMoveInAssets = estimatedAssets - loanRequired
-     * afterMoveInExpenses = monthlyExpense + monthlyPayment
-     * availableFunds = monthlyIncome - afterMoveInExpenses
+     * 입주 후 재무상태 계산 (본인 + 가구원 통합)
+     * afterMoveInAssets = estimatedAssets - (housingPrice - loanAmount)
+     * afterMoveInExpenses = totalMonthlyExpenses + monthlyPayment
+     * availableFunds = totalMonthlyIncome - afterMoveInExpenses
      *
-     * @param asset           자산 정보
-     * @param housing         주택 정보
-     * @param monthlyPayment  월 상환액
-     * @param estimatedAssets 예상자산
-     * @param loanAmount    대출필요금액
+     * @param housing              주택 정보
+     * @param monthlyPayment       월 상환액
+     * @param estimatedAssets      예상자산 (본인+가구원 합산)
+     * @param loanAmount           대출금액
+     * @param totalMonthlyIncome   합산 월소득
+     * @param totalMonthlyExpenses 합산 월지출
      * @return 입주 후 재무상태
      */
-    private AfterMoveInResult calculateAfterMoveIn(AssetDto asset, HousingDto housing,
-                                                    Long monthlyPayment, Long estimatedAssets,
-                                                    Long loanAmount) {
+    private AfterMoveInResult calculateAfterMoveIn(HousingDto housing, Long monthlyPayment,
+                                                    Long estimatedAssets, Long loanAmount,
+                                                    long totalMonthlyIncome, long totalMonthlyExpenses) {
         long afterAssets = estimatedAssets - (housing.getPrice() - loanAmount);
-        long afterExpenses = asset.getMonthlyExpenses() + monthlyPayment;
-        long availableFunds = asset.getMonthlyIncome() - afterExpenses;
+        long afterExpenses = totalMonthlyExpenses + monthlyPayment;
+        long availableFunds = totalMonthlyIncome - afterExpenses;
 
         return AfterMoveInResult.builder()
                 .assets(afterAssets)
                 .monthlyExpenses(afterExpenses)
-                .monthlyIncome(asset.getMonthlyIncome())
+                .monthlyIncome(totalMonthlyIncome)
                 .availableFunds(availableFunds)
                 .build();
     }

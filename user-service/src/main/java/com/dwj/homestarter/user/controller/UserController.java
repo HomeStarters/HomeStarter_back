@@ -109,6 +109,19 @@ public class UserController {
     }
 
     /**
+     * 특정 사용자 기본정보 조회 (서비스 간 내부 호출용)
+     *
+     * @param userId 조회할 사용자 ID
+     * @return 프로필 응답
+     */
+    @Operation(summary = "특정 사용자 기본정보 조회", description = "사용자 ID로 기본정보를 조회합니다 (서비스 간 내부 호출용)")
+    @GetMapping("/profiles/{userId}")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfileByUserId(@PathVariable String userId) {
+        UserProfileResponse response = userService.getUserProfile(userId);
+        return ResponseEntity.ok(ApiResponse.success("기본정보 조회에 성공했습니다", response));
+    }
+
+    /**
      * 기본정보 수정
      *
      * @param request 프로필 수정 요청 DTO
