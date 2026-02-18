@@ -27,7 +27,7 @@ import java.util.List;
  */
 @Tag(name = "Household Service", description = "가구원 관리 API")
 @RestController
-@RequestMapping("/api/v1/household")
+@RequestMapping("/users/household")
 @RequiredArgsConstructor
 public class HouseholdController {
 
