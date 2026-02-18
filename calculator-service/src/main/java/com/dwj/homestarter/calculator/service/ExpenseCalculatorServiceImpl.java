@@ -18,6 +18,7 @@ import com.dwj.homestarter.calculator.service.client.HousingServiceClient;
 import com.dwj.homestarter.calculator.service.client.LoanServiceClient;
 import com.dwj.homestarter.calculator.service.client.UserServiceClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -64,7 +66,8 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
     @Override
     @Transactional
     public CalculationResultResponse calculateHousingExpenses(HousingExpensesRequest request, String userId) {
-        log.info("입주 후 지출 계산 시작 - userId: {}, housingId: {}", userId, request.getHousingId());
+        log.info("입주 후 지출 계산 시작 - userId: {}, housingId: {}, 가구원: {}",
+                userId, request.getHousingId(), request.getHouseholdMemberIds());
 
         // 1. 캐시 조회
         String cacheKey = generateCacheKey(userId, request.getHousingId(), request.getLoanProductId());
@@ -74,18 +77,14 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
 //            return (CalculationResultResponse) cachedResult.get();
 //        }
 
-        // 2. 외부 데이터 수집
-        ExternalDataBundle dataBundle = fetchExternalData(userId, request.getHousingId(), request.getLoanProductId());
+        // 2. 외부 데이터 수집 (가구원 데이터 포함)
+        ExternalDataBundle dataBundle = fetchExternalData(userId, request.getHousingId(),
+                request.getLoanProductId(), request.getHouseholdMemberIds());
         log.info(dataBundle.toString());
 
-        // 3. Domain 계산 수행
+        // 3. Domain 계산 수행 (가구원 통합 계산)
         CalculationResult calcResult = calculatorDomain.calculate(
-                dataBundle.getUser(),
-                dataBundle.getAsset(),
-                dataBundle.getHousing(),
-                dataBundle.getLoan(),
-                request.getLoanAmount(),
-                request.getLoanTerm()
+                dataBundle, request.getLoanAmount(), request.getLoanTerm()
         );
 
         // 4. Entity 생성 및 저장
@@ -217,9 +216,16 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
     }
 
     /**
-     * 외부 데이터 수집 및 내부 DTO 변환
+     * 외부 데이터 수집 및 내부 DTO 변환 (가구원 데이터 포함)
+     *
+     * @param userId             사용자 ID
+     * @param housingId          주택 ID
+     * @param loanProductId      대출상품 ID
+     * @param householdMemberIds 지출 계산에 포함할 가구원 ID 리스트 (null 가능)
+     * @return 외부 데이터 번들
      */
-    private ExternalDataBundle fetchExternalData(String userId, String housingId, String loanProductId) {
+    private ExternalDataBundle fetchExternalData(String userId, String housingId,
+                                                  String loanProductId, List<String> householdMemberIds) {
         log.debug("외부 데이터 수집 시작");
 
         // 1. User Service 호출 및 변환
@@ -238,13 +244,70 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
         LoanProductResponse loanResponse = loanServiceClient.getLoanProduct(loanProductId);
         LoanProductDto loan = convertLoanProduct(loanResponse.getData());
 
+        // 5. 가구원 데이터 수집 (householdMemberIds가 있는 경우)
+        List<ExternalDataBundle.HouseholdMemberData> householdMembers = null;
+        if (householdMemberIds != null && !householdMemberIds.isEmpty()) {
+            householdMembers = fetchHouseholdMemberData(householdMemberIds);
+        }
+
         log.debug("외부 데이터 수집 완료");
         return ExternalDataBundle.builder()
                 .user(user)
                 .asset(asset)
                 .housing(housing)
                 .loan(loan)
+                .householdMembers(householdMembers)
                 .build();
+    }
+
+    /**
+     * 가구원 데이터 수집 (방법 B: 가구원 ID별 개별 호출)
+     *
+     * @param memberIds 가구원 ID 리스트
+     * @return 가구원 데이터 목록
+     */
+    private List<ExternalDataBundle.HouseholdMemberData> fetchHouseholdMemberData(List<String> memberIds) {
+        List<ExternalDataBundle.HouseholdMemberData> members = new ArrayList<>();
+
+        for (String memberId : memberIds) {
+            try {
+                // 가구원 프로필 조회
+                ApiResponse<UserProfileResponse> profileResponse = userServiceClient.getUserProfileByUserId(memberId);
+                UserProfileResponse profile = profileResponse.getData();
+
+                // 가구원 자산 조회
+                AssetListResponse memberAssetResponse = assetServiceClient.getAssetInfoByUserId(memberId);
+                AssetDto memberAsset = convertAsset(memberAssetResponse);
+
+                // 계산제외 대출액 합산
+                long excludedLoanAmount = 0L;
+                if (memberAsset.getLoanItems() != null) {
+                    excludedLoanAmount = memberAsset.getLoanItems().stream()
+                            .filter(AssetDto.LoanItemInfo::isExcludingCalculation)
+                            .mapToLong(loanItem -> loanItem.getAmount() != null ? loanItem.getAmount() : 0L)
+                            .sum();
+                }
+
+                ExternalDataBundle.HouseholdMemberData memberData = ExternalDataBundle.HouseholdMemberData.builder()
+                        .userId(memberId)
+                        .userName(profile.getName())
+                        .withholdingTaxSalary(profile.getWithholdingTaxSalary())
+                        .totalAssets(memberAsset.getTotalAssets())
+                        .totalLoans(memberAsset.getTotalLoans())
+                        .totalMonthlyIncome(memberAsset.getMonthlyIncome())
+                        .totalMonthlyExpense(memberAsset.getMonthlyExpenses())
+                        .excludedLoanAmount(excludedLoanAmount)
+                        .loanItems(memberAsset.getLoanItems())
+                        .build();
+
+                members.add(memberData);
+                log.info("가구원 데이터 수집 완료 - memberId: {}, userName: {}", memberId, profile.getName());
+            } catch (Exception e) {
+                log.warn("가구원 데이터 수집 실패 - memberId: {}, error: {}", memberId, e.getMessage());
+            }
+        }
+
+        return members;
     }
 
     /**
@@ -253,6 +316,7 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
     private UserProfileDto convertUserProfile(UserProfileResponse response) {
         return UserProfileDto.builder()
                 .userId(response.getUserId())
+                .name(response.getName())
                 .birthDate(response.getBirthDate())
                 .gender(response.getGender())
                 .residence(response.getCurrentAddress())
@@ -280,6 +344,8 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                                 .interestRate(loan.getInterestRate())
                                 .expirationDate(loan.getExpirationDate())
                                 .isExcludingCalculation(loan.isExcludingCalculation())
+                                .executedAmount(loan.getExecutedAmount())
+                                .repaymentPeriod(loan.getRepaymentPeriod())
                                 .build());
                     }
                 }
@@ -383,6 +449,9 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
             }
         }
 
+        // 가구원 정보 JSON 생성 (본인 포함)
+        String householdMembersJson = buildHouseholdMembersJson(userId, dataBundle);
+
         return CalculationResultEntity.builder()
                 .id(UUID.randomUUID().toString())
                 .userId(userId)
@@ -409,9 +478,46 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                 .afterMoveInMonthlyExpenses(calcResult.getAfterMoveInMonthlyExpenses())
                 .afterMoveInMonthlyIncome(calcResult.getAfterMoveInMonthlyIncome())
                 .afterMoveInAvailableFunds(calcResult.getAfterMoveInAvailableFunds())
+                .householdMembersJson(householdMembersJson)
                 .status(calcResult.getIsEligible() ? "ELIGIBLE" : "INELIGIBLE")
                 .calculatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * 가구원 정보 JSON 생성
+     * 본인 포함, 계산에 참여한 모든 가구원의 userId/userName 저장
+     */
+    private String buildHouseholdMembersJson(String userId, ExternalDataBundle dataBundle) {
+        List<CalculationResultResponse.HouseholdMemberInfo> members = new ArrayList<>();
+
+        // 본인 추가
+        members.add(CalculationResultResponse.HouseholdMemberInfo.builder()
+                .userId(userId)
+                .userName(dataBundle.getUser().getName())
+                .build());
+
+        // 가구원 추가
+        if (dataBundle.getHouseholdMembers() != null) {
+            for (ExternalDataBundle.HouseholdMemberData member : dataBundle.getHouseholdMembers()) {
+                members.add(CalculationResultResponse.HouseholdMemberInfo.builder()
+                        .userId(member.getUserId())
+                        .userName(member.getUserName())
+                        .build());
+            }
+        }
+
+        // 본인만 있는 경우 null 반환 (기존 호환성 유지)
+        if (members.size() <= 1) {
+            return null;
+        }
+
+        try {
+            return objectMapper.writeValueAsString(members);
+        } catch (JsonProcessingException e) {
+            log.error("가구원 정보 JSON 변환 실패", e);
+            return null;
+        }
     }
 
     /**
@@ -426,6 +532,17 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
             } catch (JsonProcessingException e) {
                 log.error("미충족 사유 JSON 파싱 실패", e);
                 ineligibilityReasons = List.of();
+            }
+        }
+
+        // 가구원 정보 파싱
+        List<CalculationResultResponse.HouseholdMemberInfo> householdMembers = null;
+        if (entity.getHouseholdMembersJson() != null) {
+            try {
+                householdMembers = objectMapper.readValue(entity.getHouseholdMembersJson(),
+                        new TypeReference<List<CalculationResultResponse.HouseholdMemberInfo>>() {});
+            } catch (JsonProcessingException e) {
+                log.error("가구원 정보 JSON 파싱 실패", e);
             }
         }
 
@@ -461,6 +578,7 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                         .monthlyIncome(entity.getAfterMoveInMonthlyIncome())
                         .monthlyAvailableFunds(entity.getAfterMoveInAvailableFunds())
                         .build())
+                .includedHouseholdMembers(householdMembers)
                 .status(entity.getStatus())
                 .build();
     }

@@ -35,7 +35,7 @@ spring:
         use_sql_comments: false  # 메모리 최적화
         generate_statistics: false  # 메모리 최적화
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        default_schema: asset_service
+        default_schema: user_service
         hbm2ddl:
           create_namespaces: true
         # 메모리 최적화
@@ -48,10 +48,22 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
-    autoconfigure:
-      exclude:
-        - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
-        - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:121.129.45.98:9002}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
 
   # Redis Configuration
   data:

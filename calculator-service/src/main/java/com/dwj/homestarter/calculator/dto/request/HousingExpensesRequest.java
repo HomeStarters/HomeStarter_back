@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * 입주 후 지출 계산 요청 DTO
  */
@@ -48,4 +50,11 @@ public class HousingExpensesRequest {
     @Min(value = 1, message = "대출 기간은 1개월 이상이어야 합니다")
     @Schema(description = "대출 기간 (개월)", example = "360")
     private Integer loanTerm;
+
+    /**
+     * 지출 계산에 포함할 가구원 ID 리스트 (선택사항)
+     * null 또는 빈 리스트인 경우 본인만으로 계산
+     */
+    @Schema(description = "지출 계산에 포함할 가구원 ID 리스트", example = "[\"member-user-id-1\", \"member-user-id-2\"]")
+    private List<String> householdMemberIds;
 }

@@ -1,7 +1,6 @@
 package com.dwj.homestarter.calculator.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 계산 결과 상세 응답 DTO
@@ -93,8 +93,30 @@ public class CalculationResultResponse {
     private AfterMoveInDto afterMoveIn;
 
     /**
+     * 지출 계산에 포함된 가구원 목록
+     */
+    @Schema(description = "지출 계산에 포함된 가구원 목록")
+    private List<HouseholdMemberInfo> includedHouseholdMembers;
+
+    /**
      * 상태 (ELIGIBLE, INELIGIBLE)
      */
     @Schema(description = "상태", example = "ELIGIBLE")
     private String status;
+
+    /**
+     * 지출 계산에 포함된 가구원 정보
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @Schema(description = "가구원 정보")
+    public static class HouseholdMemberInfo {
+        @Schema(description = "가구원 사용자 ID")
+        private String userId;
+
+        @Schema(description = "가구원 이름")
+        private String userName;
+    }
 }

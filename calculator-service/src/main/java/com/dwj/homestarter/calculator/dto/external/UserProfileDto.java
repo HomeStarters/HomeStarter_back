@@ -23,6 +23,11 @@ public class UserProfileDto {
     private String userId;
 
     /**
+     * 이름
+     */
+    private String name;
+
+    /**
      * 생년월일
      */
     private LocalDate birthDate;

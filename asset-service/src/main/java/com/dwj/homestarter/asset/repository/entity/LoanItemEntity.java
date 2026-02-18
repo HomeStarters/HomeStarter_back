@@ -75,6 +75,18 @@ public class LoanItemEntity {
     private Boolean isExcludingCalculation = false;
 
     /**
+     * 대출실행 금액 (원)
+     */
+    @Column(name = "executed_amount")
+    private Long executedAmount;
+
+    /**
+     * 상환기간 (개월)
+     */
+    @Column(name = "repayment_period")
+    private Integer repaymentPeriod;
+
+    /**
      * 생성 시간
      */
     @CreationTimestamp
@@ -102,6 +114,8 @@ public class LoanItemEntity {
                 .repaymentType(this.repaymentType)
                 .expirationDate(this.expirationDate)
                 .isExcludingCalculation(this.isExcludingCalculation)
+                .executedAmount(this.executedAmount)
+                .repaymentPeriod(this.repaymentPeriod)
                 .build();
     }
 
@@ -122,6 +136,8 @@ public class LoanItemEntity {
                 .repaymentType(item.getRepaymentType())
                 .expirationDate(item.getExpirationDate())
                 .isExcludingCalculation(item.getIsExcludingCalculation())
+                .executedAmount(item.getExecutedAmount())
+                .repaymentPeriod(item.getRepaymentPeriod())
                 .build();
     }
 }

@@ -41,6 +41,14 @@ public interface AssetRepository extends JpaRepository<AssetEntity, String> {
     boolean existsByUserIdAndOwnerType(String userId, String ownerType);
 
     /**
+     * 여러 사용자 ID로 자산정보 일괄 조회
+     *
+     * @param userIds 사용자 ID 목록
+     * @return 자산정보 목록
+     */
+    List<AssetEntity> findByUserIdIn(List<String> userIds);
+
+    /**
      * ID로 자산정보 삭제
      *
      * @param id 자산정보 ID

@@ -54,4 +54,14 @@ public class LoanItem {
      * 계산제외 여부
      */
     private Boolean isExcludingCalculation;
+
+    /**
+     * 대출실행 금액 (원)
+     */
+    private Long executedAmount;
+
+    /**
+     * 상환기간 (개월)
+     */
+    private Integer repaymentPeriod;
 }

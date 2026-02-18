@@ -48,6 +48,8 @@ public class AssetListResponse {
         private String repaymentType;
         private LocalDate expirationDate;
         private boolean isExcludingCalculation;
+        private Long executedAmount;
+        private Integer repaymentPeriod;
     }
 
     @Data

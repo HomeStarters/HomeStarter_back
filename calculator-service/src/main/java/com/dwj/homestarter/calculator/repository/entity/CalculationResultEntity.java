@@ -173,6 +173,13 @@ public class CalculationResultEntity {
     private Long afterMoveInAvailableFunds;
 
     /**
+     * 지출 계산에 포함된 가구원 정보 (JSON)
+     * [{"userId":"xxx","userName":"김철수"}, ...]
+     */
+    @Column(name = "household_members_json", columnDefinition = "TEXT")
+    private String householdMembersJson;
+
+    /**
      * 상태 (ELIGIBLE, INELIGIBLE)
      */
     @Column(name = "status", length = 20, nullable = false)

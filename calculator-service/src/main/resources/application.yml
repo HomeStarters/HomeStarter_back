@@ -61,10 +61,10 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
-    autoconfigure:
-      exclude:
-        - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
-        - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 
   # Redis Configuration
   data:
