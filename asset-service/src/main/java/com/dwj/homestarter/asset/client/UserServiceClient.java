@@ -23,7 +23,7 @@ public class UserServiceClient {
 
     /**
      * 가구원 목록 조회
-     * user-service의 GET /api/v1/household/members API 호출
+     * user-service의 GET /users/household/members API 호출
      *
      * @param token JWT 토큰 (Bearer 포함)
      * @return 가구원 목록 (호출 실패 시 빈 Optional)
@@ -33,7 +33,7 @@ public class UserServiceClient {
             log.info("user-service 가구원 목록 조회 요청");
 
             Map<String, Object> response = userServiceWebClient.get()
-                    .uri("/api/v1/household/members")
+                    .uri("/users/household/members")
                     .header("Authorization", token)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
