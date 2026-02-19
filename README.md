@@ -67,8 +67,8 @@
 
 댁내 AP --(1)--> Hyper-V 가상 스위치 --(2)--> kubernetes cluster
 
-(1) : 홈AP 고정(유동)IP -> VM 내부 IP/PORT로의 포트포워딩 설정
-(2) : 특정 kubernetes service로의 routing 설정 (iptables)
+- (1) : 홈AP 고정(유동)IP -> VM 내부 IP/PORT로의 포트포워딩 설정
+- (2) : 특정 kubernetes service로의 routing 설정 (iptables)
 
 (cluster내 postgresql 접근 ex. 121.129.xx.xx:5000 (AP) -> 172.30.1.5:5432 (VM) -> 172.30.1.200:5432 (kubernetes service))
 
@@ -76,9 +76,9 @@
 
 front 화면 --(1)--> front pod내 nginx --(2)--> back ingress (nginx) --(3)--> back 서버
 
-(1) : `/home_sstarter-front/src/config/api.config.ts`
-(2) : `/home_starter-front/deployment/container/nginx.conf`
-(3) : `/home_starter/deployment/k8s/common/ingress.yaml`
+- (1) : `/home_sstarter-front/src/config/api.config.ts`
+- (2) : `/home_starter-front/deployment/container/nginx.conf` (cors pna 에러 방지를 위해 private 네트워크에서 호출하도록 proxy 용도의 nginx 추가)
+- (3) : `/home_starter/deployment/k8s/common/ingress.yaml`
 
 ### 3. kubernetes cluster 구성
 
