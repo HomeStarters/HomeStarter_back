@@ -44,12 +44,12 @@
 
 - LLM을 활용하여 분석/기획/설계 작업 진행
 - LLM 결과물을 검토하고 수정하여 구현 의도에 맞게 직접 방향성 조정
-- 분석/기획/설계 진행 과정 : ./AnalysisAndDesign.md
+- 분석/기획/설계 진행 과정 : ![분석/기획/설계과정.md](https://github.com/HomeStarters/HomeStarter_back/blob/main/AnalysisAndDesign.md)
 
 ### 2. 초기모델 개발
 
 - LLM을 활용하여 초기모델 개발 진행
-- 개발 과정 : ./InitialModelDevelopment.md
+- 개발 과정 : ![초기모델개발과정.md](https://github.com/HomeStarters/HomeStarter_back/blob/main/InitialModelDevelopment.md)
 
 ### 3. 보완 개발
 
@@ -61,7 +61,7 @@
 
 - 온프레미스(집컴) windows 환경 기반으로 다수의 VM(Hyper-V) 구동
 - 멀티 VM 기반 Kubernetes cluster 구성
-- 현 12GB RAM -> 24GB RAM 증설 예정 (CI/CD 구축 및 kubernetes cluster 스펙 고려)
+- 12GB RAM -> 24GB RAM 증설 완료 (CI/CD 구축 및 kubernetes cluster 스펙 고려)
 
 ### 1. 네트워크 구성
 
@@ -72,7 +72,15 @@
 
 (cluster내 postgresql 접근 ex. 121.129.xx.xx:5000 (AP) -> 172.30.1.5:5432 (VM) -> 172.30.1.200:5432 (kubernetes service))
 
-### 2. kubernetes cluster 구성
+### 2. front -> back 호출(라우팅) 구조
+
+front 화면 --(1)--> front pod내 nginx --(2)--> back ingress (nginx) --(3)--> back 서버
+
+(1) : `/home_sstarter-front/src/config/api.config.ts`
+(2) : `/home_starter-front/deployment/container/nginx.conf`
+(3) : `/home_starter/deployment/k8s/common/ingress.yaml`
+
+### 3. kubernetes cluster 구성
 
 - Hyper-V VM01 (172.30.1.5) - kubernetes master node
 - Hyper-V VM02 (172.30.1.97) - kubernetes worker node01
