@@ -76,7 +76,7 @@
 
 front 화면 --(1)--> front pod내 nginx --(2)--> back ingress (nginx) --(3)--> back 서버
 
-- (1) : `/home_sstarter-front/src/config/api.config.ts`
+- (1) : `/home_starter-front/src/config/api.config.ts`
 - (2) : `/home_starter-front/deployment/container/nginx.conf` (cors pna 에러 방지를 위해 private 네트워크에서 호출하도록 proxy 용도의 nginx 추가)
 - (3) : `/home_starter/deployment/k8s/common/ingress.yaml`
 
