@@ -53,6 +53,7 @@ spring:
   # 메모리 최적화
   jackson:
     default-property-inclusion: non_null
+    time-zone: Asia/Seoul
 
   # Redis Configuration
   data:
