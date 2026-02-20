@@ -47,6 +47,12 @@ public class CalculationResultEntity {
     private String housingName;
 
     /**
+     * 주택 가격 (원)
+     */
+    @Column(name = "housing_price")
+    private Long housingPrice;
+
+    /**
      * 입주 예정일
      */
     @Column(name = "move_in_date", nullable = false)
