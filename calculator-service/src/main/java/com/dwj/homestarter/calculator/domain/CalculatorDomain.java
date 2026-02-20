@@ -381,7 +381,7 @@ public class CalculatorDomain {
     private AfterMoveInResult calculateAfterMoveIn(HousingDto housing, Long monthlyPayment,
                                                     Long estimatedAssets, Long loanAmount,
                                                     long totalMonthlyIncome, long totalMonthlyExpenses) {
-        long afterAssets = estimatedAssets - (housing.getPrice() - loanAmount);
+        long afterAssets = estimatedAssets - ((housing.getPrice() - loanAmount) > 0 ? (housing.getPrice() - loanAmount) : 0);
         long afterExpenses = totalMonthlyExpenses + monthlyPayment;
         long availableFunds = totalMonthlyIncome - afterExpenses;
 
