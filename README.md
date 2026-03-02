@@ -13,6 +13,16 @@
 - AI(LLM)를 활용한 **생애주기별 장기주거 로드맵** 설계
 - 복수의 입주희망 주택을 비교 분석하여 최적의 선택을 지원
 
+## 솔루션 소개
+
+- dev환경 home starter (새벽시간대 서버 down) : `http://121.129.45.98:8080/`
+- 위 url 통해 접근 및 로그인 후 재무정보, 입주희망 주택정보를 입력하여 지출계산을 진행하면 아래와 같은 정보를 조회할 수 있음
+
+<img width="1467" height="782" alt="스크린샷 2026-03-02 오후 5 01 16" src="https://github.com/user-attachments/assets/75485ae2-3a5e-4701-8837-b943624dff71" />
+<img width="1470" height="677" alt="스크린샷 2026-03-02 오후 5 01 27" src="https://github.com/user-attachments/assets/98b04b8e-9211-4297-8858-118179460ea3" />
+<img width="1470" height="311" alt="스크린샷 2026-03-02 오후 5 01 32" src="https://github.com/user-attachments/assets/3a0957ad-2f6b-44da-9ff5-8a420332524c" />
+
+
 ## 기술 스택
 
 | 구분 | 기술 | 버전 | 비고 |
