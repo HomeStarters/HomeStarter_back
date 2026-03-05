@@ -17,6 +17,12 @@ import java.util.List;
 public class CalculationResult {
 
     /**
+     * 실제 계산에 사용된 대출금액 (원)
+     * useLoanRequiredAsLoanAmount가 true인 경우 대출필요금액이 세팅됨
+     */
+    private Long effectiveLoanAmount;
+
+    /**
      * 현재자산 (원)
      */
     private Long currentAssets;

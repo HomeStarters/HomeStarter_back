@@ -28,7 +28,13 @@ public class CalculatorDomain {
      * @param loanTerm   대출 기간 (개월)
      * @return 계산 결과
      */
-    public CalculationResult calculate(ExternalDataBundle dataBundle, Long loanAmount, Integer loanTerm) {
+    public CalculationResult calculate(ExternalDataBundle dataBundle, Long loanAmount, Integer loanTerm,
+                                       Boolean useLoanRequiredAsLoanAmount) {
+        // loanAmount가 null인 경우 0으로 처리 (useLoanRequiredAsLoanAmount=true일 때 미입력 가능)
+        if (loanAmount == null) {
+            loanAmount = 0L;
+        }
+
         UserProfileDto user = dataBundle.getUser();
         AssetDto asset = dataBundle.getAsset();
         HousingDto housing = dataBundle.getHousing();
@@ -64,11 +70,18 @@ public class CalculatorDomain {
         // 2. 대출필요금액 계산
         Long loanRequired = calculateLoanRequired(housing, estimatedAssets);
 
+        // 2-1. 대출필요금액을 대출금액으로 사용하는 경우 대체
+        Long effectiveLoanAmount = loanAmount;
+        if (Boolean.TRUE.equals(useLoanRequiredAsLoanAmount)) {
+            effectiveLoanAmount = loanRequired;
+            log.info("대출필요금액을 대출금액으로 사용 - loanRequired: {}", loanRequired);
+        }
+
         // 3. 월 상환액 계산
-        Long monthlyPayment = calculateMonthlyPayment(loanAmount, loan.getInterestRate(), loanTerm);
+        Long monthlyPayment = calculateMonthlyPayment(effectiveLoanAmount, loan.getInterestRate(), loanTerm);
 
         // 4. LTV 계산
-        Double ltv = calculateLTV(loanAmount, housing.getPrice());
+        Double ltv = calculateLTV(effectiveLoanAmount, housing.getPrice());
 
         // 5. DTI 계산 (본인 + 가구원 원천징수 소득 합산)
         Long totalAnnualIncome = user.getWithholdingTaxSalary() != null ? user.getWithholdingTaxSalary() : 0L;
@@ -90,13 +103,14 @@ public class CalculatorDomain {
         Double dsr = calculateDSR(monthlyPayment, monthlyIncomeForRatio, existingLoanPayment);
 
         // 7. 적격성 판단 (지역특성의 LTV/DTI 기준 적용)
-        EligibilityResult eligibilityResult = checkEligibility(ltv, dti, dsr, loan, housing, loanAmount);
+        EligibilityResult eligibilityResult = checkEligibility(ltv, dti, dsr, loan, housing, effectiveLoanAmount);
 
         // 8. 입주 후 재무상태 계산 (본인 + 가구원 통합)
         AfterMoveInResult afterMoveIn = calculateAfterMoveIn(housing, monthlyPayment,
-                estimatedAssets, loanAmount, totalMonthlyIncome, totalMonthlyExpenses);
+                estimatedAssets, effectiveLoanAmount, totalMonthlyIncome, totalMonthlyExpenses);
 
         return CalculationResult.builder()
+                .effectiveLoanAmount(effectiveLoanAmount)
                 .currentAssets(currentAssets)
                 .estimatedAssets(estimatedAssets)
                 .loanRequired(loanRequired)

@@ -84,7 +84,8 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
 
         // 3. Domain 계산 수행 (가구원 통합 계산)
         CalculationResult calcResult = calculatorDomain.calculate(
-                dataBundle, request.getLoanAmount(), request.getLoanTerm()
+                dataBundle, request.getLoanAmount(), request.getLoanTerm(),
+                request.getUseLoanRequiredAsLoanAmount()
         );
 
         // 4. Entity 생성 및 저장
@@ -461,7 +462,7 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                 .moveInDate(dataBundle.getHousing().getMoveInDate())
                 .loanProductId(request.getLoanProductId())
                 .loanProductName(dataBundle.getLoan().getName())
-                .loanAmount(request.getLoanAmount())
+                .loanAmount(calcResult.getEffectiveLoanAmount())
                 .loanTerm(request.getLoanTerm())
                 .currentAssets(calcResult.getCurrentAssets())
                 .estimatedAssets(calcResult.getEstimatedAssets())
