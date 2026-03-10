@@ -45,6 +45,12 @@ public class CalculationResultResponse {
     private String housingName;
 
     /**
+     * 주택 가격 (원)
+     */
+    @Schema(description = "주택 가격 (원)", example = "500000000")
+    private Long housingPrice;
+
+    /**
      * 입주 예정일
      */
     @Schema(description = "입주 예정일", example = "2025-12-30")

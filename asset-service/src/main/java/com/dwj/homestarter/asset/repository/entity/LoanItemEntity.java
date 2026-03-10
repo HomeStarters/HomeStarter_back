@@ -1,6 +1,7 @@
 package com.dwj.homestarter.asset.repository.entity;
 
 import com.dwj.homestarter.asset.domain.LoanItem;
+import com.dwj.homestarter.asset.domain.LoanType;
 import com.dwj.homestarter.asset.domain.RepaymentType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -55,6 +56,14 @@ public class LoanItemEntity {
     private Double interestRate;
 
     /**
+     * 대출 유형 (주택담보, 전세, 신용, 기타)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "loan_type", nullable = false, length = 50)
+    @Builder.Default
+    private LoanType loanType = LoanType.OTHER;
+
+    /**
      * 상환 유형 (원금균등, 원리금균등, 만기일시, 체증식)
      */
     @Enumerated(EnumType.STRING)
@@ -87,6 +96,13 @@ public class LoanItemEntity {
     private Integer repaymentPeriod;
 
     /**
+     * 거치기간 (개월)
+     */
+    @Column(name = "grace_period")
+    @Builder.Default
+    private Integer gracePeriod = 0;
+
+    /**
      * 생성 시간
      */
     @CreationTimestamp
@@ -111,11 +127,13 @@ public class LoanItemEntity {
                 .name(this.name)
                 .amount(this.amount)
                 .interestRate(this.interestRate)
+                .loanType(this.loanType)
                 .repaymentType(this.repaymentType)
                 .expirationDate(this.expirationDate)
                 .isExcludingCalculation(this.isExcludingCalculation)
                 .executedAmount(this.executedAmount)
                 .repaymentPeriod(this.repaymentPeriod)
+                .gracePeriod(this.gracePeriod)
                 .build();
     }
 
@@ -133,11 +151,13 @@ public class LoanItemEntity {
                 .name(item.getName())
                 .amount(item.getAmount())
                 .interestRate(item.getInterestRate())
+                .loanType(item.getLoanType() != null ? item.getLoanType() : LoanType.OTHER)
                 .repaymentType(item.getRepaymentType())
                 .expirationDate(item.getExpirationDate())
                 .isExcludingCalculation(item.getIsExcludingCalculation())
                 .executedAmount(item.getExecutedAmount())
                 .repaymentPeriod(item.getRepaymentPeriod())
+                .gracePeriod(item.getGracePeriod() != null ? item.getGracePeriod() : 0)
                 .build();
     }
 }

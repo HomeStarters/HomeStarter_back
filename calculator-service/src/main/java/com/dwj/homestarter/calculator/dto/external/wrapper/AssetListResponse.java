@@ -45,11 +45,13 @@ public class AssetListResponse {
         private String name;
         private Long amount;
         private Double interestRate;
+        private String loanType;
         private String repaymentType;
         private LocalDate expirationDate;
-        private boolean isExcludingCalculation;
+        private Boolean isExcludingCalculation;
         private Long executedAmount;
         private Integer repaymentPeriod;
+        private Integer gracePeriod;
     }
 
     @Data
