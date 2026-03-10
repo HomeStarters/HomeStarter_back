@@ -1,9 +1,11 @@
 package com.dwj.homestarter.calculator.dto.request;
 
+import com.dwj.homestarter.calculator.domain.RepaymentType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -65,4 +67,20 @@ public class HousingExpensesRequest {
     @Schema(description = "대출필요금액으로 대출금액 산정 여부 (true: 대출필요금액을 대출금액으로 사용)", example = "false")
     @Builder.Default
     private Boolean useLoanRequiredAsLoanAmount = false;
+
+    /**
+     * 신규 대출 상환 방식 (선택사항)
+     * 미입력 시 원리금균등(EPI) 적용
+     * EP: 원금균등, EPI: 원리금균등, MDT: 만기일시, GG: 체증식
+     */
+    @Schema(description = "신규 대출 상환 방식 (EP/EPI/MDT/GG, 미입력 시 EPI)", example = "EPI")
+    private RepaymentType repaymentType;
+
+    /**
+     * 신규 대출 거치기간 (개월, 선택사항)
+     * 미입력 시 0 적용
+     */
+    @PositiveOrZero(message = "거치기간은 0 이상이어야 합니다")
+    @Schema(description = "신규 대출 거치기간 (개월, 미입력 시 0)", example = "0")
+    private Integer gracePeriod;
 }

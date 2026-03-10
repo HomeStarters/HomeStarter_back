@@ -41,6 +41,11 @@ public class LoanItem {
     private Double interestRate;
 
     /**
+     * 대출 유형 (주택담보, 전세, 신용, 기타)
+     */
+    private LoanType loanType;
+
+    /**
      * 상환 유형 (원금균등, 원리금균등, 만기일시, 체증식)
      */
     private RepaymentType repaymentType;
@@ -64,4 +69,9 @@ public class LoanItem {
      * 상환기간 (개월)
      */
     private Integer repaymentPeriod;
+
+    /**
+     * 거치기간 (개월)
+     */
+    private Integer gracePeriod;
 }

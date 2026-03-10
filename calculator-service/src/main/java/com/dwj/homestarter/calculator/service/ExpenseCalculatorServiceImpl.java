@@ -3,6 +3,8 @@ package com.dwj.homestarter.calculator.service;
 import com.dwj.homestarter.calculator.domain.CalculationResult;
 import com.dwj.homestarter.calculator.domain.CalculatorDomain;
 import com.dwj.homestarter.calculator.domain.ExternalDataBundle;
+import com.dwj.homestarter.calculator.domain.LoanType;
+import com.dwj.homestarter.calculator.domain.RepaymentType;
 import com.dwj.homestarter.calculator.dto.external.AssetDto;
 import com.dwj.homestarter.calculator.dto.external.HousingDto;
 import com.dwj.homestarter.calculator.dto.external.LoanProductDto;
@@ -85,7 +87,8 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
         // 3. Domain 계산 수행 (가구원 통합 계산)
         CalculationResult calcResult = calculatorDomain.calculate(
                 dataBundle, request.getLoanAmount(), request.getLoanTerm(),
-                request.getUseLoanRequiredAsLoanAmount()
+                request.getUseLoanRequiredAsLoanAmount(),
+                request.getRepaymentType(), request.getGracePeriod()
         );
 
         // 4. Entity 생성 및 저장
@@ -343,10 +346,13 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                         loanItems.add(AssetDto.LoanItemInfo.builder()
                                 .amount(loan.getAmount())
                                 .interestRate(loan.getInterestRate())
+                                .loanType(parseLoanType(loan.getLoanType()))
+                                .repaymentType(parseRepaymentType(loan.getRepaymentType()))
                                 .expirationDate(loan.getExpirationDate())
                                 .isExcludingCalculation(Boolean.TRUE.equals(loan.getIsExcludingCalculation()))
                                 .executedAmount(loan.getExecutedAmount())
                                 .repaymentPeriod(loan.getRepaymentPeriod())
+                                .gracePeriod(loan.getGracePeriod() != null ? loan.getGracePeriod() : 0)
                                 .build());
                     }
                 }
@@ -598,5 +604,35 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
                 .status(entity.getStatus())
                 .monthlyAvailableFunds(entity.getAfterMoveInAvailableFunds())
                 .build();
+    }
+
+    /**
+     * 문자열을 LoanType enum으로 변환 (null/미매칭 시 OTHER)
+     */
+    private LoanType parseLoanType(String loanTypeStr) {
+        if (loanTypeStr == null || loanTypeStr.isEmpty()) {
+            return LoanType.OTHER;
+        }
+        try {
+            return LoanType.valueOf(loanTypeStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("알 수 없는 대출 유형: {}, 기본값 OTHER 적용", loanTypeStr);
+            return LoanType.OTHER;
+        }
+    }
+
+    /**
+     * 문자열을 RepaymentType enum으로 변환 (null/미매칭 시 EPI)
+     */
+    private RepaymentType parseRepaymentType(String repaymentTypeStr) {
+        if (repaymentTypeStr == null || repaymentTypeStr.isEmpty()) {
+            return RepaymentType.EPI;
+        }
+        try {
+            return RepaymentType.valueOf(repaymentTypeStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("알 수 없는 상환 유형: {}, 기본값 EPI 적용", repaymentTypeStr);
+            return RepaymentType.EPI;
+        }
     }
 }

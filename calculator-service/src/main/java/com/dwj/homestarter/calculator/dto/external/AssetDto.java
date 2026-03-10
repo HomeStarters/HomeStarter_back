@@ -1,5 +1,7 @@
 package com.dwj.homestarter.calculator.dto.external;
 
+import com.dwj.homestarter.calculator.domain.LoanType;
+import com.dwj.homestarter.calculator.domain.RepaymentType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -58,9 +60,12 @@ public class AssetDto {
     public static class LoanItemInfo {
         private Long amount;
         private Double interestRate;
+        private LoanType loanType;
+        private RepaymentType repaymentType;
         private LocalDate expirationDate;
         private boolean isExcludingCalculation;
         private Long executedAmount;
         private Integer repaymentPeriod;
+        private Integer gracePeriod;
     }
 }
