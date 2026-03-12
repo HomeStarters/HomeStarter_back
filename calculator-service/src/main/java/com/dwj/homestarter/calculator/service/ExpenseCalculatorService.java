@@ -1,8 +1,10 @@
 package com.dwj.homestarter.calculator.service;
 
 import com.dwj.homestarter.calculator.dto.request.HousingExpensesRequest;
+import com.dwj.homestarter.calculator.dto.request.MonthlyPaymentRequest;
 import com.dwj.homestarter.calculator.dto.response.CalculationResultListResponse;
 import com.dwj.homestarter.calculator.dto.response.CalculationResultResponse;
+import com.dwj.homestarter.calculator.dto.response.MonthlyPaymentResponse;
 import org.springframework.data.domain.Pageable;
 
 /**
@@ -48,4 +50,12 @@ public interface ExpenseCalculatorService {
      * @param userId 사용자 ID
      */
     void deleteCalculationResult(String id, String userId);
+
+    /**
+     * 단일 대출의 월 상환액 계산
+     *
+     * @param request 월 상환액 계산 요청
+     * @return 월 상환액 응답
+     */
+    MonthlyPaymentResponse calculateMonthlyPayment(MonthlyPaymentRequest request);
 }

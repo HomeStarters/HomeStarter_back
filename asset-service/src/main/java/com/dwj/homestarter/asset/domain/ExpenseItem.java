@@ -29,4 +29,9 @@ public class ExpenseItem {
      * 월 금액 (원)
      */
     private Long amount;
+
+    /**
+     * 연결된 대출 항목 ID (대출 월상환액 자동 등록 시 설정)
+     */
+    private String loanItemId;
 }

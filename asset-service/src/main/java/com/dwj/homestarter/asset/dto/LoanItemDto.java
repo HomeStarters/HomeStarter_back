@@ -100,7 +100,7 @@ public class LoanItemDto {
      */
     public LoanItem toDomain() {
         return LoanItem.builder()
-                .id(id != null ? id : UUID.randomUUID().toString())
+                .id(id != null && !id.startsWith("temp_") ? id : UUID.randomUUID().toString())
                 .name(name)
                 .amount(amount)
                 .interestRate(interestRate)

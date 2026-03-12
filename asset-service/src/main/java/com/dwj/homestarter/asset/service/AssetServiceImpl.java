@@ -9,6 +9,7 @@ import com.dwj.homestarter.asset.dto.response.AssetResponse;
 import com.dwj.homestarter.asset.dto.response.CombinedAssetSummaryDto;
 import com.dwj.homestarter.asset.dto.response.HouseholdAssetResponse;
 import com.dwj.homestarter.asset.dto.response.HouseholdMemberAssetResponse;
+import com.dwj.homestarter.asset.client.CalculatorServiceClient;
 import com.dwj.homestarter.asset.client.UserServiceClient;
 import com.dwj.homestarter.asset.client.dto.HouseholdMemberInfo;
 import com.dwj.homestarter.asset.client.dto.HouseholdMembersData;
@@ -42,6 +43,7 @@ public class AssetServiceImpl implements AssetService {
     private final ValidationService validationService;
     private final AssetEventPublisher assetEventPublisher;
     private final UserServiceClient userServiceClient;
+    private final CalculatorServiceClient calculatorServiceClient;
 
     @Override
     @Transactional
@@ -509,6 +511,7 @@ public class AssetServiceImpl implements AssetService {
 
     /**
      * 대출 항목 삭제 및 총액 업데이트
+     * 연결된 월지출 항목이 있으면 함께 삭제
      */
     private void deleteLoanItemAndUpdateTotal(String itemId, String userId) {
         LoanItemEntity itemEntity = loanItemRepository.findById(itemId)
@@ -518,6 +521,15 @@ public class AssetServiceImpl implements AssetService {
                 .orElseThrow(() -> new NotFoundException("자산정보를 찾을 수 없습니다: " + itemEntity.getAssetId()));
 
         validateOwnership(assetEntity, userId);
+
+        // 연결된 월지출 항목이 있으면 함께 삭제 (total_monthly_expense 차감)
+        expenseItemRepository.findByLoanItemId(itemId).ifPresent(linkedExpense -> {
+            log.info("대출 항목 삭제로 인한 연결 월지출 항목 삭제 - loanItemId: {}, expenseItemId: {}",
+                    itemId, linkedExpense.getId());
+            expenseItemRepository.deleteById(linkedExpense.getId());
+            assetEntity.setTotalMonthlyExpense(assetEntity.getTotalMonthlyExpense() - linkedExpense.getAmount());
+            assetEntity.setMonthlyAvailableFunds(assetEntity.getTotalMonthlyIncome() - assetEntity.getTotalMonthlyExpense());
+        });
 
         Long amount = itemEntity.getAmount();
         loanItemRepository.deleteById(itemId);
@@ -595,5 +607,69 @@ public class AssetServiceImpl implements AssetService {
         Asset asset = assetEntity.toDomain();
         AssetSummary summary = AssetSummary.fromAsset(asset);
         assetEventPublisher.publishAssetUpdated(userId, asset.getOwnerType(), "ITEM_DELETED", summary);
+    }
+
+    @Override
+    @Transactional
+    public ExpenseItemDto registerLoanExpense(String loanItemId, String userId, String token) {
+        log.info("대출 기반 월지출 자동 등록 시작 - loanItemId: {}, userId: {}", loanItemId, userId);
+
+        // 대출 항목 조회
+        LoanItemEntity loanItem = loanItemRepository.findById(loanItemId)
+                .orElseThrow(() -> new NotFoundException("대출 항목을 찾을 수 없습니다: " + loanItemId));
+
+        // 자산정보 조회 및 소유권 검증
+        AssetEntity assetEntity = assetRepository.findById(loanItem.getAssetId())
+                .orElseThrow(() -> new NotFoundException("자산정보를 찾을 수 없습니다: " + loanItem.getAssetId()));
+        validateOwnership(assetEntity, userId);
+
+        // 이미 연결된 월지출 항목 존재 여부 확인
+        if (expenseItemRepository.findByLoanItemId(loanItemId).isPresent()) {
+            throw new BusinessException("ASSET_007", "해당 대출에 이미 월지출이 등록되어 있습니다");
+        }
+
+        // 대출 원금 결정 (실행액 우선, 없으면 잔액)
+        Long principalAmount = (loanItem.getExecutedAmount() != null && loanItem.getExecutedAmount() > 0)
+                ? loanItem.getExecutedAmount() : loanItem.getAmount();
+
+        // calculator-service 호출하여 월 상환액 계산
+        Long monthlyPayment = calculatorServiceClient.calculateMonthlyPayment(
+                token,
+                loanItem.getLoanType() != null ? loanItem.getLoanType().name() : null,
+                loanItem.getRepaymentType() != null ? loanItem.getRepaymentType().name() : null,
+                principalAmount,
+                loanItem.getInterestRate(),
+                loanItem.getRepaymentPeriod(),
+                loanItem.getGracePeriod());
+
+        if (monthlyPayment == null || monthlyPayment <= 0) {
+            throw new BusinessException("ASSET_008", "월 상환액 계산에 실패했습니다. 대출 정보를 확인해 주세요.");
+        }
+
+        // 월지출 항목 생성
+        String expenseItemId = UUID.randomUUID().toString();
+        ExpenseItemEntity expenseItemEntity = ExpenseItemEntity.builder()
+                .id(expenseItemId)
+                .assetId(loanItem.getAssetId())
+                .name(loanItem.getName() + " 상환")
+                .amount(monthlyPayment)
+                .loanItemId(loanItemId)
+                .build();
+        expenseItemRepository.save(expenseItemEntity);
+
+        // 자산 총액 업데이트 (total_monthly_expense 증가)
+        assetEntity.setTotalMonthlyExpense(assetEntity.getTotalMonthlyExpense() + monthlyPayment);
+        assetEntity.setMonthlyAvailableFunds(assetEntity.getTotalMonthlyIncome() - assetEntity.getTotalMonthlyExpense());
+        assetRepository.save(assetEntity);
+
+        // 이벤트 발행
+        Asset asset = assetEntity.toDomain();
+        AssetSummary summary = AssetSummary.fromAsset(asset);
+        assetEventPublisher.publishAssetUpdated(userId, asset.getOwnerType(), "ITEM_CREATED", summary);
+
+        log.info("대출 기반 월지출 자동 등록 완료 - expenseItemId: {}, name: {}, amount: {}",
+                expenseItemId, loanItem.getName() + " 상환", monthlyPayment);
+
+        return ExpenseItemDto.fromDomain(expenseItemEntity.toDomain());
     }
 }

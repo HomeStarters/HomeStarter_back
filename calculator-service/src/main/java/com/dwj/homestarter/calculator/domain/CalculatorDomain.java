@@ -21,6 +21,36 @@ import java.util.List;
 public class CalculatorDomain {
 
     /**
+     * 단일 대출의 월 상환액 계산
+     * 대출 유형과 상환 방식에 따라 연 원리금상환액을 계산하고 12로 나누어 월 상환액 반환
+     *
+     * @param loanType          대출 유형 (null이면 OTHER)
+     * @param repaymentType     상환 방식 (null이면 EPI)
+     * @param loanAmount        대출 원금
+     * @param annualInterestRate 연 이자율 (%)
+     * @param repaymentPeriod   상환기간 (개월)
+     * @param gracePeriod       거치기간 (개월, null이면 0)
+     * @return 월 상환액
+     */
+    public Long calculateLoanMonthlyPayment(LoanType loanType, RepaymentType repaymentType,
+                                             Long loanAmount, Double annualInterestRate,
+                                             Integer repaymentPeriod, Integer gracePeriod) {
+        if (loanAmount == null || loanAmount <= 0 || repaymentPeriod == null || repaymentPeriod <= 0) {
+            return 0L;
+        }
+
+        LoanType effectiveLoanType = loanType != null ? loanType : LoanType.OTHER;
+        RepaymentType effectiveRepaymentType = repaymentType != null ? repaymentType : RepaymentType.EPI;
+        int gracePeriodMonths = gracePeriod != null ? gracePeriod : 0;
+
+        long annualPayment = calculateAnnualPaymentByType(
+                loanAmount, annualInterestRate, repaymentPeriod, gracePeriodMonths,
+                effectiveLoanType, effectiveRepaymentType, null);
+
+        return annualPayment > 0 ? Math.round(annualPayment / 12.0) : 0L;
+    }
+
+    /**
      * 입주 후 지출 계산 (가구원 통합 계산 지원)
      *
      * @param dataBundle                외부 데이터 번들 (사용자, 자산, 주택, 대출상품, 가구원 데이터 포함)

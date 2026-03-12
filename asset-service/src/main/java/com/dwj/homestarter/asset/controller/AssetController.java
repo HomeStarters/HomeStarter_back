@@ -2,6 +2,7 @@ package com.dwj.homestarter.asset.controller;
 
 import com.dwj.homestarter.asset.config.jwt.UserPrincipal;
 import com.dwj.homestarter.asset.domain.OwnerType;
+import com.dwj.homestarter.asset.dto.ExpenseItemDto;
 import com.dwj.homestarter.asset.dto.request.CreateAssetRequest;
 import com.dwj.homestarter.asset.dto.request.UpdateAssetRequest;
 import com.dwj.homestarter.asset.dto.response.AssetListResponse;
@@ -214,6 +215,39 @@ public class AssetController {
         log.info("자산정보 삭제 완료 - userId: {}, assetId: {}", userPrincipal.getUserId(), id);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    /**
+     * 대출 자산 기반 월지출 자동 등록
+     * 대출 항목의 월 상환액을 계산하여 월지출로 자동 등록합니다.
+     * 해당 대출에 이미 연결된 월지출이 있으면 409 Conflict를 반환합니다.
+     *
+     * @param userPrincipal 인증된 사용자 정보
+     * @param loanId        대출 항목 ID
+     * @param request       HTTP 요청 (Authorization 헤더 추출용)
+     * @return 생성된 월지출 항목
+     */
+    @PostMapping("/loans/{loanId}/expense")
+    @Operation(
+            summary = "대출 기반 월지출 자동 등록",
+            description = "대출 항목의 월 상환액을 계산하여 월지출로 자동 등록합니다. 이미 연결된 월지출이 있으면 409를 반환합니다.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    public ResponseEntity<ExpenseItemDto> registerLoanExpense(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Parameter(description = "대출 항목 ID")
+            @PathVariable String loanId,
+            HttpServletRequest request) {
+
+        log.info("대출 기반 월지출 자동 등록 요청 - userId: {}, loanId: {}", userPrincipal.getUserId(), loanId);
+
+        String token = request.getHeader("Authorization");
+        ExpenseItemDto response = assetService.registerLoanExpense(loanId, userPrincipal.getUserId(), token);
+
+        log.info("대출 기반 월지출 자동 등록 완료 - userId: {}, loanId: {}, expenseId: {}",
+                userPrincipal.getUserId(), loanId, response.getId());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**

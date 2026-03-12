@@ -40,15 +40,21 @@ public class ExpenseItemDto {
     private Long amount;
 
     /**
+     * 연결된 대출 항목 ID (대출 월상환액 자동 등록 시 설정, 응답 시 포함)
+     */
+    private String loanItemId;
+
+    /**
      * 도메인 객체로 변환
      *
      * @return ExpenseItem 도메인 객체
      */
     public ExpenseItem toDomain() {
         return ExpenseItem.builder()
-                .id(id != null ? id : UUID.randomUUID().toString())
+                .id(id != null && !id.startsWith("temp_") ? id : UUID.randomUUID().toString())
                 .name(name)
                 .amount(amount)
+                .loanItemId(loanItemId)
                 .build();
     }
 
@@ -63,6 +69,7 @@ public class ExpenseItemDto {
                 .id(item.getId())
                 .name(item.getName())
                 .amount(item.getAmount())
+                .loanItemId(item.getLoanItemId())
                 .build();
     }
 }

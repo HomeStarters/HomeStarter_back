@@ -46,7 +46,7 @@ public class IncomeItemDto {
      */
     public IncomeItem toDomain() {
         return IncomeItem.builder()
-                .id(id != null ? id : UUID.randomUUID().toString())
+                .id(id != null && !id.startsWith("temp_") ? id : UUID.randomUUID().toString())
                 .name(name)
                 .amount(amount)
                 .build();

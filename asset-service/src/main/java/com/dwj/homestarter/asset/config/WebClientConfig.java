@@ -23,6 +23,9 @@ public class WebClientConfig {
     @Value("${service.user.timeout}")
     private int timeout;
 
+    @Value("${service.calculator.url}")
+    private String calculatorServiceUrl;
+
     @Bean
     public WebClient userServiceWebClient() {
         HttpClient httpClient = HttpClient.create()
@@ -31,6 +34,18 @@ public class WebClientConfig {
 
         return WebClient.builder()
                 .baseUrl(userServiceUrl)
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
+    }
+
+    @Bean
+    public WebClient calculatorServiceWebClient() {
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeout)
+                .responseTimeout(Duration.ofMillis(timeout));
+
+        return WebClient.builder()
+                .baseUrl(calculatorServiceUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }

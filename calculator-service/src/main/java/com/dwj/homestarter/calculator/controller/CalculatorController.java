@@ -1,8 +1,10 @@
 package com.dwj.homestarter.calculator.controller;
 
 import com.dwj.homestarter.calculator.dto.request.HousingExpensesRequest;
+import com.dwj.homestarter.calculator.dto.request.MonthlyPaymentRequest;
 import com.dwj.homestarter.calculator.dto.response.CalculationResultListResponse;
 import com.dwj.homestarter.calculator.dto.response.CalculationResultResponse;
+import com.dwj.homestarter.calculator.dto.response.MonthlyPaymentResponse;
 import com.dwj.homestarter.calculator.service.ExpenseCalculatorService;
 import com.dwj.homestarter.calculator.config.jwt.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,6 +52,27 @@ public class CalculatorController {
 
         CalculationResultResponse response = expenseCalculatorService.calculateHousingExpenses(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 단일 대출 월 상환액 계산
+     * 대출 정보를 입력받아 월 상환액을 계산합니다 (계산 결과 저장 없음)
+     *
+     * @param request        월 상환액 계산 요청
+     * @param authentication 인증 정보
+     * @return 월 상환액
+     */
+    @PostMapping("/monthly-payment")
+    @Operation(summary = "대출 월 상환액 계산", description = "대출 정보를 입력받아 월 상환액을 계산합니다")
+    public ResponseEntity<MonthlyPaymentResponse> calculateMonthlyPayment(
+            @Valid @RequestBody MonthlyPaymentRequest request,
+            Authentication authentication) {
+
+        log.info("대출 월 상환액 계산 요청 - loanType: {}, repaymentType: {}, loanAmount: {}",
+                request.getLoanType(), request.getRepaymentType(), request.getLoanAmount());
+
+        MonthlyPaymentResponse response = expenseCalculatorService.calculateMonthlyPayment(request);
+        return ResponseEntity.ok(response);
     }
 
     /**

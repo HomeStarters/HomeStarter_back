@@ -47,6 +47,12 @@ public class ExpenseItemEntity {
     private Long amount;
 
     /**
+     * 연결된 대출 항목 ID (대출 월상환액 자동 등록 시 설정)
+     */
+    @Column(name = "loan_item_id", length = 50)
+    private String loanItemId;
+
+    /**
      * 생성 시간
      */
     @CreationTimestamp
@@ -70,6 +76,7 @@ public class ExpenseItemEntity {
                 .id(this.id)
                 .name(this.name)
                 .amount(this.amount)
+                .loanItemId(this.loanItemId)
                 .build();
     }
 
@@ -86,6 +93,7 @@ public class ExpenseItemEntity {
                 .assetId(assetId)
                 .name(item.getName())
                 .amount(item.getAmount())
+                .loanItemId(item.getLoanItemId())
                 .build();
     }
 }

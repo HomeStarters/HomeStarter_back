@@ -12,6 +12,7 @@ import com.dwj.homestarter.calculator.dto.external.RegionalCharacteristicDto;
 import com.dwj.homestarter.calculator.dto.external.UserProfileDto;
 import com.dwj.homestarter.calculator.dto.external.wrapper.*;
 import com.dwj.homestarter.calculator.dto.request.HousingExpensesRequest;
+import com.dwj.homestarter.calculator.dto.request.MonthlyPaymentRequest;
 import com.dwj.homestarter.calculator.dto.response.*;
 import com.dwj.homestarter.calculator.repository.entity.CalculationResultEntity;
 import com.dwj.homestarter.calculator.repository.jpa.CalculatorRepository;
@@ -634,5 +635,25 @@ public class ExpenseCalculatorServiceImpl implements ExpenseCalculatorService {
             log.warn("알 수 없는 상환 유형: {}, 기본값 EPI 적용", repaymentTypeStr);
             return RepaymentType.EPI;
         }
+    }
+
+    @Override
+    public MonthlyPaymentResponse calculateMonthlyPayment(MonthlyPaymentRequest request) {
+        log.info("월 상환액 계산 요청 - loanType: {}, repaymentType: {}, loanAmount: {}, interestRate: {}, period: {}개월",
+                request.getLoanType(), request.getRepaymentType(),
+                request.getLoanAmount(), request.getAnnualInterestRate(), request.getRepaymentPeriod());
+
+        Long monthlyPayment = calculatorDomain.calculateLoanMonthlyPayment(
+                request.getLoanType(),
+                request.getRepaymentType(),
+                request.getLoanAmount(),
+                request.getAnnualInterestRate(),
+                request.getRepaymentPeriod(),
+                request.getGracePeriod());
+
+        log.info("월 상환액 계산 완료 - monthlyPayment: {}", monthlyPayment);
+        return MonthlyPaymentResponse.builder()
+                .monthlyPayment(monthlyPayment)
+                .build();
     }
 }

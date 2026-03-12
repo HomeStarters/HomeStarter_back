@@ -46,7 +46,7 @@ public class AssetItemDto {
      */
     public AssetItem toDomain() {
         return AssetItem.builder()
-                .id(id != null ? id : UUID.randomUUID().toString())
+                .id(id != null && !id.startsWith("temp_") ? id : UUID.randomUUID().toString())
                 .name(name)
                 .amount(amount)
                 .build();

@@ -102,6 +102,8 @@ service:
   user:
     url: ${USER_SERVICE_URL:http://localhost:8081}
     timeout: ${USER_SERVICE_TIMEOUT:3000}
+  calculator:
+    url: ${CALCULATOR_SERVICE_URL:http://localhost:8085}
 
 # JWT
 jwt:

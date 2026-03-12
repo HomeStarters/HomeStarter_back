@@ -2,6 +2,7 @@ package com.dwj.homestarter.asset.service;
 
 import com.dwj.homestarter.asset.domain.AssetSummary;
 import com.dwj.homestarter.asset.domain.OwnerType;
+import com.dwj.homestarter.asset.dto.ExpenseItemDto;
 import com.dwj.homestarter.asset.dto.request.CreateAssetRequest;
 import com.dwj.homestarter.asset.dto.request.UpdateAssetRequest;
 import com.dwj.homestarter.asset.dto.response.AssetListResponse;
@@ -98,4 +99,16 @@ public interface AssetService {
      * @return 가구 전체 자산 응답
      */
     HouseholdAssetResponse getHouseholdAssets(String userId, String token);
+
+    /**
+     * 대출 자산 기반 월지출 자동 등록
+     * 대출 항목의 월 상환액을 calculator-service를 통해 계산하여 월지출로 등록
+     * 이미 해당 대출과 연결된 월지출이 존재하면 예외 발생
+     *
+     * @param loanItemId 대출 항목 ID
+     * @param userId     사용자 ID
+     * @param token      JWT 토큰 (calculator-service 호출용)
+     * @return 생성된 월지출 항목 DTO
+     */
+    ExpenseItemDto registerLoanExpense(String loanItemId, String userId, String token);
 }
